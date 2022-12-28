@@ -5,6 +5,8 @@
 // Licensed under the MIT License (MIT).
 //--------------------------------------------------------------------------------------
 Texture2D txDiffuse : register( t0 );
+Texture2D txLightDiffuse : register( t1 );
+
 SamplerState samLinear : register( s0 );
 
 cbuffer cbNerverChanges : register(b0)
@@ -20,7 +22,6 @@ cbuffer cbChangeOnResize : register(b1)
 cbuffer cbChangesEveryFrame : register(b2)
 {
     matrix World;
-    float4 vMeshColor;
 }
 
 cbuffer cbLight : register(b3)
@@ -73,5 +74,14 @@ float4 PS_TextureAndLighting( PS_INPUT input) : SV_Target
 
 float4 PS_Texture( PS_INPUT input) : SV_Target
 {
-    return txDiffuse.Sample(samLinear, input.Tex)*vMeshColor;
+    return txDiffuse.Sample(samLinear, input.Tex);
+}
+
+float4 PS_LightMap( PS_INPUT input) : SV_Target
+{
+    float4 finalColor = txDiffuse.Sample(samLinear, input.Tex);
+    finalColor *= txLightDiffuse.Sample(samLinear, input.Tex);
+    finalColor += saturate(dot(input.Norm, (float3)vLightDir) * vLightColor);
+    finalColor.a = 1;
+    return finalColor;
 }

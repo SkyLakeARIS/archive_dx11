@@ -55,9 +55,6 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="tuto.fx">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
 </Project>

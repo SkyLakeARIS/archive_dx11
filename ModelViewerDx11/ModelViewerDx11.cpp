@@ -30,7 +30,7 @@ struct CBChangeOnResize
 struct CBChangesEveryFrame
 {
     XMMATRIX mWorld;
-    XMFLOAT4 vMeshColor;
+ //   XMFLOAT4 vMeshColor;
 };
 
 struct CBLight
@@ -60,12 +60,14 @@ D3D_FEATURE_LEVEL           gFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 ID3D11VertexShader*         gVertexShader = nullptr;
 ID3D11PixelShader*          gPixelShaderTexture = nullptr;
 ID3D11PixelShader*          gPixelShaderTextureAndLighting = nullptr;
+ID3D11PixelShader*          gPixelShaderLightMap = nullptr;
 
-ID3D11SamplerState*         gSamplerLinear = nullptr;
+ID3D11SamplerState*         gSamplerAnisotropic = nullptr;
 ID3D11Resource*             gTextureResource = nullptr;
+ID3D11Resource*             gLightTextureResource = nullptr;
+
 ID3D11ShaderResourceView*   gShaderResourceView = nullptr;
-//ID3D11Texture2D*            gWallTexture = nullptr;
-//ID3D11Texture2D*            gLightTexture = nullptr;
+ID3D11ShaderResourceView*   gLightShaderResourceView = nullptr;
 
 ID3D11InputLayout*          gVertexLayout = nullptr;
 ID3D11Buffer*               gVertexBuffer = nullptr;
@@ -506,6 +508,21 @@ HRESULT SetupGeometry()
         return result;
     }
 
+    ID3DBlob* psLightMapBlob = nullptr;
+    result = CompileShaderFromFile(L"tuto.fxh", "PS_LightMap", "ps_5_0", &psLightMapBlob);
+    if (FAILED(result))
+    {
+        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
+        return E_FAIL;
+    }
+
+    result = gDevice->CreatePixelShader(psLightMapBlob->GetBufferPointer(), psLightMapBlob->GetBufferSize(), nullptr, &gPixelShaderLightMap);
+    psLightMapBlob->Release();
+    if (FAILED(result))
+    {
+        return result;
+    }
+
     SimpleVertex vertices[] =
     {
         { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
@@ -641,7 +658,8 @@ HRESULT SetupGeometry()
     }
 
     D3D11_SAMPLER_DESC samplerDesc = {};
-    samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    // D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR  D3D11_FILTER_MIN_MAG_MIP_POINT
+    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
     samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -649,7 +667,7 @@ HRESULT SetupGeometry()
     samplerDesc.MinLOD = 0;
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
-    result = gDevice->CreateSamplerState(&samplerDesc, &gSamplerLinear);
+    result = gDevice->CreateSamplerState(&samplerDesc, &gSamplerAnisotropic);
     if(FAILED(result))
     {
         ASSERT(false, "SamplerState 생성 실패");
@@ -677,15 +695,37 @@ HRESULT SetupGeometry()
     {
         image.Release();
 
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture 로드 실패", MB_OK);
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
 
-        ASSERT(false, "CreateTexture 로드 실패");
+        ASSERT(false, "CreateTexture gTextureResource 생성  실패");
 
         return E_FAIL;
     }
 
     image.Release();
 
+    result = LoadFromWICFile(L"images//light.gif", WIC_FLAGS_NONE, nullptr, image);
+    if (FAILED(result))
+    {
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"light.gif 로드 실패", MB_OK);
+
+        ASSERT(false, "light.gif 로드 실패");
+        return E_FAIL;
+    }
+
+    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gLightTextureResource);
+    if (FAILED(result))
+    {
+        image.Release();
+
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gLightTextureResource 생성 실패", MB_OK);
+
+        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
+
+        return E_FAIL;
+    }
+
+    image.Release();
     // 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
     ZeroMemory(&srvDesc, sizeof(srvDesc));
@@ -697,7 +737,14 @@ HRESULT SetupGeometry()
     result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
     if (FAILED(result))
     {
-        ASSERT(false, "CreateShaderResourceView 생성 실패");
+        ASSERT(false, "gShaderResourceView 생성 실패");
+        return E_FAIL;
+    }
+
+    result = gDevice->CreateShaderResourceView(gLightTextureResource, &srvDesc, &gLightShaderResourceView);
+    if (FAILED(result))
+    {
+        ASSERT(false, "gLightShaderResourceView 생성 실패");
         return E_FAIL;
     }
 
@@ -747,7 +794,7 @@ HRESULT Render()
     }
 
     // Setup our lighting parameters
-    //XMFLOAT4 lightDirs(-0.577f, 0.577f, -0.577f, 1.0f);
+    //MFLOAT4 lightDirs(-0.577f, 0.577f, -0.577f, 1.0f);
     XMFLOAT4 lightDirs(0.0f, 0.577f, -0.577f, 1.0f);
     XMFLOAT4 lightColor(0.1f, 0.1f, 0.9f, 1.0f);
     XMFLOAT4 meshColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -766,57 +813,63 @@ HRESULT Render()
 
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
-    //XMMatrixTranspose(cb.WorldViewProjection);
+    // 중앙 큐브
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat1);
-    cbChangesEveryFrame.vMeshColor = meshColor;
+//    cbChangesEveryFrame.vMeshColor = meshColor;
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
 
     gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
-    // 이곳에서 쉐이더 레지스터 번호에 맞게 전송.
+
     gDeviceContext->VSSetConstantBuffers(0, 1, &gCBNeverChanges);
     gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
     gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    gDeviceContext->VSSetConstantBuffers(3, 1, &gCBLight);
 
 
-    gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
+    gDeviceContext->PSSetShader(gPixelShaderLightMap, nullptr, 0);
     // 이부분 중요했다..
     // ps에도 상수버퍼의 내용을 사용하면 PS로도 전달해야하는 듯 하다.
     gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    // 픽셀셰이더에서만 사용하니 그쪽에 바인드.
     gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerLinear);
+    gDeviceContext->PSSetShaderResources(1, 1, &gLightShaderResourceView);
+
+    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
     gDeviceContext->DrawIndexed(36, 0, 0);
 
-    // 빨간 광원 큐브
+
+    // 광원 큐브
     XMMATRIX orbitMat = XMMatrixRotationX(t);
-    XMMATRIX spinMat = XMMatrixRotationY(t);
+    XMMATRIX spinMat = XMMatrixRotationX(t);
     XMMATRIX scaleMat = XMMatrixScaling(0.3f, 0.3f, 0.3f);
     XMMATRIX transMat = XMMatrixTranslation(0.0f, 0.0f, -3.0f);
     gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
-    // 한번 재활용 시도하기. 일단 다른 곳에서 에러가 있을수 있으므로 따로 생성.
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat2);
+//    cbChangesEveryFrame.vMeshColor = meshColor;
 
-    CBChangesEveryFrame cbChangesEveryFrame2;
-    cbChangesEveryFrame2.mWorld = XMMatrixTranspose(gWorldMat2);
-    cbChangesEveryFrame2.vMeshColor = meshColor;
-    // 2로 상수버퍼를 변경했으니 다시 전송하고 세팅.
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame2, 0, 0);
-
+    // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
+    // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
+    // 이 부분은 계속해서 테스트하면서 생각해보기로.
     gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
+    //
+    // 라이트맵
+    // 중앙 큐브는 라이트맵을 적용한 픽셀셰이더롤 사용하고,
+    // 광원 큐브는 이전에 만든 텍스처+라이트 픽셀셰이더를 사용.
+    // 당연히 서로 다른 함수니까 상수 버퍼도 바인딩을 다시 해야하는 줄 알았는데 그렇지는
+    // 않는 것 같다. 레지스터..메모리..gpu로 전송했으니, 그 뒤 로는 그 메모리를 참조만?
+    //
 
-    gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    //gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    //gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
+    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerLinear);
+
 
     gDeviceContext->DrawIndexed(36, 0, 0);
-
-     //draw
-     //실제로는 drawIndexed를 사용. 인덱스 버퍼를 사용하는 것이 더 좋기 때문.
-
 
     gSwapChain->Present(0, 0);
     return S_OK;
@@ -829,9 +882,11 @@ void Cleanup()
         gDeviceContext->ClearState();
     }
 
-    SAFETY_RELEASE(gSamplerLinear);
+    SAFETY_RELEASE(gSamplerAnisotropic);
     SAFETY_RELEASE(gShaderResourceView);
+    SAFETY_RELEASE(gLightShaderResourceView);
     SAFETY_RELEASE(gTextureResource);
+    SAFETY_RELEASE(gLightTextureResource);
 
     SAFETY_RELEASE(gCBNeverChanges);
     SAFETY_RELEASE(gCBChangeOnResize);
@@ -844,6 +899,7 @@ void Cleanup()
     SAFETY_RELEASE(gVertexLayout);
     //SAFETY_RELEASE(gPixelShader);
     //SAFETY_RELEASE(gPixelShaderSolid);
+    SAFETY_RELEASE(gPixelShaderLightMap);
     SAFETY_RELEASE(gPixelShaderTextureAndLighting);
     SAFETY_RELEASE(gPixelShaderTexture);
     SAFETY_RELEASE(gVertexShader);
@@ -853,5 +909,4 @@ void Cleanup()
     SAFETY_RELEASE(gSwapChain);
     SAFETY_RELEASE(gDeviceContext);
     SAFETY_RELEASE(gDevice);
- 
 }
