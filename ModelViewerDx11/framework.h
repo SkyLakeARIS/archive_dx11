@@ -7,7 +7,8 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
-
+#pragma comment(lib, "dinput8")
+#pragma comment(lib, "xinput.lib")
 //#pragma comment(lib, "libfbxsdk.lib")
 //#pragma comment(lib, "libfbxsdk-md.lib")
 //#pragma comment(lib, "libfbxsdk-mt.lib")
@@ -23,6 +24,9 @@
 #include <DirectxTex.h>
 #include <DirectXColors.h>
 #include <dxgidebug.h>
+#include <dinput.h>
+#include <Xinput.h>
+
 // Windows 헤더 파일
 #include <windows.h>
 
@@ -33,6 +37,8 @@
 #include <memory.h>
 #include <tchar.h>
 
+// my header
+#include "Timer.h"
 
 // macro
 

@@ -1,7 +1,8 @@
 ﻿// ModelViewerDx11.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
 
-#include "framework.h"
+#include "Camera.h"
+#include "Input.h"
 #include "ModelViewerDx11.h"
 
 #include <string>
@@ -40,7 +41,7 @@ struct CBLight
 };
 
 // 전역 변수:
-HINSTANCE   hInst;                                // 현재 인스턴스입니다.
+HINSTANCE   ghInst;                                // 현재 인스턴스입니다.
 HWND        gWnd;
 WCHAR       szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR       szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
@@ -79,14 +80,22 @@ ID3D11Buffer*               gCBChangesEveryFrame1 = nullptr;
 ID3D11Buffer*               gCBChangesEveryFrame2 = nullptr;
 ID3D11Buffer*               gCBLight = nullptr;
 
+Input* gInput = nullptr;
+
 // 여기는 카메라+물체가 가지는 행렬
 XMMATRIX gWorldMat1;
 XMMATRIX gWorldMat2;
 // 아래는 카메라가 가지는 행렬
-XMMATRIX gViewMat;
-XMMATRIX gProjectionMat;
+//XMMATRIX gViewMat;
+//XMMATRIX gProjectionMat;
 
+//XMVECTOR gEyeVec = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
+//XMVECTOR gLookAtVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+//XMVECTOR gUpVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
+Camera gCamera(XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f)
+            , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
+            , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -96,7 +105,8 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 HRESULT InitializeD3D();
 HRESULT SetupGeometry();
-HRESULT Render();
+HRESULT UpdateFrame(float deltaTime);
+HRESULT Render(float deltaTime);
 void Cleanup();
 
 
@@ -196,28 +206,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MODELVIEWERDX11));
+  //  HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MODELVIEWERDX11));
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
 
+    Timer::Initialize();
     // 기본 메시지 루프입니다:
-    while (msg.message != WM_QUIT)
+    while (true)
     {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
-            if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+            //if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+            if (msg.message == WM_QUIT)
             {
-                TranslateMessage(&msg);
-                DispatchMessage(&msg);
+                break;
             }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
         else
         {
-            Render();
+            Timer::Tick();
+
+            gInput->UpdateInput();
+            UpdateFrame(Timer::GetDeltaTime());
+            Render(Timer::GetDeltaTime());
         }
     }
-
     Cleanup();
 
 #ifdef _DEBUG
@@ -266,7 +283,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
+    ghInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
     gWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
         0, 0, gWidth, gHeight, nullptr, nullptr, hInstance, nullptr);
@@ -297,7 +314,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_DESTROY:
-
         PostQuitMessage(0);
         break;
     default:
@@ -434,6 +450,16 @@ HRESULT InitializeD3D()
     }
 
     gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, gDepthStencilView);
+
+
+    //
+    // direct input initialize => xinput
+    //
+    gInput = new Input;
+    if (FAILED(gInput->Initialize(ghInst, gWnd, gWidth, gHeight)))
+    {
+        return FALSE;
+    }
 
     return S_OK;
 }
@@ -751,72 +777,120 @@ HRESULT SetupGeometry()
     gWorldMat1 = XMMatrixIdentity();
     gWorldMat2 = XMMatrixIdentity();
 
-    XMVECTOR eyeVec = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-    XMVECTOR lookAtVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMVECTOR upVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    gViewMat = XMMatrixLookAtLH(eyeVec, lookAtVec, upVec);
-
-    CBNeverChanges cbNeverChanges;
-    cbNeverChanges.mView = XMMatrixTranspose(gViewMat);
-    gDeviceContext->UpdateSubresource(gCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0);
 
 
     // XM_PIDIV4 XM_PIDIV2
-    gProjectionMat = XMMatrixPerspectiveFovLH(XM_PIDIV4, gWidth/(FLOAT)gHeight, 0.001f, 1000.0f);
+    //gProjectionMat = XMMatrixPerspectiveFovLH(XM_PIDIV4, gWidth/(FLOAT)gHeight, 0.001f, 1000.0f);
 
     CBChangeOnResize cbChangeOnResize;
-    cbChangeOnResize.mProjection = XMMatrixTranspose(gProjectionMat);
+    cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
     gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
 
     return S_OK;
 }
 
-HRESULT Render()
+HRESULT UpdateFrame(float deltaTime)
+{
+    int keyboardArrSize = 0;
+    unsigned char* keyboard = gInput->GetKeyboardPress();
+
+    static int mouseX = 0;
+    static int mouseY = 0;
+    gInput->GetMouseDeltaPosition(mouseX, mouseY);
+
+    if(keyboard[DIK_W] & 0x80)
+    {
+        gCamera.MoveForward(2.0f * deltaTime);
+    }
+
+    if (keyboard[DIK_S] & 0x80)
+    {
+        gCamera.MoveForward(2.0f * -deltaTime);
+    }
+
+    if (keyboard[DIK_A] & 0x80)
+    {
+        gCamera.MoveRight(2.0f * -deltaTime);
+    }
+
+    if (keyboard[DIK_D] & 0x80)
+    {
+        gCamera.MoveRight(2.0f * deltaTime);
+    }
+
+    if (keyboard[DIK_ESCAPE] & 0x80)
+    {
+        WndProc(gWnd, WM_DESTROY, 0, 0);
+    }
+
+
+    if(mouseX < 0)
+    {
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+    }
+
+    if (mouseX > 0)
+    {
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+    }
+
+    if (mouseY < 0)
+    {
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+    }
+
+    if (mouseY > 0)
+    {
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+    }
+
+    return S_OK;
+}
+
+HRESULT Render(float deltaTime)
 {
     float clearColor[] = {0.0f, 0.2f, 0.7f, 1.0f};
     gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearColor);
     gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-    // Update our time
-    static float t = 0.0f;
-    if (gDriverType == D3D_DRIVER_TYPE_REFERENCE)
-    {
-        t += (float)XM_PI * 0.0125f;
-    }
-    else
-    {
-        static ULONGLONG timeStart = 0;
-        ULONGLONG timeCur = GetTickCount64();
-        if (timeStart == 0)
-            timeStart = timeCur;
-        t = (timeCur - timeStart) / 1000.0f;
-    }
 
     // Setup our lighting parameters
-    //MFLOAT4 lightDirs(-0.577f, 0.577f, -0.577f, 1.0f);
-    XMFLOAT4 lightDirs(0.0f, 0.577f, -0.577f, 1.0f);
+    static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.577f, 1.0f);
     XMFLOAT4 lightColor(0.1f, 0.1f, 0.9f, 1.0f);
-    XMFLOAT4 meshColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    XMMATRIX rotateLightMat = XMMatrixRotationX(2.0f * t);
+    XMMATRIX rotateLightMat = XMMatrixRotationX(deltaTime);
     XMVECTOR lightDir = XMLoadFloat4(&lightDirs);
     lightDir = XMVector3Transform(lightDir, rotateLightMat);
 
     XMStoreFloat4(&lightDirs, lightDir);
 
-    gWorldMat1 = XMMatrixRotationY(t);
+    XMMATRIX matView = XMMatrixIdentity();
+    matView = gCamera.GetViewMatrix();
+
+    CBNeverChanges cbNeverChanges;
+    cbNeverChanges.mView = XMMatrixTranspose(matView);
+    gDeviceContext->UpdateSubresource(gCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0);
+
+
+    // billboard 
+    XMMATRIX billBoardMat = XMMatrixIdentity();
+    billBoardMat.r[0] = lightDir;
 
     CBLight cbLight;
     cbLight.vLightColor = lightColor;
     cbLight.vLightDir = lightDirs;
 
+
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
+
     // 중앙 큐브
+
+    gWorldMat1 *= XMMatrixRotationY(deltaTime);
+
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat1);
-//    cbChangesEveryFrame.vMeshColor = meshColor;
+    //    cbChangesEveryFrame.vMeshColor = meshColor;
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
 
@@ -842,10 +916,11 @@ HRESULT Render()
 
 
     // 광원 큐브
-    XMMATRIX orbitMat = XMMatrixRotationX(t);
-    XMMATRIX spinMat = XMMatrixRotationX(t);
+    XMMATRIX orbitMat = XMMatrixRotationX(deltaTime);
+    XMMATRIX spinMat = XMMatrixRotationX(deltaTime);
     XMMATRIX scaleMat = XMMatrixScaling(0.3f, 0.3f, 0.3f);
     XMMATRIX transMat = XMMatrixTranslation(0.0f, 0.0f, -3.0f);
+
     gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat2);
@@ -871,12 +946,49 @@ HRESULT Render()
 
     gDeviceContext->DrawIndexed(36, 0, 0);
 
-    gSwapChain->Present(0, 0);
-    return S_OK;
+     gSwapChain->Present(0, 0);
+        //디바이스 로스트 처리
+     HRESULT result = gDevice->GetDeviceRemovedReason();
+
+    switch (result)
+    {
+    case S_OK:
+        return S_OK;
+
+    case DXGI_ERROR_DEVICE_HUNG:
+    case DXGI_ERROR_DEVICE_RESET:
+
+        Cleanup();
+
+        if (FAILED(InitializeD3D()))
+        {
+            WndProc(gWnd, WM_DESTROY, 0, 0);
+            return E_FAIL;
+        }
+
+        if (FAILED(SetupGeometry()))
+        {
+            WndProc(gWnd, WM_DESTROY, 0, 0);
+            return E_FAIL;
+        }
+
+        return S_OK;
+    case DXGI_ERROR_DEVICE_REMOVED:
+    case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+    case DXGI_ERROR_INVALID_CALL:
+    default:
+        WndProc(gWnd, WM_DESTROY, 0, 0);
+        return E_FAIL;
+    }
 }
 
 void Cleanup()
 {
+
+    gInput->Release();
+    delete gInput;
+    gInput = nullptr;
+
     if (gDeviceContext)
     {
         gDeviceContext->ClearState();
