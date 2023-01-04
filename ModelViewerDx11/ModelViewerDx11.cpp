@@ -2,13 +2,14 @@
 //
 
 #include "Camera.h"
-#include "Input.h"
 #include "ModelViewerDx11.h"
 
 #include <string>
 
 using namespace DirectX;
 #define MAX_LOADSTRING 100
+
+#define USING_MYINPUT
 
 struct SimpleVertex
 {
@@ -31,7 +32,7 @@ struct CBChangeOnResize
 struct CBChangesEveryFrame
 {
     XMMATRIX mWorld;
- //   XMFLOAT4 vMeshColor;
+    //   XMFLOAT4 vMeshColor;
 };
 
 struct CBLight
@@ -49,38 +50,45 @@ INT32       gWidth = 1024;
 INT32       gHeight = 720;
 
 // global d3d11 objects
-ID3D11Device*               gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
-ID3D11DeviceContext*        gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
-IDXGISwapChain*             gSwapChain = nullptr;
-ID3D11RenderTargetView*     gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
-ID3D11Texture2D*            gDepthStencil = nullptr;
-ID3D11DepthStencilView*     gDepthStencilView = nullptr;
+ID3D11Device* gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
+ID3D11DeviceContext* gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
+IDXGISwapChain* gSwapChain = nullptr;
+ID3D11RenderTargetView* gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
+ID3D11Texture2D* gDepthStencil = nullptr;
+ID3D11DepthStencilView* gDepthStencilView = nullptr;
 D3D_DRIVER_TYPE             gDriverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL           gFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 
-ID3D11VertexShader*         gVertexShader = nullptr;
-ID3D11PixelShader*          gPixelShaderTexture = nullptr;
-ID3D11PixelShader*          gPixelShaderTextureAndLighting = nullptr;
-ID3D11PixelShader*          gPixelShaderLightMap = nullptr;
+ID3D11VertexShader* gVertexShader = nullptr;
+ID3D11PixelShader* gPixelShaderTexture = nullptr;
+ID3D11PixelShader* gPixelShaderTextureAndLighting = nullptr;
+ID3D11PixelShader* gPixelShaderLightMap = nullptr;
 
-ID3D11SamplerState*         gSamplerAnisotropic = nullptr;
-ID3D11Resource*             gTextureResource = nullptr;
-ID3D11Resource*             gLightTextureResource = nullptr;
+ID3D11SamplerState* gSamplerAnisotropic = nullptr;
+ID3D11Resource* gTextureResource = nullptr;
+ID3D11Resource* gLightTextureResource = nullptr;
 
-ID3D11ShaderResourceView*   gShaderResourceView = nullptr;
-ID3D11ShaderResourceView*   gLightShaderResourceView = nullptr;
+ID3D11ShaderResourceView* gShaderResourceView = nullptr;
+ID3D11ShaderResourceView* gLightShaderResourceView = nullptr;
 
-ID3D11InputLayout*          gVertexLayout = nullptr;
-ID3D11Buffer*               gVertexBuffer = nullptr;
-ID3D11Buffer*               gIndexBuffer = nullptr;
+ID3D11InputLayout* gVertexLayout = nullptr;
+ID3D11Buffer* gVertexBuffer = nullptr;
+ID3D11Buffer* gIndexBuffer = nullptr;
 
-ID3D11Buffer*               gCBNeverChanges = nullptr;
-ID3D11Buffer*               gCBChangeOnResize = nullptr;
-ID3D11Buffer*               gCBChangesEveryFrame1 = nullptr;
-ID3D11Buffer*               gCBChangesEveryFrame2 = nullptr;
-ID3D11Buffer*               gCBLight = nullptr;
+ID3D11Buffer* gCBNeverChanges = nullptr;
+ID3D11Buffer* gCBChangeOnResize = nullptr;
+ID3D11Buffer* gCBChangesEveryFrame1 = nullptr;
+ID3D11Buffer* gCBChangesEveryFrame2 = nullptr;
+ID3D11Buffer* gCBLight = nullptr;
 
-Input* gInput = nullptr;
+#ifdef USING_MYINPUT
+MyInput* gMyInput = nullptr;
+
+#else
+DirectInput* gDirectInput = nullptr;
+bool keyboard[256] = { 0, };
+
+#endif
 
 // 여기는 카메라+물체가 가지는 행렬
 XMMATRIX gWorldMat1;
@@ -94,8 +102,8 @@ XMMATRIX gWorldMat2;
 //XMVECTOR gUpVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 Camera gCamera(XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f)
-            , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
-            , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+    , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
+    , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -134,7 +142,7 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
     ID3DBlob* pErrorBlob = nullptr;
     result = D3DCompileFromFile(szFileName, nullptr, nullptr, szEntryPoint, szShaderModel,
         dwShaderFlags, 0, ppBlobOut, &pErrorBlob);
-    
+
     if (FAILED(result))
     {
         if (pErrorBlob)
@@ -173,6 +181,15 @@ void CheckLiveObjects()
 }
 #endif
 
+bool MyHandleMouseEvent(MSG* msg, float deltaTime)
+{
+    return false;
+}
+
+bool MyHandleKeyboardEvent(MSG* msg, float deltaTime)
+{
+    return false;
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -194,43 +211,67 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
-    if(FAILED(InitializeD3D()))
+    if (FAILED(InitializeD3D()))
     {
         Cleanup();
         return FALSE;
     }
 
-    if(FAILED(SetupGeometry()))
+    if (FAILED(SetupGeometry()))
     {
         Cleanup();
         return FALSE;
     }
-
-  //  HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MODELVIEWERDX11));
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
 
     Timer::Initialize();
-    // 기본 메시지 루프입니다:
+
+    SetCursorPos(gWidth/(float)2, gHeight/(float)2);
+
     while (true)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE | PM_NOYIELD))
         {
-            //if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-            if (msg.message == WM_QUIT)
+            bool fHandled = false;
+#ifdef USING_MYINPUT
+            if (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST)
+            {
+                fHandled = gMyInput->UpdateMouseInput(msg);
+            }
+            else if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
+            {
+                fHandled = gMyInput->UpdateKeyboardInput(msg);
+            }
+#else
+            if (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST)
+            {
+                fHandled = MyHandleMouseEvent(&msg, Timer::GetDeltaTime());
+            }
+            else if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
+            {
+                fHandled = MyHandleKeyboardEvent(&msg, Timer::GetDeltaTime());
+            }
+#endif
+            else if (WM_QUIT == msg.message)
             {
                 break;
             }
 
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            if (!fHandled)
+            {
+
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
         else
         {
             Timer::Tick();
-
-            gInput->UpdateInput();
+#ifndef USING_MYINPUT
+            gDirectInput->UpdateInput();
+#endif
             UpdateFrame(Timer::GetDeltaTime());
             Render(Timer::GetDeltaTime());
         }
@@ -362,17 +403,17 @@ HRESULT InitializeD3D()
 #endif
 
     HRESULT result = NULL;
-    for(UINT32 driverTypeIndex = 0; driverTypeIndex < numDriverTypes; ++driverTypeIndex)
+    for (UINT32 driverTypeIndex = 0; driverTypeIndex < numDriverTypes; ++driverTypeIndex)
     {
         gDriverType = driverTypes[driverTypeIndex];
-        result = D3D11CreateDeviceAndSwapChain(nullptr, gDriverType, nullptr, createDeviceFlag, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swapDesc, &gSwapChain, &gDevice, &gFeatureLevel, &gDeviceContext );
-        if(SUCCEEDED(result))
+        result = D3D11CreateDeviceAndSwapChain(nullptr, gDriverType, nullptr, createDeviceFlag, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swapDesc, &gSwapChain, &gDevice, &gFeatureLevel, &gDeviceContext);
+        if (SUCCEEDED(result))
         {
             break;
         }
     }
 
-    if(FAILED(result))
+    if (FAILED(result))
     {
         return E_FAIL;
     }
@@ -385,7 +426,7 @@ HRESULT InitializeD3D()
     ID3D11Texture2D* backBuffer = nullptr;
     // 데스크탑 버전에서는 기본적으로 스왑체인은 하나의 백버퍼를 가지고 있고, uwp는 만들어줘야한다.
     result = gSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         return E_FAIL;
     }
@@ -403,7 +444,6 @@ HRESULT InitializeD3D()
 
     // output merger, 그래픽 버퍼에 써넣는 일을 할 때 OM이 붙음.
     gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, nullptr);
-
 
     D3D11_VIEWPORT viewport;
     viewport.Width = (FLOAT)gWidth;
@@ -431,7 +471,7 @@ HRESULT InitializeD3D()
     depthDesc.MiscFlags = 0;
 
     result = gDevice->CreateTexture2D(&depthDesc, nullptr, &gDepthStencil);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         ASSERT(false, "depth stencil 생성 실패");
         return E_FAIL;
@@ -453,13 +493,21 @@ HRESULT InitializeD3D()
 
 
     //
-    // direct input initialize => xinput
+    // DirectInput/MyInput initialize
     //
-    gInput = new Input;
-    if (FAILED(gInput->Initialize(ghInst, gWnd, gWidth, gHeight)))
+#ifdef USING_MYINPUT
+    gMyInput = new MyInput;
+    if (FAILED(gMyInput->Initialize(&gWnd, gWidth, gHeight)))
     {
         return FALSE;
     }
+#else
+    gDirectInput = new DirectInput;
+    if (FAILED(gDirectInput->Initialize(ghInst, gWnd, gWidth, gHeight)))
+    {
+        return FALSE;
+    }
+#endif
 
     return S_OK;
 }
@@ -627,14 +675,14 @@ HRESULT SetupGeometry()
     };
 
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD)*36;
+    bd.ByteWidth = sizeof(WORD) * 36;
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
     initData.pSysMem = indices;
 
     result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         ASSERT(false, "인덱스 버퍼 생성 실패");
         return E_FAIL;
@@ -694,7 +742,7 @@ HRESULT SetupGeometry()
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
     result = gDevice->CreateSamplerState(&samplerDesc, &gSamplerAnisotropic);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         ASSERT(false, "SamplerState 생성 실패");
         return E_FAIL;
@@ -708,16 +756,16 @@ HRESULT SetupGeometry()
 
     // other
     result = LoadFromWICFile(L"images//icon.jpg", WIC_FLAGS_NONE, nullptr, image);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
-        
+
         ASSERT(false, "LoadFromWICFile 로드 실패");
         return E_FAIL;
     }
 
     result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
-    if(FAILED(result))
+    if (FAILED(result))
     {
         image.Release();
 
@@ -791,14 +839,77 @@ HRESULT SetupGeometry()
 
 HRESULT UpdateFrame(float deltaTime)
 {
+#ifdef USING_MYINPUT
+    /*
+     *  myinput ver
+     */
     int keyboardArrSize = 0;
-    unsigned char* keyboard = gInput->GetKeyboardPress();
+    bool keyboard[256];
+    gMyInput->GetKeyboardPressed(keyboard, &keyboardArrSize);
+
+    if (keyboard['W'] || keyboard['w'])
+    {
+        gCamera.MoveForward(2.0f * deltaTime);
+    }
+    if (keyboard['S'] || keyboard['s'])
+    {
+        gCamera.MoveForward(2.0f * -deltaTime);
+    }
+    if (keyboard['A'] || keyboard['a'])
+    {
+        gCamera.MoveRight(2.0f * -deltaTime);
+
+    }
+    if (keyboard['D'] || keyboard['d'])
+    {
+        gCamera.MoveRight(2.0f * deltaTime);
+    }
+
+    if (keyboard[VK_ESCAPE])
+    {
+        WndProc(gWnd, WM_DESTROY, 0, 0);
+    }
+
+    /*
+     *  마우스 움직임은 매끄럽게 처리안되고 있음.
+     */
+    int mouseX = 0;
+    int mouseY = 0;
+    gMyInput->GetMouseDeltaPosition(mouseX, mouseY);
+
+    if (mouseX > 0.0f)
+    {
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+
+    }
+    if (mouseX < 0.0f)
+    {
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+
+    }
+    if (mouseY > 0.0f)
+    {
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+
+    }
+    if (mouseY < 0.0f)
+    {
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+    }
+
+#else
+    /*
+     *  direct input ver
+     */
+
+    int keyboardArrSize = 0;
+    unsigned char* keyboard = gDirectInput->GetKeyboardPress();
 
     static int mouseX = 0;
     static int mouseY = 0;
-    gInput->GetMouseDeltaPosition(mouseX, mouseY);
+    gDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
 
-    if(keyboard[DIK_W] & 0x80)
+    if (keyboard[DIK_W] & 0x80)
     {
         gCamera.MoveForward(2.0f * deltaTime);
     }
@@ -824,7 +935,7 @@ HRESULT UpdateFrame(float deltaTime)
     }
 
 
-    if(mouseX < 0)
+    if (mouseX < 0)
     {
         gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
     }
@@ -843,13 +954,13 @@ HRESULT UpdateFrame(float deltaTime)
     {
         gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
     }
-
+#endif
     return S_OK;
 }
 
 HRESULT Render(float deltaTime)
 {
-    float clearColor[] = {0.0f, 0.2f, 0.7f, 1.0f};
+    float clearColor[] = { 0.0f, 0.2f, 0.7f, 1.0f };
     gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearColor);
     gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -924,11 +1035,11 @@ HRESULT Render(float deltaTime)
     gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat2);
-//    cbChangesEveryFrame.vMeshColor = meshColor;
+    //    cbChangesEveryFrame.vMeshColor = meshColor;
 
-    // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
-    // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
-    // 이 부분은 계속해서 테스트하면서 생각해보기로.
+        // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
+        // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
+        // 이 부분은 계속해서 테스트하면서 생각해보기로.
     gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
     //
     // 라이트맵
@@ -946,9 +1057,9 @@ HRESULT Render(float deltaTime)
 
     gDeviceContext->DrawIndexed(36, 0, 0);
 
-     gSwapChain->Present(0, 0);
-        //디바이스 로스트 처리
-     HRESULT result = gDevice->GetDeviceRemovedReason();
+    gSwapChain->Present(0, 0);
+    //디바이스 로스트 처리
+    HRESULT result = gDevice->GetDeviceRemovedReason();
 
     switch (result)
     {
@@ -984,10 +1095,16 @@ HRESULT Render(float deltaTime)
 
 void Cleanup()
 {
+#ifdef USING_MYINPUT
+    gMyInput->Release();
+    delete gMyInput;
+    gMyInput = nullptr;
+#else
+    gDirectInput->Release();
+    delete gDirectInput;
+    gDirectInput = nullptr;
+#endif
 
-    gInput->Release();
-    delete gInput;
-    gInput = nullptr;
 
     if (gDeviceContext)
     {
@@ -1005,7 +1122,7 @@ void Cleanup()
     SAFETY_RELEASE(gCBChangesEveryFrame2);
     SAFETY_RELEASE(gCBChangesEveryFrame1);
     SAFETY_RELEASE(gCBLight);
-        
+
     SAFETY_RELEASE(gIndexBuffer);
     SAFETY_RELEASE(gVertexBuffer);
     SAFETY_RELEASE(gVertexLayout);

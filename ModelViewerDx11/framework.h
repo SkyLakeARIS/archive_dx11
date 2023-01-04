@@ -39,6 +39,7 @@
 
 // my header
 #include "Timer.h"
+#include "Input.h"
 
 // macro
 

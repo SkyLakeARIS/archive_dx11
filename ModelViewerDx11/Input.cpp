@@ -1,8 +1,8 @@
 ﻿#include "Input.h"
 
-Input::Input()
+DirectInput::DirectInput()
     : mDirectInput(nullptr)
-    ,   mKeyboardInput(nullptr)
+    , mKeyboardInput(nullptr)
     , mMouseInput(nullptr)
     , mMouseX(0)
     , mMouseY(0)
@@ -13,12 +13,13 @@ Input::Input()
     ZeroMemory(&mKeyboardState, sizeof(mKeyboardState));
 }
 
-Input::~Input()
+DirectInput::~DirectInput()
 {
-
+    ASSERT(mKeyboardInput == nullptr, "mKeyboardInput가 Unacquire되지 않았습니다.");
+    ASSERT(mMouseInput == nullptr, "mMouseInput가 Unacquire되지 않았습니다");
 }
 
-HRESULT Input::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight)
+HRESULT DirectInput::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight)
 {
     HRESULT result = S_OK;
 
@@ -91,7 +92,7 @@ HRESULT Input::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth, int s
     return result;
 }
 
-void Input::Release()
+void DirectInput::Release()
 {
     mKeyboardInput->Unacquire();
     mMouseInput->Unacquire();
@@ -100,13 +101,13 @@ void Input::Release()
     SAFETY_RELEASE(mMouseInput);
 }
 
-void Input::UpdateWindowSize(int newWidth, int newHeight)
+void DirectInput::UpdateWindowSize(int newWidth, int newHeight)
 {
     mScreenWidth = newWidth;
     mScreenHeight = newHeight;
 }
 
-HRESULT Input::UpdateInput()
+HRESULT DirectInput::UpdateInput()
 {
     //
     // keyboard
@@ -174,21 +175,123 @@ HRESULT Input::UpdateInput()
     return result;
 }
 
-void Input::GetMousePosition(int& mouseX, int& mouseY) const
+void DirectInput::GetMousePosition(int& mouseX, int& mouseY) const
 {
     mouseX = mMouseX;
     mouseY = mMouseY;
 }
 
-void Input::GetMouseDeltaPosition(int& deltaX, int& deltaY) const
+void DirectInput::GetMouseDeltaPosition(int& deltaX, int& deltaY) const
 {
-    //deltaX = mMouseState.lX;
-    //deltaY = mMouseState.lY;
     deltaX = mOriginalMouseX;
     deltaY = mOriginalMouseY;
 }
 
-unsigned char* Input::GetKeyboardPress()
+unsigned char* DirectInput::GetKeyboardPress()
 {
     return mKeyboardState;
+}
+
+
+
+/*
+ *
+ * MyInput Class 
+ *
+ */
+
+MyInput::MyInput()
+    : mWnd(nullptr)
+    , mScreenWidth(0)
+    , mScreenHeight(0)
+    , mMouseX(0)
+    , mMouseY(0)
+{
+    ZeroMemory(&mKeyboardState, sizeof(mKeyboardState));
+}
+
+MyInput::~MyInput()
+{
+    Release();
+}
+
+HRESULT MyInput::Initialize(HWND* const hwnd, int screenWidth, int screenHeight)
+{
+    ASSERT(hwnd != nullptr, "hwnd가 nullptr입니다.");
+
+    mWnd = &(*hwnd);
+    mScreenWidth = screenWidth;
+    mScreenHeight = screenHeight;
+    return S_OK;
+}
+
+void MyInput::Release()
+{
+    mWnd = nullptr;
+}
+
+void MyInput::UpdateWindowSize(int newWidth, int newHeight)
+{
+    mScreenWidth = newWidth;
+    mScreenHeight = newHeight;
+}
+
+bool MyInput::UpdateMouseInput(const MSG& msg)
+{
+
+    if (msg.message == WM_MOUSEMOVE)
+    {
+        POINT curPosition;
+        GetCursorPos(&curPosition);
+
+        POINT centerPosition;
+        centerPosition.x = mScreenWidth / (float)2;
+        centerPosition.y = mScreenHeight / (float)2;
+
+        mMouseDeltaX = curPosition.x - centerPosition.x;
+        mMouseDeltaY = curPosition.y - centerPosition.y;
+
+        SetCursorPos(centerPosition.x, centerPosition.y);
+        return true;
+    }
+    return false;
+}
+
+bool MyInput::UpdateKeyboardInput(const MSG& msg)
+{
+    if (msg.message == WM_KEYDOWN)
+    {
+        mKeyboardState[msg.wParam] = true;
+        return true;
+    }
+
+    if (msg.message == WM_KEYUP)
+    {
+        mKeyboardState[msg.wParam] = false;
+        return true;
+    }
+    return false;
+}
+
+void MyInput::GetMousePosition(int& mouseX, int& mouseY) const
+{
+    POINT curPosition;
+    GetCursorPos(&curPosition);
+    mouseX = curPosition.x;
+    mouseY = curPosition.y;
+}
+
+void MyInput::GetMouseDeltaPosition(int& deltaX, int& deltaY) const
+{
+    deltaX = mMouseDeltaX;
+    deltaY = mMouseDeltaY;
+}
+
+void MyInput::GetKeyboardPressed(bool* keyboardState, int* size) const
+{
+    ASSERT(keyboardState != nullptr, "keyboardState가 nullptr입니다.");
+
+    enum {KEYBOARD_STATE_ARR_SIZE = 256};
+    *size = KEYBOARD_STATE_ARR_SIZE;
+    memcpy(keyboardState, mKeyboardState, sizeof(bool) * KEYBOARD_STATE_ARR_SIZE);
 }
