@@ -867,7 +867,7 @@ HRESULT UpdateFrame(float deltaTime)
 
     if (keyboard[VK_ESCAPE])
     {
-        WndProc(gWnd, WM_DESTROY, 0, 0);
+        SendMessage(gWnd, WM_DESTROY, 0, 0);
     }
 
     /*
@@ -931,7 +931,7 @@ HRESULT UpdateFrame(float deltaTime)
 
     if (keyboard[DIK_ESCAPE] & 0x80)
     {
-        WndProc(gWnd, WM_DESTROY, 0, 0);
+        SendMessage(gWnd, WM_DESTROY, 0, 0);
     }
 
 
@@ -972,31 +972,25 @@ HRESULT Render(float deltaTime)
     XMMATRIX rotateLightMat = XMMatrixRotationX(deltaTime);
     XMVECTOR lightDir = XMLoadFloat4(&lightDirs);
     lightDir = XMVector3Transform(lightDir, rotateLightMat);
-
+    
     XMStoreFloat4(&lightDirs, lightDir);
 
-    XMMATRIX matView = XMMatrixIdentity();
-    matView = gCamera.GetViewMatrix();
+     XMMATRIX matView = gCamera.GetViewMatrix();
 
     CBNeverChanges cbNeverChanges;
     cbNeverChanges.mView = XMMatrixTranspose(matView);
     gDeviceContext->UpdateSubresource(gCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0);
 
 
-    // billboard 
-    XMMATRIX billBoardMat = XMMatrixIdentity();
-    billBoardMat.r[0] = lightDir;
-
     CBLight cbLight;
     cbLight.vLightColor = lightColor;
     cbLight.vLightDir = lightDirs;
 
-
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
 
-    // 중앙 큐브
-
+    // 부모 큐브
+    //             부모의 TM (Identity * rotY)
     gWorldMat1 *= XMMatrixRotationY(deltaTime);
 
     CBChangesEveryFrame cbChangesEveryFrame;
@@ -1013,18 +1007,25 @@ HRESULT Render(float deltaTime)
 
 
     gDeviceContext->PSSetShader(gPixelShaderLightMap, nullptr, 0);
-    // 이부분 중요했다..
-    // ps에도 상수버퍼의 내용을 사용하면 PS로도 전달해야하는 듯 하다.
+
     gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    // 픽셀셰이더에서만 사용하니 그쪽에 바인드.
     gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
     gDeviceContext->PSSetShaderResources(1, 1, &gLightShaderResourceView);
-
     gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
     gDeviceContext->DrawIndexed(36, 0, 0);
 
+    // 자식 큐브
+    XMMATRIX scaleMat2 = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+    XMMATRIX distFromParent = XMMatrixTranslation(3.0f, -2.0f, 0.0f);
+    //             (스케일링 제외하고)      자식의 TM      부모의 TM
+    XMMATRIX gWorldMat3 = scaleMat2 * distFromParent * gWorldMat1;
+
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat3);
+    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
+
+    gDeviceContext->DrawIndexed(36, 0, 0);
 
     // 광원 큐브
     XMMATRIX orbitMat = XMMatrixRotationX(deltaTime);
@@ -1035,22 +1036,12 @@ HRESULT Render(float deltaTime)
     gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat2);
-    //    cbChangesEveryFrame.vMeshColor = meshColor;
 
-        // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
-        // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
-        // 이 부분은 계속해서 테스트하면서 생각해보기로.
+    // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
+    // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
+    // 이 부분은 계속해서 테스트하면서 생각해보기로.
     gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
-    //
-    // 라이트맵
-    // 중앙 큐브는 라이트맵을 적용한 픽셀셰이더롤 사용하고,
-    // 광원 큐브는 이전에 만든 텍스처+라이트 픽셀셰이더를 사용.
-    // 당연히 서로 다른 함수니까 상수 버퍼도 바인딩을 다시 해야하는 줄 알았는데 그렇지는
-    // 않는 것 같다. 레지스터..메모리..gpu로 전송했으니, 그 뒤 로는 그 메모리를 참조만?
-    //
 
-    //gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    //gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
 
@@ -1073,13 +1064,13 @@ HRESULT Render(float deltaTime)
 
         if (FAILED(InitializeD3D()))
         {
-            WndProc(gWnd, WM_DESTROY, 0, 0);
+            SendMessage(gWnd, WM_DESTROY, 0, 0);
             return E_FAIL;
         }
 
         if (FAILED(SetupGeometry()))
         {
-            WndProc(gWnd, WM_DESTROY, 0, 0);
+            SendMessage(gWnd, WM_DESTROY, 0, 0);
             return E_FAIL;
         }
 
@@ -1088,7 +1079,7 @@ HRESULT Render(float deltaTime)
     case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
     case DXGI_ERROR_INVALID_CALL:
     default:
-        WndProc(gWnd, WM_DESTROY, 0, 0);
+        SendMessage(gWnd, WM_DESTROY, 0, 0);
         return E_FAIL;
     }
 }
