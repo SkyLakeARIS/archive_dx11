@@ -975,7 +975,7 @@ HRESULT Render(float deltaTime)
     
     XMStoreFloat4(&lightDirs, lightDir);
 
-     XMMATRIX matView = gCamera.GetViewMatrix();
+    XMMATRIX matView = gCamera.GetViewMatrix();
 
     CBNeverChanges cbNeverChanges;
     cbNeverChanges.mView = XMMatrixTranspose(matView);
@@ -990,12 +990,32 @@ HRESULT Render(float deltaTime)
 
 
     // 부모 큐브
-    //             부모의 TM (Identity * rotY)
-    gWorldMat1 *= XMMatrixRotationY(deltaTime);
+    // 임의로 잡은 부모 큐브 위치(키프레임)
+    XMFLOAT3 origParantCubePos(-10.f, 0.0f, 0.0f);
+    XMFLOAT3 destParantCubePos(10.f, 0.0f, 0.0f);
+
+    // linear interpolation
+    static float t = 0.0f;
+    XMFLOAT3 interpPosition;
+
+    XMStoreFloat3(&interpPosition, XMVectorScale(XMLoadFloat3(&origParantCubePos), 1 - t) + XMVectorScale(XMLoadFloat3(&destParantCubePos), t));
+
+    // deltaTime을 곱해주어야 부드러운 이동이 된다. 
+    t += 0.1f * deltaTime;
+    if(t > 1.0f)
+    {
+        t = 0.0f;
+    }
+    // 그냥 이동은 심심하므로 그냥 움직이며 회전하도록 추가.
+    // 이동을 계속 누적해야 제대로 회전한다.
+    static XMMATRIX spinMat1 = XMMatrixIdentity();
+    spinMat1 *= XMMatrixRotationY(deltaTime);
+
+    //     부모의 TM : spin * translate(interp)
+    gWorldMat1 = spinMat1 * XMMatrixTranslationFromVector(XMLoadFloat3(&interpPosition));
 
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat1);
-    //    cbChangesEveryFrame.vMeshColor = meshColor;
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
 
@@ -1018,8 +1038,9 @@ HRESULT Render(float deltaTime)
 
     // 자식 큐브
     XMMATRIX scaleMat2 = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+    // 부모로부터의 떨어진 거리
     XMMATRIX distFromParent = XMMatrixTranslation(3.0f, -2.0f, 0.0f);
-    //             (스케일링 제외하고)      자식의 TM      부모의 TM
+    //             (스케일링 제외하고)    자식의 TM      부모의 TM
     XMMATRIX gWorldMat3 = scaleMat2 * distFromParent * gWorldMat1;
 
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat3);
@@ -1031,7 +1052,6 @@ HRESULT Render(float deltaTime)
     XMMATRIX orbitMat = XMMatrixRotationX(deltaTime);
     XMMATRIX spinMat = XMMatrixRotationX(deltaTime);
     XMMATRIX scaleMat = XMMatrixScaling(0.3f, 0.3f, 0.3f);
-    XMMATRIX transMat = XMMatrixTranslation(0.0f, 0.0f, -3.0f);
 
     gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
