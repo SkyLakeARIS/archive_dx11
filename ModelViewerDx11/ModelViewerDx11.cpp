@@ -90,20 +90,15 @@ bool keyboard[256] = { 0, };
 
 #endif
 
-// 여기는 카메라+물체가 가지는 행렬
-XMMATRIX gWorldMat1;
-XMMATRIX gWorldMat2;
-// 아래는 카메라가 가지는 행렬
-//XMMATRIX gViewMat;
-//XMMATRIX gProjectionMat;
-
-//XMVECTOR gEyeVec = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-//XMVECTOR gLookAtVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-//XMVECTOR gUpVec = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+// 여기는 카메라+물체가 가지는 행렬, 굳이 전역으로 뺄 필요없긴 함.
+XMMATRIX gMatWorld1;    // 부모 큐브
+XMMATRIX gMatWorld2;    // 자식 큐브
+XMMATRIX gMatWorld3;    // 광원 큐브
 
 Camera gCamera(XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f)
     , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
     , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -822,8 +817,8 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    gWorldMat1 = XMMatrixIdentity();
-    gWorldMat2 = XMMatrixIdentity();
+    gMatWorld1 = XMMatrixIdentity();
+    gMatWorld2 = XMMatrixIdentity();
 
 
 
@@ -969,11 +964,11 @@ HRESULT Render(float deltaTime)
     static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.577f, 1.0f);
     XMFLOAT4 lightColor(0.1f, 0.1f, 0.9f, 1.0f);
 
-    XMMATRIX rotateLightMat = XMMatrixRotationX(deltaTime);
-    XMVECTOR lightDir = XMLoadFloat4(&lightDirs);
-    lightDir = XMVector3Transform(lightDir, rotateLightMat);
+    XMMATRIX matRotateLight = XMMatrixRotationX(deltaTime);
+    XMVECTOR vLightDir = XMLoadFloat4(&lightDirs);
+    vLightDir = XMVector3Transform(vLightDir, matRotateLight);
     
-    XMStoreFloat4(&lightDirs, lightDir);
+    XMStoreFloat4(&lightDirs, vLightDir);
 
     XMMATRIX matView = gCamera.GetViewMatrix();
 
@@ -989,16 +984,24 @@ HRESULT Render(float deltaTime)
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
 
-    // 부모 큐브
+    // 애니메이션 : 이동 시작, 끝 지점
     // 임의로 잡은 부모 큐브 위치(키프레임)
     XMFLOAT3 origParantCubePos(-10.f, 0.0f, 0.0f);
     XMFLOAT3 destParantCubePos(10.f, 0.0f, 0.0f);
 
+    // 애니메이션 : 회전 시작, 끝 지점
+    // 쿼터니언이 오른손 좌표계 기준 회전인 듯
+    XMVECTOR vOrigParantCubeRot = XMQuaternionRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
+    XMVECTOR vDestParantCubeRot = XMQuaternionRotationRollPitchYaw(-180.0f, 0.0f, -180.0f);
+
+
     // linear interpolation
     static float t = 0.0f;
-    XMFLOAT3 interpPosition;
+    // interp = src * (1.0f - t) + dest * (t)
+    XMVECTOR vInterpPosition = XMVectorScale(XMLoadFloat3(&origParantCubePos), 1.0f - t) + XMVectorScale(XMLoadFloat3(&destParantCubePos), t);
+    // 구면선형보간의 식을 사용한다고 한다. (그게 XMQuaternionSlerp이다)
+    XMVECTOR vInterpRotation = XMQuaternionSlerp(vOrigParantCubeRot, vDestParantCubeRot, t);
 
-    XMStoreFloat3(&interpPosition, XMVectorScale(XMLoadFloat3(&origParantCubePos), 1 - t) + XMVectorScale(XMLoadFloat3(&destParantCubePos), t));
 
     // deltaTime을 곱해주어야 부드러운 이동이 된다. 
     t += 0.1f * deltaTime;
@@ -1006,16 +1009,13 @@ HRESULT Render(float deltaTime)
     {
         t = 0.0f;
     }
-    // 그냥 이동은 심심하므로 그냥 움직이며 회전하도록 추가.
-    // 이동을 계속 누적해야 제대로 회전한다.
-    static XMMATRIX spinMat1 = XMMatrixIdentity();
-    spinMat1 *= XMMatrixRotationY(deltaTime);
 
+    XMMATRIX matSpin1 = XMMatrixRotationQuaternion(vInterpRotation);
     //     부모의 TM : spin * translate(interp)
-    gWorldMat1 = spinMat1 * XMMatrixTranslationFromVector(XMLoadFloat3(&interpPosition));
+    gMatWorld1 = matSpin1 * XMMatrixTranslationFromVector(vInterpPosition);
 
     CBChangesEveryFrame cbChangesEveryFrame;
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat1);
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
 
@@ -1037,25 +1037,25 @@ HRESULT Render(float deltaTime)
     gDeviceContext->DrawIndexed(36, 0, 0);
 
     // 자식 큐브
-    XMMATRIX scaleMat2 = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+    XMMATRIX matScale1 = XMMatrixScaling(0.5f, 0.5f, 0.5f);
     // 부모로부터의 떨어진 거리
-    XMMATRIX distFromParent = XMMatrixTranslation(3.0f, -2.0f, 0.0f);
+    XMMATRIX matDistFromParent = XMMatrixTranslation(3.0f, -2.0f, 0.0f);
     //             (스케일링 제외하고)    자식의 TM      부모의 TM
-    XMMATRIX gWorldMat3 = scaleMat2 * distFromParent * gWorldMat1;
+    gMatWorld2 = matScale1 * matDistFromParent * gMatWorld1;
 
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat3);
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld2);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
     gDeviceContext->DrawIndexed(36, 0, 0);
 
     // 광원 큐브
-    XMMATRIX orbitMat = XMMatrixRotationX(deltaTime);
-    XMMATRIX spinMat = XMMatrixRotationX(deltaTime);
-    XMMATRIX scaleMat = XMMatrixScaling(0.3f, 0.3f, 0.3f);
+    XMMATRIX matOrbit = XMMatrixRotationX(deltaTime);
+    XMMATRIX matSpin2 = XMMatrixRotationX(deltaTime);
+    XMMATRIX matScale2 = XMMatrixScaling(0.3f, 0.3f, 0.3f);
 
-    gWorldMat2 = scaleMat * spinMat * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
+    gMatWorld2 = matScale2 * matSpin2 * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
 
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gWorldMat2);
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld2);
 
     // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
     // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
