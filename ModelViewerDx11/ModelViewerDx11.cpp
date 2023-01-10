@@ -2,6 +2,7 @@
 //
 
 #include "Camera.h"
+#include "ModelImporter.h"
 #include "ModelViewerDx11.h"
 
 #include <string>
@@ -9,12 +10,11 @@
 using namespace DirectX;
 #define MAX_LOADSTRING 100
 
-#define USING_MYINPUT
+//#define USING_MYINPUT
 
 struct SimpleVertex
 {
     XMFLOAT3 Pos;
-    XMFLOAT2 Tex;
     XMFLOAT3 Norm;
 };
 
@@ -32,7 +32,6 @@ struct CBChangeOnResize
 struct CBChangesEveryFrame
 {
     XMMATRIX mWorld;
-    //   XMFLOAT4 vMeshColor;
 };
 
 struct CBLight
@@ -50,54 +49,50 @@ INT32       gWidth = 1024;
 INT32       gHeight = 720;
 
 // global d3d11 objects
-ID3D11Device* gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
-ID3D11DeviceContext* gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
-IDXGISwapChain* gSwapChain = nullptr;
-ID3D11RenderTargetView* gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
-ID3D11Texture2D* gDepthStencil = nullptr;
-ID3D11DepthStencilView* gDepthStencilView = nullptr;
+ID3D11Device*               gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
+ID3D11DeviceContext*        gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
+IDXGISwapChain*             gSwapChain = nullptr;
+ID3D11RenderTargetView*     gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
+ID3D11Texture2D*            gDepthStencil = nullptr;
+ID3D11DepthStencilView*     gDepthStencilView = nullptr;
 D3D_DRIVER_TYPE             gDriverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL           gFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 
-ID3D11VertexShader* gVertexShader = nullptr;
-ID3D11PixelShader* gPixelShaderTexture = nullptr;
-ID3D11PixelShader* gPixelShaderTextureAndLighting = nullptr;
-ID3D11PixelShader* gPixelShaderLightMap = nullptr;
+ID3D11VertexShader*         gVertexShader = nullptr;
+ID3D11PixelShader*          gPixelShaderLighting = nullptr;
 
-ID3D11SamplerState* gSamplerAnisotropic = nullptr;
-ID3D11Resource* gTextureResource = nullptr;
-ID3D11Resource* gLightTextureResource = nullptr;
+ID3D11InputLayout*          gVertexLayout = nullptr;
+ID3D11Buffer*               gVertexBuffer = nullptr;
+ID3D11Buffer*               gIndexBuffer = nullptr;
 
-ID3D11ShaderResourceView* gShaderResourceView = nullptr;
-ID3D11ShaderResourceView* gLightShaderResourceView = nullptr;
+// 상수 버퍼
+ID3D11Buffer*               gCBNeverChanges = nullptr;
+ID3D11Buffer*               gCBChangeOnResize = nullptr;
+ID3D11Buffer*               gCBChangesEveryFrame1 = nullptr;
+ID3D11Buffer*               gCBLight = nullptr;
 
-ID3D11InputLayout* gVertexLayout = nullptr;
-ID3D11Buffer* gVertexBuffer = nullptr;
-ID3D11Buffer* gIndexBuffer = nullptr;
-
-ID3D11Buffer* gCBNeverChanges = nullptr;
-ID3D11Buffer* gCBChangeOnResize = nullptr;
-ID3D11Buffer* gCBChangesEveryFrame1 = nullptr;
-ID3D11Buffer* gCBChangesEveryFrame2 = nullptr;
-ID3D11Buffer* gCBLight = nullptr;
+// 모델 로드
+ModelImporter               gImporter;
+size_t                      gVertexCount = 0;
+SimpleVertex*               gVertexList = nullptr;
+size_t                      gIndexListCount = 0;
+unsigned int*               gIndexList = nullptr;
 
 #ifdef USING_MYINPUT
-MyInput* gMyInput = nullptr;
+MyInput*        gMyInput = nullptr;
 
 #else
-DirectInput* gDirectInput = nullptr;
-bool keyboard[256] = { 0, };
+DirectInput*    gDirectInput = nullptr;
+bool            gKeyboard[256] = { 0, };
 
 #endif
 
 // 여기는 카메라+물체가 가지는 행렬, 굳이 전역으로 뺄 필요없긴 함.
-XMMATRIX gMatWorld1;    // 부모 큐브
-XMMATRIX gMatWorld2;    // 자식 큐브
-XMMATRIX gMatWorld3;    // 광원 큐브
+XMMATRIX        gMatWorld1;    // 부모 큐브
 
-Camera gCamera(XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f)
-    , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
-    , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+Camera          gCamera(    XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f)
+                        , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
+                        ,   XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
@@ -110,7 +105,7 @@ HRESULT InitializeD3D();
 HRESULT SetupGeometry();
 HRESULT UpdateFrame(float deltaTime);
 HRESULT Render(float deltaTime);
-void Cleanup();
+void    Cleanup();
 
 
 //--------------------------------------------------------------------------------------
@@ -161,6 +156,8 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
 void CheckLiveObjects()
 {
     HMODULE dxgidebugdll = GetModuleHandleW(L"dxgidebug.dll");
+    ASSERT(dxgidebugdll != NULL, "dxgidebug.dll 로드 실패");
+
     decltype(&DXGIGetDebugInterface) GetDebugInterface = reinterpret_cast<decltype(&DXGIGetDebugInterface)>(GetProcAddress(dxgidebugdll, "DXGIGetDebugInterface"));
 
     IDXGIDebug* debug;
@@ -203,18 +200,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // 애플리케이션 초기화를 수행합니다:
     if (!InitInstance(hInstance, nCmdShow))
     {
+        ASSERT(false, "초기화 실패");
         return FALSE;
     }
 
     if (FAILED(InitializeD3D()))
     {
         Cleanup();
+        ASSERT(false, "d3d초기화 실패");
+
         return FALSE;
     }
 
     if (FAILED(SetupGeometry()))
     {
         Cleanup();
+        ASSERT(false, "모델데이터 초기화 실패");
+
         return FALSE;
     }
 
@@ -494,13 +496,13 @@ HRESULT InitializeD3D()
     gMyInput = new MyInput;
     if (FAILED(gMyInput->Initialize(&gWnd, gWidth, gHeight)))
     {
-        return FALSE;
+        return E_FAIL;
     }
 #else
     gDirectInput = new DirectInput;
     if (FAILED(gDirectInput->Initialize(ghInst, gWnd, gWidth, gHeight)))
     {
-        return FALSE;
+        return E_FAIL;
     }
 #endif
 
@@ -538,8 +540,7 @@ HRESULT SetupGeometry()
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0}
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -550,8 +551,6 @@ HRESULT SetupGeometry()
     {
         return E_FAIL;
     }
-
-
     // 보통 IASetVertexBuffer 세팅은 렌더링할 때 사용한다고 한다.
     // stride는 몇바이트 건너뛰어야 다음 버텍스가 나오는가, offset은 데이터 내부에서 몇번째 바이트에 버텍스 정보가 있는가.
     // 예제에서는 단순하기 때문에 미리 세팅.
@@ -559,80 +558,57 @@ HRESULT SetupGeometry()
 
 
     // 픽셀 셰이더도 마찬가지로 진행
-    ID3DBlob* psBlob = nullptr;
     // 4.0은 D3D10버전 셰이더
     // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
-    ID3DBlob* psTextureBlob = nullptr;
-    result = CompileShaderFromFile(L"tuto.fxh", "PS_TextureAndLighting", "ps_5_0", &psTextureBlob);
+    ID3DBlob* psBlob = nullptr;
+    result = CompileShaderFromFile(L"tuto.fxh", "PS_Lighting", "ps_5_0", &psBlob);
     if (FAILED(result))
     {
-        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
+        MessageBoxA(gWnd, "PS_Lighting can not be compiled. please check the file", "ERROR", MB_OK);
         return E_FAIL;
     }
 
-    result = gDevice->CreatePixelShader(psTextureBlob->GetBufferPointer(), psTextureBlob->GetBufferSize(), nullptr, &gPixelShaderTextureAndLighting);
-    psTextureBlob->Release();
+    result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPixelShaderLighting);
+    psBlob->Release();
     if (FAILED(result))
     {
         return result;
     }
 
-    ID3DBlob* psLightMapBlob = nullptr;
-    result = CompileShaderFromFile(L"tuto.fxh", "PS_LightMap", "ps_5_0", &psLightMapBlob);
-    if (FAILED(result))
+    // 모델 로드
+    gImporter.LoadModelAnby();
+
+    gVertexCount += gImporter.GetBodyVertexCount();
+    gVertexCount += gImporter.GetFaceVertexCount();
+    gVertexCount += gImporter.GetHairVertexCount();
+
+    gVertexList = new SimpleVertex[gVertexCount];
+    // body
+    for(size_t i = 0; i < gImporter.GetBodyVertexCount(); ++i)
     {
-        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
+        gImporter.GetBodyVertexData(i, gVertexList[i].Pos, gVertexList[i].Norm);
     }
-
-    result = gDevice->CreatePixelShader(psLightMapBlob->GetBufferPointer(), psLightMapBlob->GetBufferSize(), nullptr, &gPixelShaderLightMap);
-    psLightMapBlob->Release();
-    if (FAILED(result))
+    // Face
+    unsigned int offsetVertext = gImporter.GetBodyVertexCount();
+    for (size_t i = 0; i < gImporter.GetFaceVertexCount(); ++i)
     {
-        return result;
+        gImporter.GetFaceVertexData(i, gVertexList[offsetVertext +i].Pos, gVertexList[offsetVertext +i].Norm);
     }
-
-    SimpleVertex vertices[] =
+    // Hair
+    offsetVertext += gImporter.GetFaceVertexCount();
+    for (size_t i = 0; i < gImporter.GetHairVertexCount(); ++i)
     {
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)  },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)  },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)  },
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)  },
-
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)  },
-
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)  },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)  },
-
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)  },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)  },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)  },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)  },
-
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)  },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)  },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)  },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)  },
-    };
+        gImporter.GetHairVertexData(i, gVertexList[offsetVertext +i].Pos, gVertexList[offsetVertext +i].Norm);
+    }
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * 24;
+    bd.ByteWidth = sizeof(SimpleVertex) * gVertexCount;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
     D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = vertices;
+    initData.pSysMem = gVertexList;
 
     result = gDevice->CreateBuffer(&bd, &initData, &gVertexBuffer);
     if (FAILED(result))
@@ -648,33 +624,27 @@ HRESULT SetupGeometry()
     gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
 
     // 정점에 대한 인덱스 지정
-    WORD indices[] =
-    {
-        3,1,0,
-        2,1,3,
+    gIndexListCount += gImporter.GetBodyIndexListCount();
+    gIndexListCount += gImporter.GetFaceIndexListCount();
+    gIndexListCount += gImporter.GetHairIndexListCount();
 
-        6,4,5,
-        7,4,6,
+    /*
+     *  오버플로우 주의!
+     *  버텍스가 많은 오브젝트를 렌더링할 때 꼭 데이터형이 충분한지,
+     *  그에 맞게 포멧을 잘 지정해 줬는지 체크한다.
+     */
+    gIndexList = new unsigned int[gIndexListCount];
+    gImporter.GetBodyIndexList(gIndexList);
+    gImporter.GetFaceIndexList(gIndexList);
+    gImporter.GetHairIndexList(gIndexList);
 
-        11,9,8,
-        10,9,11,
-
-        14,12,13,
-        15,12,14,
-
-        19,17,16,
-        18,17,19,
-
-        22,20,21,
-        23,20,22
-    };
 
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * 36;
+    bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
-    initData.pSysMem = indices;
+    initData.pSysMem = gIndexList;
 
     result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
     if (FAILED(result))
@@ -682,8 +652,7 @@ HRESULT SetupGeometry()
         ASSERT(false, "인덱스 버퍼 생성 실패");
         return E_FAIL;
     }
-
-    gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
     gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -726,104 +695,7 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    D3D11_SAMPLER_DESC samplerDesc = {};
-    // D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR  D3D11_FILTER_MIN_MAG_MIP_POINT
-    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER; // 아직 정확히는 잘 모름.
-    samplerDesc.MinLOD = 0;
-    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-    result = gDevice->CreateSamplerState(&samplerDesc, &gSamplerAnisotropic);
-    if (FAILED(result))
-    {
-        ASSERT(false, "SamplerState 생성 실패");
-        return E_FAIL;
-    }
-
-
-    // texture load
-    ScratchImage image;
-    // dds
-    //result = LoadFromDDSFile();
-
-    // other
-    result = LoadFromWICFile(L"images//icon.jpg", WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
-
-        ASSERT(false, "LoadFromWICFile 로드 실패");
-        return E_FAIL;
-    }
-
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
-    if (FAILED(result))
-    {
-        image.Release();
-
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
-
-        ASSERT(false, "CreateTexture gTextureResource 생성  실패");
-
-        return E_FAIL;
-    }
-
-    image.Release();
-
-    result = LoadFromWICFile(L"images//light.gif", WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"light.gif 로드 실패", MB_OK);
-
-        ASSERT(false, "light.gif 로드 실패");
-        return E_FAIL;
-    }
-
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gLightTextureResource);
-    if (FAILED(result))
-    {
-        image.Release();
-
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gLightTextureResource 생성 실패", MB_OK);
-
-        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
-
-        return E_FAIL;
-    }
-
-    image.Release();
-    // 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    ZeroMemory(&srvDesc, sizeof(srvDesc));
-    // D3D10_SRV_DIMENSION_TEXTURE2D; 과 무슨차이가 있길래 D3D10을 썼는가?
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-
-    result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gShaderResourceView 생성 실패");
-        return E_FAIL;
-    }
-
-    result = gDevice->CreateShaderResourceView(gLightTextureResource, &srvDesc, &gLightShaderResourceView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gLightShaderResourceView 생성 실패");
-        return E_FAIL;
-    }
-
     gMatWorld1 = XMMatrixIdentity();
-    gMatWorld2 = XMMatrixIdentity();
-
-
-
-    // XM_PIDIV4 XM_PIDIV2
-    //gProjectionMat = XMMatrixPerspectiveFovLH(XM_PIDIV4, gWidth/(FLOAT)gHeight, 0.001f, 1000.0f);
 
     CBChangeOnResize cbChangeOnResize;
     cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
@@ -839,28 +711,28 @@ HRESULT UpdateFrame(float deltaTime)
      *  myinput ver
      */
     int keyboardArrSize = 0;
-    bool keyboard[256];
-    gMyInput->GetKeyboardPressed(keyboard, &keyboardArrSize);
+    bool gKeyboard[256];
+    gMyInput->GetKeyboardPressed(gKeyboard, &keyboardArrSize);
 
-    if (keyboard['W'] || keyboard['w'])
+    if (gKeyboard['W'] || gKeyboard['w'])
     {
         gCamera.MoveForward(2.0f * deltaTime);
     }
-    if (keyboard['S'] || keyboard['s'])
+    if (gKeyboard['S'] || gKeyboard['s'])
     {
         gCamera.MoveForward(2.0f * -deltaTime);
     }
-    if (keyboard['A'] || keyboard['a'])
+    if (gKeyboard['A'] || gKeyboard['a'])
     {
         gCamera.MoveRight(2.0f * -deltaTime);
 
     }
-    if (keyboard['D'] || keyboard['d'])
+    if (gKeyboard['D'] || gKeyboard['d'])
     {
         gCamera.MoveRight(2.0f * deltaTime);
     }
 
-    if (keyboard[VK_ESCAPE])
+    if (gKeyboard[VK_ESCAPE])
     {
         SendMessage(gWnd, WM_DESTROY, 0, 0);
     }
@@ -897,34 +769,33 @@ HRESULT UpdateFrame(float deltaTime)
      *  direct input ver
      */
 
-    int keyboardArrSize = 0;
-    unsigned char* keyboard = gDirectInput->GetKeyboardPress();
+    unsigned char* gKeyboard = gDirectInput->GetKeyboardPress();
 
     static int mouseX = 0;
     static int mouseY = 0;
     gDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
 
-    if (keyboard[DIK_W] & 0x80)
+    if (gKeyboard[DIK_W] & 0x80)
     {
-        gCamera.MoveForward(2.0f * deltaTime);
+        gCamera.MoveForward(5.0f * deltaTime);
     }
 
-    if (keyboard[DIK_S] & 0x80)
+    if (gKeyboard[DIK_S] & 0x80)
     {
-        gCamera.MoveForward(2.0f * -deltaTime);
+        gCamera.MoveForward(5.0f * -deltaTime);
     }
 
-    if (keyboard[DIK_A] & 0x80)
+    if (gKeyboard[DIK_A] & 0x80)
     {
-        gCamera.MoveRight(2.0f * -deltaTime);
+        gCamera.MoveRight(5.0f * -deltaTime);
     }
 
-    if (keyboard[DIK_D] & 0x80)
+    if (gKeyboard[DIK_D] & 0x80)
     {
-        gCamera.MoveRight(2.0f * deltaTime);
+        gCamera.MoveRight(5.0f * deltaTime);
     }
 
-    if (keyboard[DIK_ESCAPE] & 0x80)
+    if (gKeyboard[DIK_ESCAPE] & 0x80)
     {
         SendMessage(gWnd, WM_DESTROY, 0, 0);
     }
@@ -932,24 +803,31 @@ HRESULT UpdateFrame(float deltaTime)
 
     if (mouseX < 0)
     {
-        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime*12.0f);
     }
 
     if (mouseX > 0)
     {
-        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime);
+        gCamera.RotateYAxis(XMConvertToRadians(mouseX) * deltaTime * 12.0f);
     }
 
     if (mouseY < 0)
     {
-        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime * 12.0f);
     }
 
     if (mouseY > 0)
     {
-        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime);
+        gCamera.RotateXAxis(XMConvertToRadians(mouseY) * deltaTime * 12.0f);
     }
 #endif
+
+    XMMATRIX matView = gCamera.GetViewMatrix();
+
+    CBNeverChanges cbNeverChanges;
+    cbNeverChanges.mView = XMMatrixTranspose(matView);
+    gDeviceContext->UpdateSubresource(gCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0);
+
     return S_OK;
 }
 
@@ -959,23 +837,15 @@ HRESULT Render(float deltaTime)
     gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearColor);
     gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-
-    // Setup our lighting parameters
+   // Setup our lighting parameters
     static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.577f, 1.0f);
-    XMFLOAT4 lightColor(0.1f, 0.1f, 0.9f, 1.0f);
+    XMFLOAT4 lightColor(0.5f, 0.5f, 0.5f, 1.0f);
 
-    XMMATRIX matRotateLight = XMMatrixRotationX(deltaTime);
+    XMMATRIX matRotateLight = XMMatrixRotationY(deltaTime);
     XMVECTOR vLightDir = XMLoadFloat4(&lightDirs);
     vLightDir = XMVector3Transform(vLightDir, matRotateLight);
-    
+
     XMStoreFloat4(&lightDirs, vLightDir);
-
-    XMMATRIX matView = gCamera.GetViewMatrix();
-
-    CBNeverChanges cbNeverChanges;
-    cbNeverChanges.mView = XMMatrixTranspose(matView);
-    gDeviceContext->UpdateSubresource(gCBNeverChanges, 0, nullptr, &cbNeverChanges, 0, 0);
-
 
     CBLight cbLight;
     cbLight.vLightColor = lightColor;
@@ -983,41 +853,13 @@ HRESULT Render(float deltaTime)
 
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
-
-    // 애니메이션 : 이동 시작, 끝 지점
-    // 임의로 잡은 부모 큐브 위치(키프레임)
-    XMFLOAT3 origParantCubePos(-10.f, 0.0f, 0.0f);
-    XMFLOAT3 destParantCubePos(10.f, 0.0f, 0.0f);
-
-    // 애니메이션 : 회전 시작, 끝 지점
-    // 쿼터니언이 오른손 좌표계 기준 회전인 듯
-    XMVECTOR vOrigParantCubeRot = XMQuaternionRotationRollPitchYaw(0.0f, 0.0f, 0.0f);
-    XMVECTOR vDestParantCubeRot = XMQuaternionRotationRollPitchYaw(-180.0f, 0.0f, -180.0f);
-
-
-    // linear interpolation
-    static float t = 0.0f;
-    // interp = src * (1.0f - t) + dest * (t)
-    XMVECTOR vInterpPosition = XMVectorScale(XMLoadFloat3(&origParantCubePos), 1.0f - t) + XMVectorScale(XMLoadFloat3(&destParantCubePos), t);
-    // 구면선형보간의 식을 사용한다고 한다. (그게 XMQuaternionSlerp이다)
-    XMVECTOR vInterpRotation = XMQuaternionSlerp(vOrigParantCubeRot, vDestParantCubeRot, t);
-
-
-    // deltaTime을 곱해주어야 부드러운 이동이 된다. 
-    t += 0.1f * deltaTime;
-    if(t > 1.0f)
-    {
-        t = 0.0f;
-    }
-
-    XMMATRIX matSpin1 = XMMatrixRotationQuaternion(vInterpRotation);
-    //     부모의 TM : spin * translate(interp)
-    gMatWorld1 = matSpin1 * XMMatrixTranslationFromVector(vInterpPosition);
+    XMMATRIX matWorldTM = gImporter.mMatSubTM * gImporter.mMatRootTM * XMMatrixScaling(0.1f, 0.1f, 0.1f);
+    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatBodyTM * matWorldTM;
 
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
+    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
     gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
 
@@ -1026,47 +868,39 @@ HRESULT Render(float deltaTime)
     gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
 
 
-    gDeviceContext->PSSetShader(gPixelShaderLightMap, nullptr, 0);
-
+    gDeviceContext->PSSetShader(gPixelShaderLighting, nullptr, 0);
+    
     gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
     gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
-    gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
-    gDeviceContext->PSSetShaderResources(1, 1, &gLightShaderResourceView);
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
-    gDeviceContext->DrawIndexed(36, 0, 0);
+    /*
+     * Body
+     */
+    gDeviceContext->DrawIndexed(gImporter.GetBodyIndexListCount(), 0, 0);
 
-    // 자식 큐브
-    XMMATRIX matScale1 = XMMatrixScaling(0.5f, 0.5f, 0.5f);
-    // 부모로부터의 떨어진 거리
-    XMMATRIX matDistFromParent = XMMatrixTranslation(3.0f, -2.0f, 0.0f);
-    //             (스케일링 제외하고)    자식의 TM      부모의 TM
-    gMatWorld2 = matScale1 * matDistFromParent * gMatWorld1;
-
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld2);
+    /*
+     * Face
+     */
+    // 굳이 이렇게 안하고 body의 매트릭스를 그대로 이용해도 동일하게 나오기는 한다.
+    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatFaceTM * matWorldTM;
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
-    gDeviceContext->DrawIndexed(36, 0, 0);
+    unsigned int indexNum = gImporter.GetBodyIndexListCount();
+    unsigned int vertexNum = gImporter.GetBodyVertexCount();
+    gDeviceContext->DrawIndexed(gImporter.GetFaceIndexListCount(),indexNum , vertexNum);
 
-    // 광원 큐브
-    XMMATRIX matOrbit = XMMatrixRotationX(deltaTime);
-    XMMATRIX matSpin2 = XMMatrixRotationX(deltaTime);
-    XMMATRIX matScale2 = XMMatrixScaling(0.3f, 0.3f, 0.3f);
-
-    gMatWorld2 = matScale2 * matSpin2 * XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDirs));
-
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld2);
-
-    // 다른 Set메서드 호출 필요없이 상수버퍼에 업데이트만 해도 문제없는 것 같다.
-    // 앞에서 이미 상수버퍼와 바인드를 해서 그런걸지도..
-    // 이 부분은 계속해서 테스트하면서 생각해보기로.
-    gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
-
+    /*
+     *  Hair
+     */
+    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatHairTM * matWorldTM;
+    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
-    gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
 
+    indexNum = gImporter.GetBodyIndexListCount()+gImporter.GetFaceIndexListCount();
+    vertexNum = gImporter.GetBodyVertexCount()+gImporter.GetFaceVertexCount();
+    gDeviceContext->DrawIndexed(gImporter.GetHairIndexListCount(), indexNum, vertexNum);
 
-    gDeviceContext->DrawIndexed(36, 0, 0);
 
     gSwapChain->Present(0, 0);
     //디바이스 로스트 처리
@@ -1121,27 +955,17 @@ void Cleanup()
     {
         gDeviceContext->ClearState();
     }
-
-    SAFETY_RELEASE(gSamplerAnisotropic);
-    SAFETY_RELEASE(gShaderResourceView);
-    SAFETY_RELEASE(gLightShaderResourceView);
-    SAFETY_RELEASE(gTextureResource);
-    SAFETY_RELEASE(gLightTextureResource);
+    delete[] gVertexList;
+    delete[] gIndexList;
 
     SAFETY_RELEASE(gCBNeverChanges);
     SAFETY_RELEASE(gCBChangeOnResize);
-    SAFETY_RELEASE(gCBChangesEveryFrame2);
     SAFETY_RELEASE(gCBChangesEveryFrame1);
     SAFETY_RELEASE(gCBLight);
-
     SAFETY_RELEASE(gIndexBuffer);
     SAFETY_RELEASE(gVertexBuffer);
     SAFETY_RELEASE(gVertexLayout);
-    //SAFETY_RELEASE(gPixelShader);
-    //SAFETY_RELEASE(gPixelShaderSolid);
-    SAFETY_RELEASE(gPixelShaderLightMap);
-    SAFETY_RELEASE(gPixelShaderTextureAndLighting);
-    SAFETY_RELEASE(gPixelShaderTexture);
+    SAFETY_RELEASE(gPixelShaderLighting);
     SAFETY_RELEASE(gVertexShader);
     SAFETY_RELEASE(gDepthStencil);
     SAFETY_RELEASE(gDepthStencilView);
