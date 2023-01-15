@@ -9,14 +9,9 @@ public:
     Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
     virtual ~Camera();
 
-    void MoveForward(float deltaTime);
-    void MoveRight(float deltaTime);
-
-    void RotateYAxis(float deltaTime);
-    void RotateXAxis(float deltaTime);
-    void RotateZAxis(float deltaTime);
-
-    void RotateAxis(XMVECTOR axis, float angle);
+    void RotateAxis(float yawRad, float pitchRad);
+    
+    void AddRadiusSphere(float scaleFactor);
 
     inline XMMATRIX GetViewMatrix() const;
     inline XMMATRIX GetProjectionMatrix();
@@ -25,16 +20,20 @@ private:
     void makeViewMatrix();
 
 private:
-    XMVECTOR mvEye;
-    XMVECTOR mvLookAt;
-    XMVECTOR mvUp;
+    XMFLOAT2    mAnglesRad;
 
-    XMVECTOR mvForward; // view vector
-    XMVECTOR mvRight;   // right, cross vector
+    XMVECTOR    mvEye;
+    XMVECTOR    mvLookAtCenter;
+    XMVECTOR    mvUp;
 
+    XMVECTOR    mvForward;     // view vector
+    XMVECTOR    mvRight;       // right, cross vector
 
-    XMMATRIX mMatView;
-    XMMATRIX mMatProjection;
+    float       mRadiusOfSphere; // sphere size, radius length
+
+    XMMATRIX    mMatView;
+    XMMATRIX    mMatProjection;
+
 };
 
 inline XMMATRIX Camera::GetViewMatrix() const

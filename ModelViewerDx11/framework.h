@@ -3,15 +3,17 @@
 //
 
 #pragma once
+#pragma comment(lib, "libfbxsdk-md.lib")    // 컴파일 플래그가 md 설정일 경우 ) 속성-c/c++-코드 생성-런타임 라이브러리
+//#pragma comment(lib, "libxml2-md.lib")    // 
+//#pragma comment(lib, "zlib-md.lib")       //
+
+//#pragma comment(lib, "libfbxsdk-mt.lib") // 컴파일 플래그가 mt 설정일 경우
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dinput8")
 #pragma comment(lib, "xinput.lib")
-//#pragma comment(lib, "libfbxsdk.lib")
-//#pragma comment(lib, "libfbxsdk-md.lib")
-//#pragma comment(lib, "libfbxsdk-mt.lib")
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN             // 거의 사용되지 않는 내용을 Windows 헤더에서 제외합니다.
@@ -27,6 +29,9 @@
 #include <dinput.h>
 #include <Xinput.h>
 
+// fbx
+#include <fbxsdk.h>
+
 // Windows 헤더 파일
 #include <windows.h>
 
@@ -38,6 +43,7 @@
 #include <tchar.h>
 
 // my header
+#include "Type.h"
 #include "Timer.h"
 #include "Input.h"
 

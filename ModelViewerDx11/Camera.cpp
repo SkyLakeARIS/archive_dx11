@@ -1,13 +1,26 @@
 #include "Camera.h"
-
+#include "cmath"
 
 Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
     : mvEye(vEye)
-    , mvLookAt(vLookAt)
+    , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
+    , mRadiusOfSphere(0.0f)
 {
-    mvForward = XMVectorSubtract(mvLookAt, mvEye);
+    // 실제 캐릭터 모델을 만들어서 완성이 되면, 캐릭터에 대한 위치 좌표 등을 받아서
+    // 중심점을 계산하는 것이 좋을 듯. 지금은 조금 애매함 ( eye가 center인 lookat보다 커야 앞을 바라보도록 되어있음.)
+    mvForward = XMVectorSubtract(mvEye, mvLookAtCenter);
+    mvForward = XMVector3Normalize(mvForward);
+
+    XMFLOAT3 distance;
+    XMStoreFloat3(&distance, mvEye);
+    mRadiusOfSphere = sqrtf(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
+    
     mvRight = XMVector3Cross(mvUp, mvForward);
+    mvRight = XMVector3Normalize(mvRight);
+
+    mAnglesRad.x = 0.0f;
+    mAnglesRad.y = -(distance.x/distance.z);
 
     makeViewMatrix();
 }
@@ -17,126 +30,72 @@ Camera::~Camera()
     
 }
 
-void Camera::MoveForward(float deltaTime)
+
+void Camera::RotateAxis(float yawRad, float pitchRad)
 {
-    XMVECTOR vMoveToFront = XMVector3Normalize(mvForward);
+    mAnglesRad.x += yawRad;         // pi, yaw
+    mAnglesRad.y += pitchRad;       // theta, pitch
 
-    vMoveToFront = XMVectorScale(vMoveToFront, deltaTime);
+    // pitch만 클램프, yaw는 순환
+    // pitch limit는 -85.0~85.0
+    constexpr float PITCH_LIMIT = 0.261799; // 15 degree
+    if(mAnglesRad.x >= XM_2PI)
+    {
+        mAnglesRad.x -= XM_2PI;
+    }
+    else if (mAnglesRad.x < 0.0f)
+    {
+        mAnglesRad.x += XM_2PI;
+    }
 
-    mvEye = XMVectorAdd(mvEye, vMoveToFront);
-    mvLookAt = XMVectorAdd(mvLookAt, vMoveToFront);
+    if (mAnglesRad.y > (XM_PI - PITCH_LIMIT))
+    {
+        mAnglesRad.y = XM_PI - PITCH_LIMIT;
+    }
+    else if (mAnglesRad.y < PITCH_LIMIT)
+    {
+        mAnglesRad.y = PITCH_LIMIT;
+    }
+
+    // 단위 r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
+    XMFLOAT3 position;
+    position.x = sin(mAnglesRad.y) * sin(mAnglesRad.x);
+    position.y = cos(mAnglesRad.y);
+    position.z = -(sin(mAnglesRad.y) * cos(mAnglesRad.x));
+
+    XMMATRIX matNewPosition = XMMatrixTranslationFromVector(XMLoadFloat3(&position));
+    
+    mvEye = XMVector3TransformCoord(mvEye, matNewPosition);
+
+    mvEye = XMVector3Normalize(mvEye)*mRadiusOfSphere;
+
+    //mvUp = XMVector3Cross(mvForward, mvRight);
+
 
     makeViewMatrix();
 }
 
-void Camera::MoveRight(float deltaTime)
+void Camera::AddRadiusSphere(float scaleFactor)
 {
-    XMVECTOR vMoveToRight = XMVector3Normalize(mvRight);
+    constexpr float MAX_RADIUS = 60.0f;
+    constexpr float MIN_RADIUS = 5.0f;
 
-    vMoveToRight = XMVectorScale(vMoveToRight, deltaTime);
+    mRadiusOfSphere += scaleFactor;
 
-    mvEye = XMVectorAdd(mvEye, vMoveToRight);
-    mvLookAt = XMVectorAdd(mvLookAt, vMoveToRight);
+    if(mRadiusOfSphere > MAX_RADIUS)
+    {
+        mRadiusOfSphere = MAX_RADIUS;
+    }
+    else if(mRadiusOfSphere < MIN_RADIUS)
+    {
+        mRadiusOfSphere = MIN_RADIUS;
+    }
 
+    mvEye = XMVector3Normalize(mvEye) * mRadiusOfSphere;
     makeViewMatrix();
-}
-
-void Camera::RotateYAxis(float deltaTime)
-{
-    // 화면에서 움직인 마우스 거리를 호의 길이라고 한다면,
-    // 반지름은 벡터의 길이(크기) , y축 회전이니까 forward벡터를 활용
-    // radian = r = l(호의 길이)
-    // radian*r = r*l (l은 배수로 해야함.)
-    // 다르게 쓰면 theta = l/r => theta*r = l
-
-
-    XMMATRIX matRotate = XMMatrixRotationAxis(mvUp, deltaTime);
-    mvForward = XMVector3TransformCoord(mvForward, matRotate);
-    auto oldLookat = mvLookAt;
-    mvLookAt = mvForward + mvEye;
-
-    mvRight = XMVector3Cross(mvUp, mvForward);
-
-    //mvUp = vUp;
-    wchar_t a[246];
-    swprintf_s(a, L"rotate y : %f %f %f %f old : %f %f %f %f\n", mvLookAt.m128_f32[0], mvLookAt.m128_f32[1], mvLookAt.m128_f32[2], mvLookAt.m128_f32[3],
-        oldLookat.m128_f32[0], oldLookat.m128_f32[1], oldLookat.m128_f32[2], oldLookat.m128_f32[3]);
-    std::wstring b;
-    b = L"a";
-    OutputDebugString(a);
-
-    makeViewMatrix();
-
-    //// 내가 생각했던, 원점기준으로 회전하기 방식
-    //XMMATRIX matRotate = XMMatrixRotationY(deltaTime);
-
-    //XMVECTOR vRotate;
-    //XMVECTOR vRotate1;
-    //XMMatrixDecompose(&vRotate1, &vRotate, &vRotate1, matRotate);
-    //mvForward = XMVector3Rotate(mvForward, vRotate);
-
-    //mvLookAt = mvForward + mvEye;
-
-    //mvRight = XMVector3Cross(mvUp, mvForward);
-
-    //makeViewMatrix();
-}
-
-void Camera::RotateXAxis(float deltaTime)
-{
-    XMMATRIX matRotate = XMMatrixRotationAxis(mvRight, deltaTime);
-    mvForward = XMVector3TransformCoord(mvForward, matRotate);
-
-    mvLookAt = mvForward + mvEye;
-
-    mvUp = XMVector3Cross(mvForward, mvRight);
-    mvUp = XMVector3Normalize(mvUp);
-
-    wchar_t a[246];
-    swprintf_s(a, L"rotate x : %f %f %f %f\n", mvUp.m128_f32[0], mvUp.m128_f32[1], mvUp.m128_f32[2], mvUp.m128_f32[3]);
-    std::wstring b;
-    b = L"a";
-    OutputDebugString(a);
-
-    makeViewMatrix();
-}
-
-void Camera::RotateZAxis(float deltaTime)
-{
-    XMMATRIX matRotate = XMMatrixRotationAxis(mvForward, deltaTime);
-    //XMVECTOR vUp = XMVectorSubtract(mvUp, mvEye);
-    mvUp = XMVector3TransformCoord(mvUp, matRotate);
-
-    //mvUp = vUp;
-    wchar_t a[246];
-    swprintf_s(a, L"rotate z : %f %f %f %f\n", mvUp.m128_f32[0], mvUp.m128_f32[1], mvUp.m128_f32[2], mvUp.m128_f32[3]);
-    std::wstring b;
-    b = L"a";
-    OutputDebugString(a);
-    //OutputDebugString(b.c_str());
-    mvRight = XMVector3Cross(mvUp, mvForward);
-    makeViewMatrix();
-}
-
-void Camera::RotateAxis(XMVECTOR axis, float angle)
-{
-    // rotate vectors 
-    XMVECTOR vUp = XMVectorSubtract(mvUp, mvEye);
-
-
-    mvForward = XMVector3Transform(mvForward, XMMatrixRotationAxis(mvForward, angle));
-    vUp = XMVector3Transform(vUp, XMMatrixRotationAxis(mvForward, angle));
-
-    // restore vectors's end points mTarget and mUp from new rotated vectors 
-    mvLookAt = mvEye + mvForward;
-    mvUp = mvEye + vUp;
-    mvRight = XMVector3Cross(mvUp, mvForward);
-
-    makeViewMatrix();
-
 }
 
 void Camera::makeViewMatrix()
 {
-    mMatView = XMMatrixLookAtLH(mvEye, mvLookAt, mvUp);
+    mMatView = XMMatrixLookAtLH(mvEye, mvLookAtCenter, mvUp);
 }

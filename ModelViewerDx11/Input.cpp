@@ -8,6 +8,7 @@ DirectInput::DirectInput()
     , mMouseY(0)
     , mScreenWidth(0)
     , mScreenHeight(0)
+    , mControlState(0)
 {
     ZeroMemory(&mMouseState, sizeof(mMouseState));
     ZeroMemory(&mKeyboardState, sizeof(mKeyboardState));
@@ -175,6 +176,11 @@ HRESULT DirectInput::UpdateInput()
     return result;
 }
 
+void DirectInput::SetControlMode(uint32 flag)
+{
+    mControlState ^= flag;
+}
+
 void DirectInput::GetMousePosition(int& mouseX, int& mouseY) const
 {
     mouseX = mMouseX;
@@ -192,6 +198,10 @@ unsigned char* DirectInput::GetKeyboardPress()
     return mKeyboardState;
 }
 
+uint32 DirectInput::GetControlMode() const
+{
+    return mControlState;
+}
 
 
 /*
@@ -273,6 +283,11 @@ bool MyInput::UpdateKeyboardInput(const MSG& msg)
     return false;
 }
 
+void MyInput::SetControlMode(uint32 flag)
+{
+    mControlState ^= flag;
+}
+
 void MyInput::GetMousePosition(int& mouseX, int& mouseY) const
 {
     POINT curPosition;
@@ -294,4 +309,9 @@ void MyInput::GetKeyboardPressed(bool* keyboardState, int* size) const
     enum {KEYBOARD_STATE_ARR_SIZE = 256};
     *size = KEYBOARD_STATE_ARR_SIZE;
     memcpy(keyboardState, mKeyboardState, sizeof(bool) * KEYBOARD_STATE_ARR_SIZE);
+}
+
+uint32 MyInput::GetControlMode() const
+{
+    return mControlState;
 }

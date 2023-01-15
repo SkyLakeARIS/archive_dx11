@@ -6,9 +6,15 @@ using namespace DirectX;
 /*
  * DirectInput 사용 클래스
  */
+enum class eControlFlags : uint32
+{
+    KEYBOARD_MOVEMENT_MODE = 1, // 1 == keyboard control, 0 == mouse control
+};
 class DirectInput final
 {
+
 public:
+
     DirectInput();
     ~DirectInput();
 
@@ -19,9 +25,12 @@ public:
 
     HRESULT     UpdateInput();
 
+    void        SetControlMode(uint32 flag);
+
     void                GetMousePosition(int& mouseX, int& mouseY) const;
     void                GetMouseDeltaPosition(int& deltaX, int& deltaY) const;
     unsigned char*      GetKeyboardPress();
+    uint32              GetControlMode() const;
 
 private:
     IDirectInput8*           mDirectInput;
@@ -38,6 +47,8 @@ private:
 
     int                     mScreenWidth;
     int                     mScreenHeight;
+
+    UINT32                  mControlState;
 };
 
 
@@ -61,9 +72,12 @@ public:
     bool        UpdateMouseInput(const MSG& msg);
     bool        UpdateKeyboardInput(const MSG& msg);
 
+    void        SetControlMode(uint32 flag);
+
     void        GetMousePosition(int& mouseX, int& mouseY) const;
     void        GetMouseDeltaPosition(int& deltaX, int& deltaY) const;
     void        GetKeyboardPressed(bool* keyboardState, int* size) const;
+    uint32      GetControlMode() const;
 
 private:
     HWND*                   mWnd;
@@ -76,4 +90,6 @@ private:
 
     int                     mScreenWidth;
     int                     mScreenHeight;
+
+    UINT32                  mControlState;
 };
