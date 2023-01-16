@@ -9,6 +9,9 @@ public:
     ModelImporter();
     ~ModelImporter();
 
+    void            Release();
+
+    void            LoadFbxModel();
     void            LoadModelFromTextFile();
     void            LoadModelFromXFile();
     void            LoadModelAnby();
@@ -38,7 +41,15 @@ private:
 
     void            StrSplit(const char* str, const char* delim, char** outStrToStore, const size_t& outArraySize);
 
+    void printNode(FbxNode* node);
+    FbxString getAttributeTypeName(FbxNodeAttribute::EType type);
+    void printAttribute(FbxNodeAttribute* pAttribute);
+
 public :
+
+    FbxManager* mFbxManager;
+    FbxScene*   mFbxScene;
+
 
     /*
      * anbi TM

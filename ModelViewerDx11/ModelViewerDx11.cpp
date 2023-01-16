@@ -66,10 +66,8 @@ ID3D11PixelShader*              gPixelShaderLightMap = nullptr;
 
 ID3D11SamplerState*             gSamplerAnisotropic = nullptr;
 ID3D11Resource*                 gTextureResource = nullptr;
-ID3D11Resource*                 gLightTextureResource = nullptr;
 
 ID3D11ShaderResourceView*       gShaderResourceView = nullptr;
-ID3D11ShaderResourceView*       gLightShaderResourceView = nullptr;
 
 ID3D11InputLayout*              gVertexLayout = nullptr;
 ID3D11Buffer*                   gVertexBuffer = nullptr;
@@ -228,8 +226,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
-
-
+    gImporter.LoadFbxModel();
     Timer::Initialize();
 
     SetCursorPos(gWidth/(float)2, gHeight/(float)2);
@@ -275,7 +272,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     programReturn = (int)msg.wParam;
     EXIT_PROGRAM:
     Cleanup();
-
+    gImporter.Release();
 #ifdef _DEBUG
     CheckLiveObjects();
 #endif
@@ -747,77 +744,48 @@ HRESULT SetupGeometry()
 
 
     // texture load
-    ScratchImage image;
-    // dds
-    //result = LoadFromDDSFile();
 
     // other
-    result = LoadFromWICFile(L"C:\\Users\\bunke\\바탕 화면\\3-2Black Nucleus\\data\\clothe.png", WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
+    // bronya
+    //ScratchImage image;
+    //result = LoadFromWICFile(L"C:\\Users\\bunke\\바탕 화면\\3-2Black Nucleus\\data\\clothe.png", WIC_FLAGS_NONE, nullptr, image);
+    //if (FAILED(result))
+    //{
+    //    MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
 
-        ASSERT(false, "LoadFromWICFile 로드 실패");
-        return E_FAIL;
-    }
+    //    ASSERT(false, "LoadFromWICFile 로드 실패");
+    //    return E_FAIL;
+    //}
 
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
-    if (FAILED(result))
-    {
-        image.Release();
+    //result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
+    //if (FAILED(result))
+    //{
+    //    image.Release();
 
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
+    //    MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
 
-        ASSERT(false, "CreateTexture gTextureResource 생성  실패");
+    //    ASSERT(false, "CreateTexture gTextureResource 생성  실패");
 
-        return E_FAIL;
-    }
+    //    return E_FAIL;
+    //}
 
-    image.Release();
+    //image.Release();
 
-    result = LoadFromWICFile(L"images//light.gif", WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"light.gif 로드 실패", MB_OK);
 
-        ASSERT(false, "light.gif 로드 실패");
-        return E_FAIL;
-    }
+    // 텍스처 입힐 때 다시 활성화
+    //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
+    //D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    //ZeroMemory(&srvDesc, sizeof(srvDesc));
+    //srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    //srvDesc.Texture2D.MipLevels = 1;
+    //srvDesc.Texture2D.MostDetailedMip = 0;
 
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gLightTextureResource);
-    if (FAILED(result))
-    {
-        image.Release();
-
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gLightTextureResource 생성 실패", MB_OK);
-
-        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
-
-        return E_FAIL;
-    }
-
-    image.Release();
-    // 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    ZeroMemory(&srvDesc, sizeof(srvDesc));
-    // D3D10_SRV_DIMENSION_TEXTURE2D; 과 무슨차이가 있길래 D3D10을 썼는가?
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-
-    result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gShaderResourceView 생성 실패");
-        return E_FAIL;
-    }
-
-    result = gDevice->CreateShaderResourceView(gLightTextureResource, &srvDesc, &gLightShaderResourceView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gLightShaderResourceView 생성 실패");
-        return E_FAIL;
-    }
+    //result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "gShaderResourceView 생성 실패");
+    //    return E_FAIL;
+    //}
 
     gMatWorld1 = XMMatrixIdentity();
 
@@ -1013,7 +981,6 @@ HRESULT Render(float deltaTime)
     gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
     gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
-    gDeviceContext->PSSetShaderResources(1, 1, &gLightShaderResourceView);
     gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
     // bronya
@@ -1106,9 +1073,7 @@ void Cleanup()
 
     SAFETY_RELEASE(gSamplerAnisotropic);
     SAFETY_RELEASE(gShaderResourceView);
-    SAFETY_RELEASE(gLightShaderResourceView);
     SAFETY_RELEASE(gTextureResource);
-    SAFETY_RELEASE(gLightTextureResource);
 
     SAFETY_RELEASE(gCBNeverChanges);
     SAFETY_RELEASE(gCBChangeOnResize);

@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{e90b1d8b-fef7-48ee-8125-58605637dc9b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="fbx">
+      <UniqueIdentifier>{7275af8a-78ec-4ee6-b4b8-af82d30ecfb0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">

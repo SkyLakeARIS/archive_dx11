@@ -5,6 +5,8 @@
 ModelImporter::ModelImporter()
     : mVertexCount(0)
     , mIndexListCount(0)
+    , mFbxScene(nullptr)
+    , mFbxManager(nullptr)
 {
     mPositionList.reserve(32768);
     mNormalList.reserve(32768);
@@ -14,7 +16,47 @@ ModelImporter::ModelImporter()
 
 ModelImporter::~ModelImporter()
 {
-    
+
+}
+
+void ModelImporter::Release()
+{
+    mFbxScene->Destroy();
+    mFbxManager->Destroy(); 
+}
+
+void ModelImporter::LoadFbxModel()
+{
+    mFbxManager = FbxManager::Create();
+
+    FbxIOSettings* setting = FbxIOSettings::Create(mFbxManager, IOSROOT);
+    mFbxManager->SetIOSettings(setting);
+
+    FbxImporter* importer = FbxImporter::Create(mFbxManager, "");
+    if(!importer->Initialize("models//Avatar_Female_Size02_Anbi_Model (merge).fbx", -1, mFbxManager->GetIOSettings()))
+    {
+        char str[128]="\n\nERROR\n\n";
+        sprintf_s(str, "\n\n\n\nERROR : %s\n\n\n", importer->GetStatus().GetErrorString());
+        OutputDebugStringA(str);
+        ASSERT(false, "importer->Initialize 실패.");
+        return;
+    }
+
+    mFbxScene = FbxScene::Create(mFbxManager, "scene");
+
+    importer->Import(mFbxScene);
+
+    FbxNode* lRootNode = mFbxScene->GetRootNode();
+    if (lRootNode) {
+
+        for (int i = 0; i < lRootNode->GetChildCount(); i++)
+        {
+             printNode(lRootNode->GetChild(i));           
+        }
+
+    }
+    importer->Destroy();
+
 }
 
 void ModelImporter::LoadModelFromTextFile()
@@ -628,4 +670,76 @@ void ModelImporter::StrSplit(const char* str, const char* delim, char** outStrTo
 
     END_SPLIT:
     return;
+}
+
+
+void ModelImporter::printNode(FbxNode* node)
+{
+    const char* nodeName = node->GetName();
+    FbxDouble3 translation = node->LclTranslation.Get();
+    FbxDouble3 rotation = node->LclRotation.Get();
+    FbxDouble3 scaling = node->LclScaling.Get();
+
+    char str[512];
+    sprintf_s(str, "<node name='%s' translation='(%lf, %lf, %lf)' rotation='(%lf, %lf, %lf)' scaling='(%lf, %lf, %lf)'>\n",
+       nodeName,
+        translation[0], translation[1], translation[2],
+        rotation[0], rotation[1], rotation[2],
+        scaling[0], scaling[1], scaling[2]);
+
+    OutputDebugStringA(str);
+
+    // Print the node's attributes.
+    for (int i = 0; i < node->GetNodeAttributeCount(); i++)
+        printAttribute(node->GetNodeAttributeByIndex(i));
+
+    // Recursively print the children.
+    for (int j = 0; j < node->GetChildCount(); j++)
+        printNode(node->GetChild(j));
+
+    OutputDebugStringA("</node>\n");
+}
+
+/**
+  * Return a string-based representation based on the attribute type.
+  */
+FbxString ModelImporter::getAttributeTypeName(FbxNodeAttribute::EType type) {
+    switch (type) {
+    case FbxNodeAttribute::eUnknown: return "unidentified";
+    case FbxNodeAttribute::eNull: return "null";
+    case FbxNodeAttribute::eMarker: return "marker";
+    case FbxNodeAttribute::eSkeleton: return "skeleton";
+    case FbxNodeAttribute::eMesh: return "mesh";
+    case FbxNodeAttribute::eNurbs: return "nurbs";
+    case FbxNodeAttribute::ePatch: return "patch";
+    case FbxNodeAttribute::eCamera: return "camera";
+    case FbxNodeAttribute::eCameraStereo: return "stereo";
+    case FbxNodeAttribute::eCameraSwitcher: return "camera switcher";
+    case FbxNodeAttribute::eLight: return "light";
+    case FbxNodeAttribute::eOpticalReference: return "optical reference";
+    case FbxNodeAttribute::eOpticalMarker: return "marker";
+    case FbxNodeAttribute::eNurbsCurve: return "nurbs curve";
+    case FbxNodeAttribute::eTrimNurbsSurface: return "trim nurbs surface";
+    case FbxNodeAttribute::eBoundary: return "boundary";
+    case FbxNodeAttribute::eNurbsSurface: return "nurbs surface";
+    case FbxNodeAttribute::eShape: return "shape";
+    case FbxNodeAttribute::eLODGroup: return "lodgroup";
+    case FbxNodeAttribute::eSubDiv: return "subdiv";
+    default: return "unknown";
+    }
+}
+
+/**
+ * Print an attribute.
+ */
+void ModelImporter::printAttribute(FbxNodeAttribute* pAttribute) {
+    if (!pAttribute) return;
+
+    FbxString typeName = getAttributeTypeName(pAttribute->GetAttributeType());
+    FbxString attrName = pAttribute->GetName();
+
+    // Note: to retrieve the character array of a FbxString, use its Buffer() method.
+    char str[512];
+    sprintf_s(str, "\n<attribute type='%s' name='%s'/>\n", typeName.Buffer(), attrName.Buffer());
+    OutputDebugStringA(str);
 }

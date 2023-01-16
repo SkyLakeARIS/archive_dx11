@@ -5,7 +5,6 @@
 // Licensed under the MIT License (MIT).
 //--------------------------------------------------------------------------------------
 Texture2D txDiffuse : register( t0 );
-Texture2D txLightDiffuse : register( t1 );
 
 SamplerState samLinear : register( s0 );
 
