@@ -15,7 +15,7 @@ using namespace DirectX;
 struct SimpleVertex
 {
     XMFLOAT3 Pos;
-//    XMFLOAT2 Tex;
+    XMFLOAT2 Tex;
     XMFLOAT3 Norm;
 };
 
@@ -226,7 +226,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
-    gImporter.LoadFbxModel();
     Timer::Initialize();
 
     SetCursorPos(gWidth/(float)2, gHeight/(float)2);
@@ -538,8 +537,8 @@ HRESULT SetupGeometry()
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-     //   { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0}
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0}
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -562,8 +561,8 @@ HRESULT SetupGeometry()
     // 4.0은 D3D10버전 셰이더
     // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
     ID3DBlob* psBlob = nullptr;
-    // PS_TextureAndLighting
-    result = CompileShaderFromFile(L"tuto.fxh", "PS_Lighting", "ps_5_0", &psBlob);
+    // PS_Lighting
+    result = CompileShaderFromFile(L"tuto.fxh", "PS_TextureAndLighting", "ps_5_0", &psBlob);
     if (FAILED(result))
     {
         MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
@@ -577,54 +576,17 @@ HRESULT SetupGeometry()
         return result;
     }
 
-    //ID3DBlob* psLightMapBlob = nullptr;
-    //result = CompileShaderFromFile(L"tuto.fxh", "PS_LightMap", "ps_5_0", &psLightMapBlob);
-    //if (FAILED(result))
-    //{
-    //    MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
-    //    return E_FAIL;
-    //}
+    // arbit fbx model
+    gImporter.LoadFbxModel();
 
-    //result = gDevice->CreatePixelShader(psLightMapBlob->GetBufferPointer(), psLightMapBlob->GetBufferSize(), nullptr, &gPixelShaderLightMap);
-    //psLightMapBlob->Release();
-    //if (FAILED(result))
-    //{
-    //    return result;
-    //}
-
-
-    //gImporter.LoadModelFromTextFile();
-    //gImporter.LoadModelFromXFile();
-    //gVertexCount = gImporter.GetVertexCount();
-    //gVertexList = new SimpleVertex[gVertexCount];
-
-    //for(size_t i = 0; i < gVertexCount; ++i)
-    //{
-    //    gImporter.GetVertexData(i, gVertexList[i].Pos, gVertexList[i].Tex, gVertexList[i].Norm);
-    //}
-
-    // anbi
-    gImporter.LoadModelAnby();
-    gVertexCount += gImporter.GetBodyVertexCount();
-    gVertexCount += gImporter.GetFaceVertexCount();
-    gVertexCount += gImporter.GetHairVertexCount();
-
+    gVertexCount = gImporter.GetFbxVertexCount();
     gVertexList = new SimpleVertex[gVertexCount];
-    for(size_t i = 0; i < gImporter.GetBodyVertexCount(); ++i)
-    {
-        gImporter.GetBodyVertexData(i, gVertexList[i].Pos, gVertexList[i].Norm);
-    }
-    int index = gImporter.GetBodyVertexCount();
 
-    for (size_t i = 0; i < gImporter.GetFaceVertexCount(); ++i)
+    for(size_t i = 0; i < gVertexCount; ++i)
     {
-        gImporter.GetFaceVertexData(i, gVertexList[index+i].Pos, gVertexList[index+i].Norm);
+        gImporter.GetFbxVertexData(i, gVertexList[i].Pos, gVertexList[i].Tex, gVertexList[i].Norm);
     }
-    index = gImporter.GetBodyVertexCount() + gImporter.GetFaceVertexCount();
-    for (size_t i = 0; i < gImporter.GetHairVertexCount(); ++i)
-    {
-        gImporter.GetHairVertexData(i, gVertexList[index+i].Pos, gVertexList[index+i].Norm);
-    }
+
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
@@ -640,49 +602,44 @@ HRESULT SetupGeometry()
     result = gDevice->CreateBuffer(&bd, &initData, &gVertexBuffer);
     if (FAILED(result))
     {
+        ASSERT(false, "버텍스 버퍼 생성 실패 : gVertexBuffer");
         return E_FAIL;
     }
 
-    // 메모리를 아끼려는건지?
-    // 내부에서 저장하고 쓰는게 아니라 넘겨준 변수를 그대로 활용하는 듯.
-    // 따라서 0도 변수로 전달.
     UINT32 stride = sizeof(SimpleVertex);
     UINT32 offset = 0;
     gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
 
-    // bronya
-    //gIndexListCount = gImporter.GetIndexListCount();
+    /*
+     *
+     * 로드시에 index list를 구성할 수 있는 방법 더 연구 후에 주석 해제
+     *
+     */
+
+    // arbit fbx model
+    //gIndexListCount = gImporter.GetFbxIndexListCount();
     //gIndexList = new unsigned int[gIndexListCount];
-    //gImporter.GetIndexList(gIndexList);
 
-    // anbi
-    gIndexListCount += gImporter.GetBodyIndexListCount();
-    gIndexListCount += gImporter.GetFaceIndexListCount();
-    gIndexListCount += gImporter.GetHairIndexListCount();
-
-    gIndexList = new unsigned int[gIndexListCount];
-    gImporter.GetBodyIndexList(gIndexList);
-    gImporter.GetFaceIndexList(gIndexList);
-    gImporter.GetHairIndexList(gIndexList);
+    //gImporter.GetFbxIndexList(gIndexList);
 
 
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    //bd.ByteWidth = sizeof(WORD) * 36;
-    bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
+    //bd.Usage = D3D11_USAGE_DEFAULT;
+    ////bd.ByteWidth = sizeof(WORD) * 36;
+    //bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
+    //bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    //bd.CPUAccessFlags = 0;
 
-    //initData.pSysMem = indices;
-    initData.pSysMem = gIndexList;
+    ////initData.pSysMem = indices;
+    //initData.pSysMem = gIndexList;
 
-    result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
-    if (FAILED(result))
-    {
-        ASSERT(false, "인덱스 버퍼 생성 실패");
-        return E_FAIL;
-    }
-    // DXGI_FORMAT_R32G32_UINT DXGI_FORMAT_R16_UINT 
-    gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    //result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "인덱스 버퍼 생성 실패");
+    //    return E_FAIL;
+    //}
+    //// DXGI_FORMAT_R32G32_UINT DXGI_FORMAT_R16_UINT 
+    //gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
     gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -745,47 +702,45 @@ HRESULT SetupGeometry()
 
     // texture load
 
-    // other
-    // bronya
-    //ScratchImage image;
-    //result = LoadFromWICFile(L"C:\\Users\\bunke\\바탕 화면\\3-2Black Nucleus\\data\\clothe.png", WIC_FLAGS_NONE, nullptr, image);
-    //if (FAILED(result))
-    //{
-    //    MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
+    ScratchImage image;
+    result = LoadFromWICFile(L"textures/Tex_0009_1.jpg", WIC_FLAGS_NONE, nullptr, image);
+    if (FAILED(result))
+    {
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
 
-    //    ASSERT(false, "LoadFromWICFile 로드 실패");
-    //    return E_FAIL;
-    //}
+        ASSERT(false, "LoadFromWICFile 로드 실패");
+        return E_FAIL;
+    }
 
-    //result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
-    //if (FAILED(result))
-    //{
-    //    image.Release();
+    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
+    if (FAILED(result))
+    {
+        image.Release();
 
-    //    MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
 
-    //    ASSERT(false, "CreateTexture gTextureResource 생성  실패");
+        ASSERT(false, "CreateTexture gTextureResource 생성  실패");
 
-    //    return E_FAIL;
-    //}
+        return E_FAIL;
+    }
 
-    //image.Release();
+    image.Release();
 
 
     // 텍스처 입힐 때 다시 활성화
     //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
-    //D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    //ZeroMemory(&srvDesc, sizeof(srvDesc));
-    //srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    //srvDesc.Texture2D.MipLevels = 1;
-    //srvDesc.Texture2D.MostDetailedMip = 0;
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory(&srvDesc, sizeof(srvDesc));
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Texture2D.MostDetailedMip = 0;
 
-    //result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "gShaderResourceView 생성 실패");
-    //    return E_FAIL;
-    //}
+    result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
+    if (FAILED(result))
+    {
+        ASSERT(false, "gShaderResourceView 생성 실패");
+        return E_FAIL;
+    }
 
     gMatWorld1 = XMMatrixIdentity();
 
@@ -942,8 +897,8 @@ HRESULT Render(float deltaTime)
     gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
    // Setup our lighting parameters
-    static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.550f, 1.0f);
-    XMFLOAT4 lightColor(0.1f, 0.1f, 0.1f, 1.0f);
+    static XMFLOAT4 lightDirs(0.0f, 0.577f, -10.550f, 1.0f);
+    XMFLOAT4 lightColor(0.01f, 0.01f, 0.01f, 1.0f);
 
     XMMATRIX matRotateLight = XMMatrixRotationY(deltaTime);
     XMVECTOR vLightDir = XMLoadFloat4(&lightDirs);
@@ -951,19 +906,16 @@ HRESULT Render(float deltaTime)
 
     XMStoreFloat4(&lightDirs, vLightDir);
 
-
+    
     CBLight cbLight;
     cbLight.vLightColor = lightColor;
     cbLight.vLightDir = lightDirs;
 
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
-    // anbi
-    XMMATRIX matWorldTM = gImporter.mMatSubTM * gImporter.mMatRootTM * XMMatrixScaling(0.2f, 0.2f, 0.2f);
-    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatBodyTM * matWorldTM;
-
-    // bronya
-    //gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(0.2f, 0.2f, 0.2f);
+    // arbit fbx model
+    float sizeFactor = 0.5f;
+    gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(sizeFactor, sizeFactor, sizeFactor) *XMMatrixTranslationFromVector(XMVectorSet(0.0f, 10.0f, -5.0f, 1.0f));
 
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
@@ -983,36 +935,8 @@ HRESULT Render(float deltaTime)
     gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
     gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
-    // bronya
-    //gDeviceContext->DrawIndexed(gImporter.GetIndexListCount(), 0, 0);
-
-    ///*
-    // * Body
-    // */
-    gDeviceContext->DrawIndexed(gImporter.GetBodyIndexListCount(), 0, 0);
-
-    ///*
-    // * Face
-    // */
-    //// 굳이 이렇게 안하고 body의 매트릭스를 그대로 이용해도 동일하게 나오기는 한다.
-    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatFaceTM * matWorldTM;
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
-
-    unsigned int indexNum = gImporter.GetBodyIndexListCount();
-    unsigned int vertexNum = gImporter.GetBodyVertexCount();
-    gDeviceContext->DrawIndexed(gImporter.GetFaceIndexListCount(),indexNum , vertexNum);
-
-    ///*
-    // *  Hair
-    // */
-    gMatWorld1 = XMMatrixIdentity() * gImporter.mMatHairTM * matWorldTM;
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
-
-    indexNum = gImporter.GetBodyIndexListCount()+gImporter.GetFaceIndexListCount();
-    vertexNum = gImporter.GetBodyVertexCount()+gImporter.GetFaceVertexCount();
-    gDeviceContext->DrawIndexed(gImporter.GetHairIndexListCount(), indexNum, vertexNum);
+    // arbit fbx model
+    gDeviceContext->Draw(gVertexCount, 0);
 
 
     gSwapChain->Present(0, 0);

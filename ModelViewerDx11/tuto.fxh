@@ -32,14 +32,14 @@ cbuffer cbLight : register(b3)
 struct VS_INPUT
 {
     float4 Pos : POSITION;
-//    float2 Tex : TEXCOORD0;
+    float2 Tex : TEXCOORD0;
     float3 Norm : NORMAL;
 };
 
 struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
-//    float2 Tex : TEXCOORD0;
+    float2 Tex : TEXCOORD0;
     float3 Norm : NORMAL;
 };
 
@@ -54,7 +54,7 @@ PS_INPUT VS( VS_INPUT input )
     output.Pos = mul( output.Pos, Projection );
     output.Norm = mul(float4(input.Norm, 1), World).xyz;
 
-//    output.Tex = input.Tex;
+    output.Tex = input.Tex;
 
     return output;
 }
@@ -65,10 +65,10 @@ PS_INPUT VS( VS_INPUT input )
 //--------------------------------------------------------------------------------------
 float4 PS_TextureAndLighting( PS_INPUT input) : SV_Target
 {
-//    float4 finalColor = txDiffuse.Sample(samLinear, input.Tex);
-//    finalColor += saturate(dot(input.Norm, (float3)vLightDir) * vLightColor);
-//    finalColor.a = 1;
- //   return finalColor;
+    float4 finalColor = txDiffuse.Sample(samLinear, input.Tex);
+    finalColor += saturate(dot(input.Norm, (float3)vLightDir) * vLightColor);
+    finalColor.a = 1;
+    return finalColor;
 }
 
 float4 PS_Lighting( PS_INPUT input) : SV_Target
