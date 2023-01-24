@@ -1,16 +1,6 @@
 ﻿#include "framework.h"
 
-//Timer::Timer()
-//    : mLastTime(0)
-//    , mTimeScale(0.0f)
-//    , mDeltaTime(0.0f)
-//{
-//    uint64_t frequency;
-//    QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
-//    mTimeScale = 1 / (float)frequency;
-//
-//    QueryPerformanceCounter((LARGE_INTEGER*)&mLastTime);
-//}
+
 int64_t Timer::mLastTime = 0;
 float Timer::mTimeScale = 0;
 float Timer::mDeltaTime = 0;

@@ -1,29 +1,61 @@
-#include "Camera.h"
+ï»¿#include "Camera.h"
 #include "cmath"
 
 Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
     : mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
-    , mRadiusOfSphere(0.0f)
+    , mRadiusOfSphere(10.0f)
 {
-    // ½ÇÁ¦ Ä³¸¯ÅÍ ¸ğµ¨À» ¸¸µé¾î¼­ ¿Ï¼ºÀÌ µÇ¸é, Ä³¸¯ÅÍ¿¡ ´ëÇÑ À§Ä¡ ÁÂÇ¥ µîÀ» ¹Ş¾Æ¼­
-    // Áß½ÉÁ¡À» °è»êÇÏ´Â °ÍÀÌ ÁÁÀ» µí. Áö±İÀº Á¶±İ ¾Ö¸ÅÇÔ ( eye°¡ centerÀÎ lookatº¸´Ù Ä¿¾ß ¾ÕÀ» ¹Ù¶óº¸µµ·Ï µÇ¾îÀÖÀ½.)
-    mvForward = XMVectorSubtract(mvEye, mvLookAtCenter);
-    mvForward = XMVector3Normalize(mvForward);
 
-    XMFLOAT3 distance;
-    XMStoreFloat3(&distance, mvEye);
-    mRadiusOfSphere = sqrtf(distance.x * distance.x + distance.y * distance.y + distance.z * distance.z);
-    
-    mvRight = XMVector3Cross(mvUp, mvForward);
-    mvRight = XMVector3Normalize(mvRight);
+    /*
+     * ì§êµì¢Œí‘œì—ì„œ êµ¬ë©´ì¢Œí‘œë¡œ ì—­ê³„ì‚°.
+     * ì¹´ë©”ë¼ ìœ„ì¹˜ì™€ ê°€ìƒì˜ êµ¬ë©´ ìœ„ì¹˜ì™€ ë™ê¸°í™”í•˜ê¸° ìœ„í•¨.
+     * (ë°˜ì§€ë¦„) rì´ 1ì¸ ë‹¨ìœ„ êµ¬ì²´ë¡œ ìƒê°í•˜ê³  ê³„ì‚°í•œë‹¤.
+     */
+    XMFLOAT3 eyePos;
+    XMStoreFloat3(&eyePos, vEye);
+    eyePos.x = XMConvertToRadians(eyePos.x);
+    eyePos.y = XMConvertToRadians(eyePos.y);
+    eyePos.z = XMConvertToRadians(eyePos.z);
 
-    mAnglesRad.x = 0.0f;
-    mAnglesRad.y = -(distance.x/distance.z);
+    mAnglesRad.x = atan(eyePos.x / -eyePos.z);
+    mAnglesRad.y = acos(eyePos.y);
 
-    makeViewMatrix();
 }
+
+//// lookatì˜ ìœ„ì¹˜ë¥¼ setterë¡œ ë°›ìœ¼ë¯€ë¡œ eye, upì´ ì „ë‹¬ë°›ì„ í•„ìš”ê°€ ì—†ê¸° ë•Œë¬¸ì—
+//// í•´ë‹¹ ìƒì„±ìë¥¼ ì´ìš©í•˜ë„ë¡ í•  ìˆ˜ ìˆê²Œ ë§Œë“œëŠ” ì¤‘
+//Camera::Camera(XMFLOAT3 lookAt)
+//    : mRadiusOfSphere(10.0f)
+//{
+//    mvLookAtCenter = XMLoadFloat3(&lookAt);
+//
+//    XMFLOAT3 eyePos = lookAt;
+//    eyePos.z -= 10.0f;
+//
+//    mvEye = XMLoadFloat3(&eyePos);
+//    /*
+//     * ì§êµì¢Œí‘œì—ì„œ êµ¬ë©´ì¢Œí‘œë¡œ ì—­ê³„ì‚°.
+//     * ì¹´ë©”ë¼ ìœ„ì¹˜ì™€ ê°€ìƒì˜ êµ¬ë©´ ìœ„ì¹˜ì™€ ë™ê¸°í™”í•˜ê¸° ìœ„í•¨.
+//     * (ë°˜ì§€ë¦„) rì´ 1ì¸ ë‹¨ìœ„ êµ¬ì²´ë¡œ ìƒê°í•˜ê³  ê³„ì‚°í•œë‹¤.
+//     */
+//    XMStoreFloat3(&eyePos, mvEye);
+//    eyePos.x = XMConvertToRadians(eyePos.x);
+//    eyePos.y = XMConvertToRadians(eyePos.y);
+//    eyePos.z = XMConvertToRadians(eyePos.z);
+//
+//    mAnglesRad.x = atan(eyePos.x / -eyePos.z);
+//    mAnglesRad.y = acos(eyePos.y/ mRadiusOfSphere);
+//
+//    /*
+//     *  up ë²¡í„° ê³„ì‚°
+//     */
+//    XMVECTOR vForward = XMVectorSubtract(mvLookAtCenter, mvEye);
+//    XMVECTOR vRight = XMVectorSet(lookAt.x, 0.0f, 0.0f, 0.0f);
+//    mvUp = XMVector3Cross(vForward, vRight);
+//
+//}
 
 Camera::~Camera()
 {
@@ -36,8 +68,8 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
     mAnglesRad.x += yawRad;         // pi, yaw
     mAnglesRad.y += pitchRad;       // theta, pitch
 
-    // pitch¸¸ Å¬·¥ÇÁ, yaw´Â ¼øÈ¯
-    // pitch limit´Â -85.0~85.0
+    // pitchë§Œ í´ë¨í”„, yawëŠ” ìˆœí™˜
+    // pitch limitëŠ” -85.0~85.0
     constexpr float PITCH_LIMIT = 0.261799; // 15 degree
     if(mAnglesRad.x >= XM_2PI)
     {
@@ -57,27 +89,15 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
         mAnglesRad.y = PITCH_LIMIT;
     }
 
-    // ´ÜÀ§ rÀÌ 1ÀÎ ´ÜÀ§ ±¸Ã¼·Î »ı°¢ÇÏ°í °è»ê ÈÄ, radius¸¸Å­ °Å¸®¸¦ Á¶Á¤ÇÑ´Ù.
-    XMFLOAT3 position;
-    position.x = sin(mAnglesRad.y) * sin(mAnglesRad.x);
-    position.y = cos(mAnglesRad.y);
-    position.z = -(sin(mAnglesRad.y) * cos(mAnglesRad.x));
-
-    XMMATRIX matNewPosition = XMMatrixTranslationFromVector(XMLoadFloat3(&position));
-    
-    mvEye = XMVector3TransformCoord(mvEye, matNewPosition);
-
-    mvEye = XMVector3Normalize(mvEye)*mRadiusOfSphere;
-
-    //mvUp = XMVector3Cross(mvForward, mvRight);
-
+    // (ë°˜ì§€ë¦„) rì´ 1ì¸ ë‹¨ìœ„ êµ¬ì²´ë¡œ ìƒê°í•˜ê³  ê³„ì‚° í›„, radiusë§Œí¼ ê±°ë¦¬ë¥¼ ì¡°ì •í•œë‹¤.
+    calcCameraPosition();
 
     makeViewMatrix();
 }
 
 void Camera::AddRadiusSphere(float scaleFactor)
 {
-    constexpr float MAX_RADIUS = 60.0f;
+    constexpr float MAX_RADIUS = 80.0f;
     constexpr float MIN_RADIUS = 5.0f;
 
     mRadiusOfSphere += scaleFactor;
@@ -91,8 +111,33 @@ void Camera::AddRadiusSphere(float scaleFactor)
         mRadiusOfSphere = MIN_RADIUS;
     }
 
-    mvEye = XMVector3Normalize(mvEye) * mRadiusOfSphere;
+    // ë³€ê²½ëœ ê±°ë¦¬ë¥¼ ì ìš©í•œë‹¤.
+    calcCameraPosition();
+
     makeViewMatrix();
+}
+
+void Camera::ChangeFocus(XMFLOAT3 newFocus)
+{
+    mvLookAtCenter = XMLoadFloat3(&newFocus);
+
+    // ì¤‘ì‹¬ì´ ë³€ê²½ë˜ì—ˆìœ¼ë¯€ë¡œ ì¹´ë©”ë¼ ìœ„ì¹˜ë¥¼ ë‹¤ì‹œ ê³„ì‚°í•œë‹¤.
+    calcCameraPosition();
+
+    makeViewMatrix();
+}
+
+void Camera::calcCameraPosition()
+{
+    // (ë°˜ì§€ë¦„) rì´ 1ì¸ ë‹¨ìœ„ êµ¬ì²´ë¡œ ìƒê°í•˜ê³  ê³„ì‚° í›„, radiusë§Œí¼ ê±°ë¦¬ë¥¼ ì¡°ì •í•œë‹¤.
+    XMFLOAT3 positionInSphere;
+    positionInSphere.x = sin(mAnglesRad.y) * sin(mAnglesRad.x);
+    positionInSphere.y = cos(mAnglesRad.y);
+    positionInSphere.z = -(sin(mAnglesRad.y) * cos(mAnglesRad.x));
+
+    const XMVECTOR newPositionInOrbit = XMVectorScale(XMLoadFloat3(&positionInSphere), mRadiusOfSphere);
+    // ê°€ìƒì˜ êµ¬ì²´ë¥¼ í†µí•´ ì–»ì€ ì¢Œí‘œë¡œ ì‹¤ì œ ìœ„ì¹˜ì¸ mvLookAtCenterë¥¼ ì¤‘ì‹¬ìœ¼ë¡œ í•˜ëŠ” ê¶¤ë„ë¡œ ì´ë™
+    mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
 }
 
 void Camera::makeViewMatrix()
