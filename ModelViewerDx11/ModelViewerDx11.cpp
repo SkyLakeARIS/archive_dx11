@@ -12,12 +12,6 @@ using namespace DirectX;
 
 //#define USING_MYINPUT
 
-struct SimpleVertex
-{
-    XMFLOAT3 Pos;
-    XMFLOAT2 Tex;
-    XMFLOAT3 Norm;
-};
 
 // 16byte aligned
 struct CBCamera
@@ -52,7 +46,7 @@ INT32       gHeight = 720;
 // global d3d11 objects
 ID3D11Device*                   gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
 ID3D11DeviceContext*            gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
-IDXGISwapChain*                 gSwapChain = nullptr;
+IDXGISwapChain*                 gSwapChain = nullptr;                // 렌더링한 결과를 출력할 대상
 ID3D11RenderTargetView*         gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
 ID3D11Texture2D*                gDepthStencil = nullptr;
 ID3D11DepthStencilView*         gDepthStencilView = nullptr;
@@ -60,14 +54,11 @@ D3D_DRIVER_TYPE                 gDriverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL               gFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 
 ID3D11VertexShader*             gVertexShader = nullptr;
-ID3D11PixelShader*              gPixelShaderTexture = nullptr;
 ID3D11PixelShader*              gPixelShaderTextureAndLighting = nullptr;
-ID3D11PixelShader*              gPixelShaderLightMap = nullptr;
 
 ID3D11SamplerState*             gSamplerAnisotropic = nullptr;
-ID3D11Resource*                 gTextureResource = nullptr;
-
-ID3D11ShaderResourceView*       gShaderResourceView = nullptr;
+enum {NUMBER_TEXTURE = 5};
+ID3D11ShaderResourceView*       gShaderResourceView[NUMBER_TEXTURE];
 
 ID3D11InputLayout*              gVertexLayout = nullptr;
 ID3D11Buffer*                   gVertexBuffer = nullptr;
@@ -79,10 +70,12 @@ ID3D11Buffer*                   gCBChangesEveryFrame1 = nullptr;
 ID3D11Buffer*                   gCBLight = nullptr;
 
 
+// global model
 ModelImporter           gImporter;
+Model*                  gModel = nullptr;
 
 size_t                  gVertexCount = 0;
-SimpleVertex*           gVertexList = nullptr;
+VertexInfo*             gVertexList = nullptr;
 size_t                  gIndexListCount = 0;
 unsigned int*           gIndexList = nullptr;
 
@@ -184,15 +177,44 @@ void CheckLiveObjects()
 }
 #endif
 
-bool MyHandleMouseEvent(MSG* msg, float deltaTime)
+HRESULT LoadTextureFromFileAndCreateResource(ID3D11Device& device, const WCHAR* fileName, const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView)
 {
-    return false;
+    ScratchImage image;
+    ID3D11Resource* textureResource = nullptr;
+
+    HRESULT result = LoadFromWICFile(fileName, WIC_FLAGS_NONE, nullptr, image);
+    if (FAILED(result))
+    {
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"이미지 로드 실패", MB_OK);
+        ASSERT(false, "이미지 로드 실패");
+        goto FAILED;
+    }
+
+    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &textureResource);
+    if (FAILED(result))
+    {
+        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
+        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
+        goto FAILED;
+    }
+
+
+    result = gDevice->CreateShaderResourceView(textureResource, &srvDesc, &(*outShaderResourceView));
+    if (FAILED(result))
+    {
+        ASSERT(false, "outShaderResourceView 생성 실패");
+        goto FAILED;
+    }
+
+    result = S_OK;
+
+    FAILED:
+    image.Release();
+    SAFETY_RELEASE(textureResource);
+
+    return result;
 }
 
-bool MyHandleKeyboardEvent(MSG* msg, float deltaTime)
-{
-    return false;
-}
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -220,6 +242,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         ASSERT(false, "d3d초기화 실패");
         goto EXIT_PROGRAM;
     }
+
+    gImporter.Initialize();
 
     if (FAILED(SetupGeometry()))
     {
@@ -274,7 +298,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     programReturn = (int)msg.wParam;
     EXIT_PROGRAM:
     Cleanup();
-    gImporter.Release();
 #ifdef _DEBUG
     CheckLiveObjects();
 #endif
@@ -513,12 +536,8 @@ HRESULT SetupGeometry()
 {
     HRESULT result;
 
-    // blob은 보통 텍스트 형태의 뭔가를 저장할 때 사용. 대개 셰이더에서 사용. 여기에서는 컴파일된 쉐이더의 바이너리를 가질 것.
-    // 11은 적어도 하나의 셰이더는 있어야 렌더링이 가능하다?
+
     ID3DBlob* vsBlob = nullptr;
-    // d3dx는 이제는 ms에서 지원 안함. 12에서는 사용 불가. 11에서가 마지막인데, 결국에는 안쓰는게 좋긴하다.
-    // d3dcompile2도 가능.
-    // 내 피처 레벨에 따라서 쉐이더 버전을 선택하도록 하는것도 좋을 듯.
 
     result = CompileShaderFromFile(L"tuto.fxh", "VS", "vs_5_0", &vsBlob);
     if (FAILED(result))
@@ -527,7 +546,6 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    // create ~ 는 반드시 나중에 해제를 해줘야 한다.
     result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVertexShader);
 
     if (FAILED(result))
@@ -540,8 +558,9 @@ HRESULT SetupGeometry()
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0}
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -579,21 +598,24 @@ HRESULT SetupGeometry()
         return result;
     }
 
-    // arbit fbx model
-    gImporter.LoadFbxModel();
 
-    gVertexCount = gImporter.GetFbxVertexCount();
-    gVertexList = new SimpleVertex[gVertexCount];
+    gImporter.LoadFBXAndCreateModel("/models/anbi.fbx", &gModel);
 
-    for(size_t i = 0; i < gVertexCount; ++i)
+    size_t numMesh = gModel->GetMeshCount();
+    for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
     {
-        gImporter.GetFbxVertexData(i, gVertexList[i].Pos, gVertexList[i].Tex, gVertexList[i].Norm);
+        OutputDebugStringW(gModel->GetMeshName(meshIndex));
+        OutputDebugStringW(L"\n");
+        gVertexCount += gModel->GetVertexCount(meshIndex);
     }
+
+    gVertexList = new VertexInfo[gVertexCount];
+    gModel->UpdateVertexBuffer(gVertexList, gVertexCount, 0);
 
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * gVertexCount;
+    bd.ByteWidth = sizeof(VertexInfo) * gVertexCount;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
@@ -610,7 +632,7 @@ HRESULT SetupGeometry()
     // 메모리를 아끼려는건지?
     // 내부에서 저장하고 쓰는게 아니라 넘겨준 변수를 그대로 활용하는 듯.
     // 따라서 0도 변수로 전달.
-    UINT32 stride = sizeof(SimpleVertex);
+    UINT32 stride = sizeof(VertexInfo);
     UINT32 offset = 0;
     gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
 
@@ -619,12 +641,6 @@ HRESULT SetupGeometry()
      * 로드시에 index list를 구성할 수 있는 방법 더 연구 후에 주석 해제
      *
      */
-
-    // arbit fbx model
-    //gIndexListCount = gImporter.GetFbxIndexListCount();
-    //gIndexList = new unsigned int[gIndexListCount];
-
-    //gImporter.GetFbxIndexList(gIndexList);
 
 
     //bd.Usage = D3D11_USAGE_DEFAULT;
@@ -703,33 +719,6 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-
-    // texture load
-    ScratchImage image;
-    result = LoadFromWICFile(L"textures/anbi.png", WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"LoadFromWICFile 로드 실패", MB_OK);
-
-        ASSERT(false, "LoadFromWICFile 로드 실패");
-        return E_FAIL;
-    }
-
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &gTextureResource);
-    if (FAILED(result))
-    {
-        image.Release();
-
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
-
-        ASSERT(false, "CreateTexture gTextureResource 생성  실패");
-
-        return E_FAIL;
-    }
-
-    image.Release();
-
-
     // 텍스처 입힐 때 다시 활성화
     //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -738,12 +727,12 @@ HRESULT SetupGeometry()
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Texture2D.MostDetailedMip = 0;
 
-    result = gDevice->CreateShaderResourceView(gTextureResource, &srvDesc, &gShaderResourceView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gShaderResourceView 생성 실패");
-        return E_FAIL;
-    }
+
+    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Anbi_Body.png", srvDesc, &gShaderResourceView[0]);
+    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Anbi_Hair.png", srvDesc, &gShaderResourceView[2]);
+    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Anbi_Face.png", srvDesc, &gShaderResourceView[1]);
+    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/AnbiWeapon_CompanyB_Blade_Fire01.png", srvDesc, &gShaderResourceView[3]);
+
 
     gMatWorld1 = XMMatrixIdentity();
 
@@ -758,6 +747,21 @@ HRESULT SetupGeometry()
     CBChangeOnResize cbChangeOnResize;
     cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
     gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
+
+
+    // 미리 바인드 : 렌더 상태를 바꾸는 것은 역시 비용이 발생하기 때문에 최대한 덜 호출하는 것이 좋다.
+    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
+    gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
+    gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+
+    gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
+
+
+    gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
+    gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
+
+    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
     srand(time(NULL));
     return S_OK;
@@ -997,22 +1001,8 @@ HRESULT Render(float deltaTime)
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
-    gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
-
-    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
-    gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
-    gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-
-
-    gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
-    
-    gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
-    gDeviceContext->PSSetShaderResources(0, 1, &gShaderResourceView);
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
-
-    // arbit fbx model
-    gDeviceContext->Draw(gVertexCount, 0);
+    // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
+    gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
 
 
     gSwapChain->Present(0, 0);
@@ -1063,6 +1053,7 @@ void Cleanup()
     gDirectInput = nullptr;
 #endif
 
+    gImporter.Release();
 
     if (gDeviceContext)
     {
@@ -1071,9 +1062,15 @@ void Cleanup()
     delete[] gVertexList;
     delete[] gIndexList;
 
+    delete gModel;
+
     SAFETY_RELEASE(gSamplerAnisotropic);
-    SAFETY_RELEASE(gShaderResourceView);
-    SAFETY_RELEASE(gTextureResource);
+
+
+    for (size_t textureIndex = 0; textureIndex < NUMBER_TEXTURE; ++textureIndex)
+    {
+        SAFETY_RELEASE(gShaderResourceView[textureIndex]);
+    }
 
     SAFETY_RELEASE(gCBCamera);
     SAFETY_RELEASE(gCBChangeOnResize);
@@ -1083,9 +1080,7 @@ void Cleanup()
     SAFETY_RELEASE(gIndexBuffer);
     SAFETY_RELEASE(gVertexBuffer);
     SAFETY_RELEASE(gVertexLayout);
-    SAFETY_RELEASE(gPixelShaderLightMap);
     SAFETY_RELEASE(gPixelShaderTextureAndLighting);
-    SAFETY_RELEASE(gPixelShaderTexture);
     SAFETY_RELEASE(gVertexShader);
     SAFETY_RELEASE(gDepthStencil);
     SAFETY_RELEASE(gDepthStencilView);

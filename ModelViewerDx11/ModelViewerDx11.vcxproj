@@ -150,6 +150,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="ModelImporter.h" />
     <ClInclude Include="ModelViewerDx11.h" />
     <ClInclude Include="Resource.h" />
@@ -160,6 +161,7 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Model.cpp" />
     <ClCompile Include="ModelImporter.cpp" />
     <ClCompile Include="ModelViewerDx11.cpp" />
     <ClCompile Include="Timer.cpp" />
