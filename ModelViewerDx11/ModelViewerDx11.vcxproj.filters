@@ -95,10 +95,10 @@
     <FxCompile Include="tuto.fxh">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="VsRenderToTexture.hlsl">
+    <FxCompile Include="VsOutline.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="PsRenderToTexture.hlsl">
+    <FxCompile Include="PsOutline.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

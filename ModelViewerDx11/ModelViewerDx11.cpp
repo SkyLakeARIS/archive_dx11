@@ -32,6 +32,12 @@ struct CBChangesEveryFrame
     XMMATRIX mWorld;
 };
 
+// outline
+struct CBOutline
+{
+    XMMATRIX mWorldViewProjection;
+};
+
 struct CBLight
 {
     XMFLOAT4 vLightColor;
@@ -53,20 +59,13 @@ IDXGISwapChain*                 gSwapChain = nullptr;                // 렌더�
 ID3D11RenderTargetView*         gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
 ID3D11Texture2D*                gDepthStencil = nullptr;
 ID3D11DepthStencilView*         gDepthStencilView = nullptr;
+ID3D11RasterizerState*          gBasicRasterState = nullptr;
 
-// for render to texture
-ID3D11RenderTargetView*     gTextureRenderTargetView = nullptr;         // 텍스처로 사용할 버퍼
-ID3D11Texture2D*            gTexture = nullptr;
-ID3D11ShaderResourceView*   gSrvTexture = nullptr;
-ID3D11InputLayout*          gPlaneInputLayout = nullptr;
+ID3D11VertexShader* gVsOutline = nullptr;
+ID3D11PixelShader* gPsOutline = nullptr;
 
-// render to texture를 위한 임시로 사용
-Mesh gPlaneMesh;
-Plane gPlane;
-ID3D11Buffer* gVbPlane = nullptr;
-ID3D11Buffer* gIbPlane = nullptr;
-ID3D11VertexShader* gVsPlane = nullptr;
-ID3D11PixelShader* gPsPlane = nullptr;
+// outline
+ID3D11RasterizerState*          gOutlineRasterState = nullptr;
 
 
 D3D_DRIVER_TYPE                 gDriverType = D3D_DRIVER_TYPE_NULL;
@@ -87,6 +86,7 @@ ID3D11Buffer*                   gCBCamera = nullptr;
 ID3D11Buffer*                   gCBChangeOnResize = nullptr;
 ID3D11Buffer*                   gCBChangesEveryFrame1 = nullptr;
 ID3D11Buffer*                   gCBLight = nullptr;
+ID3D11Buffer*                   gCBOutline = nullptr;
 
 
 // global model
@@ -129,10 +129,6 @@ HRESULT             SetupGeometry();
 HRESULT             UpdateFrame(float deltaTime);
 HRESULT             Render(float deltaTime);
 void                Cleanup();
-
-// render to texture
-HRESULT             InitializeForRenderToTexture();
-HRESULT             SetupPlaneGeometry();
 
 
 //--------------------------------------------------------------------------------------
@@ -263,18 +259,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     if (FAILED(InitializeD3D()))
     {
         ASSERT(false, "d3d초기화 실패");
-        goto EXIT_PROGRAM;
-    }
-
-
-    // render to texture
-    // setup plane data
-    gPlane.GetIndices(&gPlaneMesh.IndexList);
-    gPlane.GetVertices(&gPlaneMesh.Vertex);
-    InitializeForRenderToTexture();
-    if (FAILED(SetupPlaneGeometry()))
-    {
-        ASSERT(false, "모델데이터 초기화 실패 SetupPlaneGeometry");
         goto EXIT_PROGRAM;
     }
 
@@ -547,6 +531,24 @@ HRESULT InitializeD3D()
 
     gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, gDepthStencilView);
 
+    // 기본 래스터 스테이트
+    D3D11_RASTERIZER_DESC basicRasterDesc;
+    ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    basicRasterDesc.CullMode = D3D11_CULL_BACK;
+    basicRasterDesc.FillMode = D3D11_FILL_SOLID;
+    basicRasterDesc.FrontCounterClockwise = false;
+    gDevice->CreateRasterizerState(&basicRasterDesc, &gBasicRasterState);
+
+    // 아웃라인용 래스터 스테이트
+    D3D11_RASTERIZER_DESC outlineRasterDesc;
+    ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
+    outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
+    outlineRasterDesc.FrontCounterClockwise = false;
+    gDevice->CreateRasterizerState(&outlineRasterDesc, &gOutlineRasterState);
+
     //
     // DirectInput/MyInput initialize
     //
@@ -563,159 +565,6 @@ HRESULT InitializeD3D()
         return E_FAIL;
     }
 #endif
-
-    return S_OK;
-}
-
-HRESULT InitializeForRenderToTexture()
-{
-    HRESULT result;
-
-    D3D11_TEXTURE2D_DESC textureDesc;
-    ZeroMemory(&textureDesc, sizeof(textureDesc));
-
-    textureDesc.Width = gWidth;
-    textureDesc.Height = gHeight;
-    textureDesc.ArraySize = 1;
-    textureDesc.MipLevels = 1;
-    textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-    textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-    textureDesc.CPUAccessFlags = 0;
-    textureDesc.MiscFlags = 0;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.Usage = D3D11_USAGE_DEFAULT;
-
-    result = gDevice->CreateTexture2D(&textureDesc, nullptr, &gTexture);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gTexture 생성 실패");
-        return E_FAIL;
-    }
-
-    D3D11_RENDER_TARGET_VIEW_DESC rtvDesc;
-    ZeroMemory(&rtvDesc, sizeof(rtvDesc));
-    rtvDesc.Format = textureDesc.Format;
-    rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-    rtvDesc.Texture2D.MipSlice = 0;
-
-    gDevice->CreateRenderTargetView(gTexture, &rtvDesc, &gTextureRenderTargetView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gTextureRenderTargetView 생성 실패");
-        return E_FAIL;
-    }
-
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-
-    ZeroMemory(&srvDesc, sizeof(srvDesc));
-
-    srvDesc.Format = textureDesc.Format;
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = 1;
-
-    gDevice->CreateShaderResourceView(gTexture, &srvDesc, &gSrvTexture);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gSrvTexture 생성 실패");
-        return E_FAIL;
-    }
-
-    return S_OK;
-}
-
-HRESULT SetupPlaneGeometry()
-{
-    HRESULT result;
-
-
-    ID3DBlob* vsBlob = nullptr;
-
-    result = CompileShaderFromFile(L"VsRenderToTexture.hlsl", "main", "vs_5_0", &vsBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
-
-    result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVsPlane);
-
-    if (FAILED(result))
-    {
-        vsBlob->Release();
-        return E_FAIL;
-    }
-
-    // 셰이더에 전달할 정보. 시멘틱.
-    D3D11_INPUT_ELEMENT_DESC layout[] =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-
-    };
-    UINT numElements = ARRAYSIZE(layout);
-
-
-    result = gDevice->CreateInputLayout(layout, numElements, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &gPlaneInputLayout);
-    vsBlob->Release();
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
-
-    // 픽셀 셰이더도 마찬가지로 진행
-    // 4.0은 D3D10버전 셰이더
-    // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
-    ID3DBlob* psBlob = nullptr;
-    // PS_Lighting
-    result = CompileShaderFromFile(L"PsRenderToTexture.hlsl", "main", "ps_5_0", &psBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
-
-    result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPsPlane);
-    psBlob->Release();
-    if (FAILED(result))
-    {
-        return result;
-    }
-
-
-    D3D11_BUFFER_DESC bufferDesc = {};
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    bufferDesc.ByteWidth = sizeof(VertexInfo) * gPlaneMesh.Vertex.size();
-    bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bufferDesc.CPUAccessFlags = 0;
-
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = gPlaneMesh.Vertex.data();
-
-    result = gDevice->CreateBuffer(&bufferDesc, &initData, &gVbPlane);
-    if (FAILED(result))
-    {
-        ASSERT(false, "버텍스 버퍼 생성 실패 : gVbPlane");
-        return E_FAIL;
-    }
-
-
-    bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    //bd.ByteWidth = sizeof(WORD) * 36;
-    bufferDesc.ByteWidth = sizeof(unsigned int) * gPlaneMesh.IndexList.size();
-    bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bufferDesc.CPUAccessFlags = 0;
-
-    //initData.pSysMem = indices;
-    initData.pSysMem = gPlaneMesh.IndexList.data();
-
-    result = gDevice->CreateBuffer(&bufferDesc, &initData, &gIbPlane);
-    if (FAILED(result))
-    {
-        ASSERT(false, "인덱스 버퍼 생성 실패 : gIbPlane");
-        return E_FAIL;
-    }
 
     return S_OK;
 }
@@ -763,7 +612,7 @@ HRESULT SetupGeometry()
     //// 보통 IASetVertexBuffer 세팅은 렌더링할 때 사용한다고 한다.
     //// stride는 몇바이트 건너뛰어야 다음 버텍스가 나오는가, offset은 데이터 내부에서 몇번째 바이트에 버텍스 정보가 있는가.
     //// 예제에서는 단순하기 때문에 미리 세팅.
-    //gDeviceContext->IASetInputLayout(gVertexLayout);
+    gDeviceContext->IASetInputLayout(gVertexLayout);
 
 
     // 픽셀 셰이더도 마찬가지로 진행
@@ -779,6 +628,35 @@ HRESULT SetupGeometry()
     }
 
     result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPixelShaderTextureAndLighting);
+    psBlob->Release();
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    result = CompileShaderFromFile(L"VsOutline.hlsl", "main", "vs_5_0", &vsBlob);
+    if (FAILED(result))
+    {
+        MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
+        return E_FAIL;
+    }
+
+    result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVsOutline);
+
+    vsBlob->Release();
+    if (FAILED(result))
+    {
+        return E_FAIL;
+    }
+
+    result = CompileShaderFromFile(L"PsOutline.hlsl", "main", "ps_5_0", &psBlob);
+    if (FAILED(result))
+    {
+        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
+        return E_FAIL;
+    }
+
+    result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPsOutline);
     psBlob->Release();
     if (FAILED(result))
     {
@@ -896,6 +774,15 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
+    // 상수 버퍼 생성 : light
+    bd.ByteWidth = sizeof(CBOutline);
+    result = gDevice->CreateBuffer(&bd, nullptr, &gCBOutline);
+    if (FAILED(result))
+    {
+        ASSERT(false, "상수 버퍼 생성 실패 : CBOutline");
+        return E_FAIL;
+    }
+    
     D3D11_SAMPLER_DESC samplerDesc = {};
     // D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR  D3D11_FILTER_MIN_MAG_MIP_POINT
     samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
@@ -942,21 +829,6 @@ HRESULT SetupGeometry()
     cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
     gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
 
-
-    //// 미리 바인드 : 렌더 상태를 바꾸는 것은 역시 비용이 발생하기 때문에 최대한 덜 호출하는 것이 좋다.
-    ///  -> render()로 이동됨.
-    //gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
-    //gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
-    //gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-
-    //gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    //gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
-
-
-    //gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
-    //gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
-
-    //gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
     srand(time(NULL));
     return S_OK;
@@ -1157,31 +1029,42 @@ HRESULT UpdateFrame(float deltaTime)
 
 #endif
 
-    XMMATRIX matView = gCamera.GetViewMatrix();
-
-    CBCamera camera;
-    camera.mView = XMMatrixTranspose(matView);
-    gDeviceContext->UpdateSubresource(gCBCamera, 0, nullptr, &camera, 0, 0);
-
     return S_OK;
 }
 
 HRESULT Render(float deltaTime)
 {
-    // IASetInputLayout for character
-    // shader set
-    //
-    // 
-    // 결국 여러 모델을 렌더링하려면 각 그리려는 모델에 맞는 InputLayout, CB 세팅, vs/ps 설정, 샘플러 등을 전부 다시 지정해줘야 한다.
-    // 순서가 맞는지는 확실히 알기보다 기존에 초기화한 순서를 그대로 유지함.
-    //
-    gDeviceContext->IASetInputLayout(gVertexLayout);
-
-    UINT32 stride = sizeof(VertexInfo);
-    UINT32 offset = 0;
-    gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
-    gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
     
+    float clearToSkyColor[] = { 0.4f, 0.6f, 1.0f, 1.0f };
+    gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearToSkyColor);
+    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+
+    // outline
+    gDeviceContext->RSSetState(gOutlineRasterState);
+
+    gDeviceContext->VSSetShader(gVsOutline, nullptr, 0);
+    gDeviceContext->PSSetShader(gPsOutline, nullptr, 0);
+
+    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBOutline);
+    
+    // arbit fbx model
+    gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor) * gCamera.GetViewMatrix() * gCamera.GetProjectionMatrix();
+
+    CBOutline cbOutline;
+    cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
+    gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
+
+    gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
+
+
+    //
+    // render front
+    //
+    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    gDeviceContext->RSSetState(gBasicRasterState);
+
     gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
     gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
 
@@ -1193,14 +1076,9 @@ HRESULT Render(float deltaTime)
     gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
 
     gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
-    float clearToSkyColor[] = { 0.4f, 0.6f, 1.0f, 1.0f };
-    gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearToSkyColor);
-    float clearToBlueColor[] = { 0.0f, 0.2f, 0.7f, 1.0f };
-    gDeviceContext->ClearRenderTargetView(gTextureRenderTargetView, clearToBlueColor);
 
-    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-   // Setup our lighting parameters
+    // Setup our lighting parameters
     static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.550f, 1.0f);
     XMFLOAT4 lightColor(0.1f, 0.1f, 0.1f, 1.0f);
 
@@ -1210,59 +1088,28 @@ HRESULT Render(float deltaTime)
 
     XMStoreFloat4(&lightDirs, vLightDir);
 
-    CBLight cbLight;
-    cbLight.vLightColor = lightColor;
-    cbLight.vLightDir = lightDirs;
-    gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
-
     gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
 
-    // arbit fbx model
     CBChangesEveryFrame cbChangesEveryFrame;
     cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
-    // render to texture
-    gDeviceContext->OMSetRenderTargets(1, &gTextureRenderTargetView, gDepthStencilView);
-    gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
+    CBCamera camera;
+    camera.mView = XMMatrixTranspose(gCamera.GetViewMatrix());
+    gDeviceContext->UpdateSubresource(gCBCamera, 0, nullptr, &camera, 0, 0);
 
-    // renter to orig back buffer
-    gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, gDepthStencilView);
-    //
-    // 아래의 gShaderResourceView와 위의 TextureRenderTargerView에서 gDepthStecilView를 공유해서 사용하므로
-    // 첫 렌더 이후 다시 렌더링할 때 gDepthStecilView를 클리어 하지 않으면 앞에서 그린 부분은 depth test에 실패한다.
-    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+    CBChangeOnResize projection;
+    projection.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
+    gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &projection, 0, 0);
+
+    CBLight cbLight;
+    cbLight.vLightColor = lightColor;
+    cbLight.vLightDir = lightDirs;
+
+    gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
     gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
-
-    //
-    // render to texture
-    //
-
-    // set IAInputLayout
-    gDeviceContext->IASetInputLayout(gPlaneInputLayout);
-
-    stride = sizeof(VertexInfo);
-    offset = 0;
-    gDeviceContext->IASetVertexBuffers(0, 1, &gVbPlane, &stride, &offset);
-    gDeviceContext->IASetIndexBuffer(gIbPlane, DXGI_FORMAT_R32_UINT, 0);
-
-    // 미리 바인드 : 렌더 상태를 바꾸는 것은 역시 비용이 발생하기 때문에 최대한 덜 호출하는 것이 좋다.
-    // -> 이후에 필요한 세팅만 할 수 있도록 조사가 필요.
-    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBChangesEveryFrame1);
-
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
-
-    gDeviceContext->VSSetShader(gVsPlane, nullptr, 0);
-    gDeviceContext->PSSetShader(gPsPlane, nullptr, 0);
-
-    gMatWorld1 = XMMatrixScaling(0.7f, 0.7f, 0.7f) * XMMatrixTranslation(0.65f, -0.7f, 0.0f);
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
-
-
-    gPlane.Draw(gDeviceContext, gSrvTexture);
 
 
     gSwapChain->Present(0, 0);
@@ -1333,20 +1180,17 @@ void Cleanup()
         SAFETY_RELEASE(gShaderResourceView[textureIndex]);
     }
 
-    // render to texture
-    SAFETY_RELEASE(gTexture);
-    SAFETY_RELEASE(gTextureRenderTargetView);
-    SAFETY_RELEASE(gSrvTexture);
-    SAFETY_RELEASE(gVbPlane); // geometry
-    SAFETY_RELEASE(gIbPlane);
-    SAFETY_RELEASE(gVsPlane); // shaders
-    SAFETY_RELEASE(gPsPlane);
-    SAFETY_RELEASE(gPlaneInputLayout);
+    // outline
+    SAFETY_RELEASE(gVsOutline); // shaders
+    SAFETY_RELEASE(gPsOutline);
+    SAFETY_RELEASE(gBasicRasterState);
+    SAFETY_RELEASE(gOutlineRasterState);
 
     SAFETY_RELEASE(gCBCamera);
     SAFETY_RELEASE(gCBChangeOnResize);
     SAFETY_RELEASE(gCBChangesEveryFrame1);
     SAFETY_RELEASE(gCBLight);
+    SAFETY_RELEASE(gCBOutline);
 
     SAFETY_RELEASE(gIndexBuffer);
     SAFETY_RELEASE(gVertexBuffer);
