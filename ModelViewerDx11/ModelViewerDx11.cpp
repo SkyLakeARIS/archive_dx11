@@ -75,8 +75,8 @@ ID3D11VertexShader*             gVertexShader = nullptr;
 ID3D11PixelShader*              gPixelShaderTextureAndLighting = nullptr;
 
 ID3D11SamplerState*             gSamplerAnisotropic = nullptr;
-enum {NUMBER_TEXTURE = 5};
-ID3D11ShaderResourceView*       gShaderResourceView[NUMBER_TEXTURE];
+//enum {NUMBER_TEXTURE = 5};
+//ID3D11ShaderResourceView*       gShaderResourceView[NUMBER_TEXTURE];
 
 ID3D11InputLayout*              gVertexLayout = nullptr;
 ID3D11Buffer*                   gVertexBuffer = nullptr;
@@ -90,11 +90,11 @@ ID3D11Buffer*                   gCBOutline = nullptr;
 
 
 // global model
-ModelImporter           gImporter;
+ModelImporter*          gImporter = nullptr;
 Model*                  gModel = nullptr;
 
 size_t                  gVertexCount = 0;
-VertexInfo*             gVertexList = nullptr;
+Vertex*             gVertexList = nullptr;
 size_t                  gIndexListCount = 0;
 unsigned int*           gIndexList = nullptr;
 
@@ -262,7 +262,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         goto EXIT_PROGRAM;
     }
 
-    gImporter.Initialize();
 
     if (FAILED(SetupGeometry()))
     {
@@ -576,7 +575,7 @@ HRESULT SetupGeometry()
 
     ID3DBlob* vsBlob = nullptr;
 
-    result = CompileShaderFromFile(L"tuto.fxh", "VS", "vs_5_0", &vsBlob);
+    result = CompileShaderFromFile(L"Shaders/VsBasic.hlsl", "main", "vs_5_0", &vsBlob);
     if (FAILED(result))
     {
         MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
@@ -620,7 +619,7 @@ HRESULT SetupGeometry()
     // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
     ID3DBlob* psBlob = nullptr;
     // PS_Lighting
-    result = CompileShaderFromFile(L"tuto.fxh", "PS_TextureAndLighting", "ps_5_0", &psBlob);
+    result = CompileShaderFromFile(L"Shaders/PsBasic.hlsl", "main", "ps_5_0", &psBlob);
     if (FAILED(result))
     {
         MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
@@ -634,7 +633,7 @@ HRESULT SetupGeometry()
         return result;
     }
 
-    result = CompileShaderFromFile(L"VsOutline.hlsl", "main", "vs_5_0", &vsBlob);
+    result = CompileShaderFromFile(L"Shaders/VsOutline.hlsl", "main", "vs_5_0", &vsBlob);
     if (FAILED(result))
     {
         MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
@@ -649,7 +648,7 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    result = CompileShaderFromFile(L"PsOutline.hlsl", "main", "ps_5_0", &psBlob);
+    result = CompileShaderFromFile(L"Shaders/PsOutline.hlsl", "main", "ps_5_0", &psBlob);
     if (FAILED(result))
     {
         MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
@@ -662,13 +661,17 @@ HRESULT SetupGeometry()
     {
         return result;
     }
+    gImporter = new ModelImporter(gDevice);
+    gImporter->Initialize();
+    Renderer renderer; // dummy
 
-    gModel = new Model();
-    gImporter.LoadFbxModel("/models/unagi.fbx");
+    gModel = new Model(&renderer, gDevice, gDeviceContext);
 
-    gModel->SetupMesh(gImporter);
+    gImporter->LoadFbxModel("/models/unagi.fbx");
 
-    size_t numMesh = gImporter.GetMeshCount();
+    gModel->SetupMesh(*gImporter);
+
+    size_t numMesh = gImporter->GetMeshCount();
     for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
     {
         OutputDebugStringW(gModel->GetMeshName(meshIndex));
@@ -676,13 +679,13 @@ HRESULT SetupGeometry()
         gVertexCount += gModel->GetVertexCount(meshIndex);
     }
 
-    gVertexList = new VertexInfo[gVertexCount];
+    gVertexList = new Vertex[gVertexCount];
     gModel->UpdateVertexBuffer(gVertexList, gVertexCount, 0);
 
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(VertexInfo) * gVertexCount;
+    bd.ByteWidth = sizeof(Vertex) * gVertexCount;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
@@ -699,7 +702,7 @@ HRESULT SetupGeometry()
     // 메모리를 아끼려는건지?
     // 내부에서 저장하고 쓰는게 아니라 넘겨준 변수를 그대로 활용하는 듯.
     // 따라서 0도 변수로 전달.
-    UINT32 stride = sizeof(VertexInfo);
+    UINT32 stride = sizeof(Vertex);
     UINT32 offset = 0;
     gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
 
@@ -710,7 +713,7 @@ HRESULT SetupGeometry()
     {
         gIndexListCount += gModel->GetIndexListCount(meshIndex);
     }
-    gIndexList = new size_t[gIndexListCount];
+    gIndexList = new unsigned int[gIndexListCount];
     gModel->UpdateIndexBuffer(gIndexList, gIndexListCount, 0);
 
     bd.Usage = D3D11_USAGE_DEFAULT;
@@ -729,9 +732,9 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    // DXGI_FORMAT_R32G32_UINT DXGI_FORMAT_R16_UINT 
+    //  DXGI_FORMAT_R16_UINT DXGI_FORMAT_R32G32_UINT
     gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
+    
 
     gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
@@ -802,24 +805,24 @@ HRESULT SetupGeometry()
 
     // 텍스처 입힐 때 다시 활성화
     //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    ZeroMemory(&srvDesc, sizeof(srvDesc));
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Texture2D.MostDetailedMip = 0;
+    //D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    //ZeroMemory(&srvDesc, sizeof(srvDesc));
+    //srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    //srvDesc.Texture2D.MipLevels = 1;
+    //srvDesc.Texture2D.MostDetailedMip = 0;
 
     // Anbi_Body  Anbi_Hair  Anbi_Face AnbiWeapon_CompanyB_Blade_Fire01
-    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Body.png", srvDesc, &gShaderResourceView[0]);
-    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Hair.png", srvDesc, &gShaderResourceView[2]);
-    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Face.png", srvDesc, &gShaderResourceView[1]);
-    LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Weapon.png", srvDesc, &gShaderResourceView[3]);
+    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Body.png", srvDesc, &gShaderResourceView[0]);
+    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Hair.png", srvDesc, &gShaderResourceView[2]);
+    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Face.png", srvDesc, &gShaderResourceView[1]);
+    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Weapon.png", srvDesc, &gShaderResourceView[3]);
 
 
     gMatWorld1 = XMMatrixIdentity();
 
     // 초점 대상의 버텍스를 월드로 변환 (임시로 render와 동일한 world TM 사용)
     gIndexOfFocusedVertex = (int)(gVertexCount / (float)2);
-    XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Pos;
+    XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
     XMMATRIX matFocus = XMMatrixIdentity()* XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
     XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
 
@@ -981,7 +984,7 @@ HRESULT UpdateFrame(float deltaTime)
         // 변경된 사이즈에 의해 달라진 초점 위치를 다시 계산한 뒤,
         // 월드공간으로 변환하여 카메라에 전달.
         XMFLOAT3 newFocus;
-        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Pos);
+        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Position);
         XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
         XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
@@ -996,7 +999,7 @@ HRESULT UpdateFrame(float deltaTime)
             gScaleFactor = 0.2f;
         }
         XMFLOAT3 newFocus;
-        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Pos);
+        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Position);
         XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
         XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
@@ -1013,7 +1016,7 @@ HRESULT UpdateFrame(float deltaTime)
     if (gKeyboard[DIK_H] & 0x80)
     {
         gIndexOfFocusedVertex = rand()%gVertexCount;
-        XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Pos;
+        XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
         XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
         XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
 
@@ -1055,7 +1058,7 @@ HRESULT Render(float deltaTime)
     cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
     gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
 
-    gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
+    gModel->Draw();
 
 
     //
@@ -1109,7 +1112,7 @@ HRESULT Render(float deltaTime)
     gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
-    gModel->Render(gDeviceContext, gShaderResourceView, NUMBER_TEXTURE);
+    gModel->Draw();
 
 
     gSwapChain->Present(0, 0);
@@ -1161,7 +1164,8 @@ void Cleanup()
     gDirectInput = nullptr;
 #endif
 
-    gImporter.Release();
+    gImporter->Release();
+    delete gImporter;
 
     if (gDeviceContext)
     {
@@ -1175,10 +1179,10 @@ void Cleanup()
     SAFETY_RELEASE(gSamplerAnisotropic);
 
 
-    for (size_t textureIndex = 0; textureIndex < NUMBER_TEXTURE; ++textureIndex)
-    {
-        SAFETY_RELEASE(gShaderResourceView[textureIndex]);
-    }
+    //for (size_t textureIndex = 0; textureIndex < NUMBER_TEXTURE; ++textureIndex)
+    //{
+    //    SAFETY_RELEASE(gShaderResourceView[textureIndex]);
+    //}
 
     // outline
     SAFETY_RELEASE(gVsOutline); // shaders

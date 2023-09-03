@@ -54,6 +54,9 @@
     <ClInclude Include="Plane.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ModelViewerDx11.cpp">
@@ -77,6 +80,9 @@
     <ClCompile Include="Plane.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ModelViewerDx11.rc">
@@ -92,13 +98,22 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="tuto.fxh">
+    <FxCompile Include="Shaders\PsBasic.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="VsOutline.hlsl">
+    <FxCompile Include="Shaders\PsOutline.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="PsOutline.hlsl">
+    <FxCompile Include="Shaders\PsRenderToTexture.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\VsBasic.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\VsOutline.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\VsRenderToTexture.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

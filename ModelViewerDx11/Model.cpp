@@ -1,41 +1,40 @@
 ﻿#include "Model.h"
-
 #include "ModelImporter.h"
 
-Model::Model()
+Model::Model(Renderer* renderer, ID3D11Device* device, ID3D11DeviceContext* deviceContext)
     : mNumMesh(0)
     , mNumVertex(0)
+    , mRenderer(renderer)
+    , mDevice(device)
+    , mDeviceContext(deviceContext)
 {
-    
+    mDevice->AddRef();
+    mDeviceContext->AddRef();
 }
 
-void Model::Render(ID3D11DeviceContext* deviceContext, ID3D11ShaderResourceView** resourceView, const size_t numTexture)
+Model::~Model()
+{
+    for(Mesh& mesh : mMeshes)
+    {
+        SAFETY_RELEASE(mesh.Texture);
+    }
+    mDevice->Release();
+    mDevice = nullptr;
+    mDeviceContext->Release();
+    mDeviceContext = nullptr;
+}
+
+void Model::Draw()
 {
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
     for (size_t index = 0; index < mNumMesh; ++index)
     {
-        /*
-         *  이 방법외에 다른 방법으로 적용이 필요하다.
-         */
-        if(index < 4)
-        {
-            deviceContext->PSSetShaderResources(0, 1, &resourceView[index]);
-        }
-        else
-        {
-            deviceContext->PSSetShaderResources(0, 1, &resourceView[3]);
-        }
-        /*
-         *  문제점
-         *  외부에서 받은 vertex buffer에 써넣어주는 방식에
-         *  이 방식으로 메시를 그리면, buffer에서 어느 부분이 이 모델의 정보인지 알 수 없으므로
-         *  의도하지 않은 렌더링 결과를 내놓을 수 있을것.
-         *  -현재는 모델 하나만 그리기 때문에 아직까지 상관은 없음.
-         *  - 나중에 외부에서 버퍼를 관리하고 모델은 버퍼에서 자신의 정보에 대한 위치만 가지고 있는것도
-         */
+
+        mDeviceContext->PSSetShaderResources(0, 1, &mMeshes[index].Texture);
+
         //deviceContext->Draw(mMeshes[index].Vertex.size(), offset);
-        deviceContext->DrawIndexed(mMeshes[index].IndexList.size(), indexOffset, vertexOffset);
+        mDeviceContext->DrawIndexed(mMeshes[index].IndexList.size(), indexOffset, vertexOffset);
 
         vertexOffset += mMeshes[index].Vertex.size();
         indexOffset += mMeshes[index].IndexList.size();
@@ -57,12 +56,12 @@ void Model::SetupMesh(ModelImporter& importer)
         mMeshes[meshIndex].Vertex.reserve(mNumVertex);
         for (size_t vertexIndex = 0; vertexIndex < mNumVertex; ++vertexIndex)
         {
-            mesh.Vertex.push_back(VertexInfo());
-            VertexInfo& vertex = mesh.Vertex.back();
+            mesh.Vertex.push_back(Vertex());
+            Vertex& vertex = mesh.Vertex.back();
 
-            vertex.Pos = meshes[meshIndex].Vertex[vertexIndex].Pos;
-            vertex.Norm = meshes[meshIndex].Vertex[vertexIndex].Norm;
-            vertex.Tex = meshes[meshIndex].Vertex[vertexIndex].Tex;
+            vertex.Position = meshes[meshIndex].Vertex[vertexIndex].Position;
+            vertex.Normal = meshes[meshIndex].Vertex[vertexIndex].Normal;
+            vertex.TexCoord = meshes[meshIndex].Vertex[vertexIndex].TexCoord;
         }
 
         const int numIndexList = meshes[meshIndex].IndexList.size();
@@ -72,14 +71,18 @@ void Model::SetupMesh(ModelImporter& importer)
             mesh.IndexList.push_back(meshes[meshIndex].IndexList[index]);
         }
 
-        mesh.HasTexture = meshes[meshIndex].HasTexture;
         wcscpy_s(mesh.Name, MESH_NAME_LENGTH, meshes[meshIndex].Name);
         mesh.Name[MESH_NAME_LENGTH - 1] = (WCHAR)L"\n";
+
+        mesh.Texture = meshes[meshIndex].Texture;
+        mesh.NumTexuture = meshes[meshIndex].NumTexuture;
+        mesh.HasTexture = meshes[meshIndex].HasTexture;
+
     }
 
 }
 
-void Model::UpdateVertexBuffer(VertexInfo* buffer, size_t bufferSize, size_t startIndex)
+void Model::UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex)
 {
     ASSERT(buffer != nullptr, "버퍼는 nullptr가 아니어야 합니다.");
 
@@ -91,16 +94,16 @@ void Model::UpdateVertexBuffer(VertexInfo* buffer, size_t bufferSize, size_t sta
         for (size_t vertexIndex = 0; vertexIndex < numVertex; ++vertexIndex)
         {
             const size_t bufferIndex = startIndex + offset + vertexIndex;
-            buffer[bufferIndex].Pos = mMeshes[meshIndex].Vertex[vertexIndex].Pos;
-            buffer[bufferIndex].Norm = mMeshes[meshIndex].Vertex[vertexIndex].Norm;
-            buffer[bufferIndex].Tex = mMeshes[meshIndex].Vertex[vertexIndex].Tex;
+            buffer[bufferIndex].Position = mMeshes[meshIndex].Vertex[vertexIndex].Position;
+            buffer[bufferIndex].Normal = mMeshes[meshIndex].Vertex[vertexIndex].Normal;
+            buffer[bufferIndex].TexCoord = mMeshes[meshIndex].Vertex[vertexIndex].TexCoord;
         }
         offset += numVertex;
     }
     
 }
 
-void Model::UpdateIndexBuffer(size_t* buffer, size_t bufferSize, size_t startIndex)
+void Model::UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex)
 {
     ASSERT(buffer != nullptr, "버퍼는 nullptr가 아니어야 합니다.");
 

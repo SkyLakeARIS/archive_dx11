@@ -1,10 +1,10 @@
 ﻿#include "ModelImporter.h"
 #include <fstream>
 
-ModelImporter::ModelImporter()
+ModelImporter::ModelImporter(ID3D11Device* device)
     : mFbxScene(nullptr)
     , mFbxManager(nullptr)
-
+    , mDevice(device)
 {
     mFbxObjects.reserve(64);
 }
@@ -72,6 +72,8 @@ void ModelImporter::LoadFbxModel(const char* fileName)
 
     parseMesh();
 
+    parseTextureInfo();
+
     mImporter->Destroy();
 
 }
@@ -87,9 +89,9 @@ size_t ModelImporter::GetMeshCount() const
     return mMeshes.size();
 }
 
-void ModelImporter::preprocess(FbxNode* parent, FbxNode* current)
+void ModelImporter::preprocess(FbxNode* Parent, FbxNode* Current)
 {
-    if(current->GetCamera() || current->GetLight())
+    if(Current->GetCamera() || Current->GetLight())
     {
         return;
     }
@@ -99,19 +101,19 @@ void ModelImporter::preprocess(FbxNode* parent, FbxNode* current)
     // 메시에서 올바르게 데이터를 뽑아내기 위해서는
     // 우선 제대로 된 데이터를 가지고 있는 노드만을 선별해야 하므로
     // 거르는 것이 필요하다.
-    if (current->GetMesh())
+    if (Current->GetMesh())
     {
-        node.current = current;
+        node.Current = Current;
         // 현재 아직은 쓸모 없는데, 계층 구조 구성시 사용되지 않을까 예상.
-        node.parent = parent;
+        node.Parent = Parent;
 
         mFbxObjects.push_back(node);
     }
 
-    size_t numChild = current->GetChildCount();
+    size_t numChild = Current->GetChildCount();
     for(size_t child = 0; child < numChild; ++child)
     {
-        preprocess(current, current->GetChild(child));
+        preprocess(Current, Current->GetChild(child));
     }
 }
 
@@ -121,10 +123,12 @@ void ModelImporter::parseMesh()
     for (size_t nodeIndex = 0; nodeIndex < mFbxObjects.size(); ++nodeIndex)
     {
         Mesh meshTemp;
+        meshTemp.NumTexuture = 0;
+        meshTemp.Texture = nullptr;
         mMeshes.push_back(meshTemp);
         Mesh& meshData = mMeshes.back();
         
-        FbxMesh* mesh = mFbxObjects[nodeIndex].current->GetMesh();
+        FbxMesh* mesh = mFbxObjects[nodeIndex].Current->GetMesh();
 
         size_t numConverted = 0;
         mbstowcs_s(&numConverted, meshData.Name, MESH_NAME_LENGTH, mesh->GetName(), strlen(mesh->GetName()));
@@ -166,7 +170,7 @@ void ModelImporter::parseMesh()
                 // 한번에 3개의 점 -> for문으로 하나씩
                 int indexOfVertex = 0;
                 FbxVector4 normalIndex;
-                VertexInfo vertexInfo;
+                Vertex vertexInfo;
                 for (size_t index = 0; index < 3; ++index)
                 {
                     indexOfVertex = mesh->GetPolygonVertex(polyIndex, indexListOfTriangle[index]);
@@ -183,25 +187,25 @@ void ModelImporter::parseMesh()
                          *  position
                          */
                         FbxVector4 position = allVertexPos[indexOfVertex].mData;
-                        vertexInfo.Pos.x = position[0];
-                        vertexInfo.Pos.y = position[2];
-                        vertexInfo.Pos.z = position[1];
+                        vertexInfo.Position.x = position[0];
+                        vertexInfo.Position.y = position[2];
+                        vertexInfo.Position.z = position[1];
 
                         /*
                          *  normal
                          */
                         FbxVector4 normal = normalIndex.mData;
-                        vertexInfo.Norm.x = normal[0];
-                        vertexInfo.Norm.y = normal[2];
-                        vertexInfo.Norm.z = normal[1];
+                        vertexInfo.Normal.x = normal[0];
+                        vertexInfo.Normal.y = normal[2];
+                        vertexInfo.Normal.z = normal[1];
 
                         /*
-                         *  texture
+                         *  texture coord
                          */
                         double* uv = nullptr;
                         // 텍스처를 가진 메시만
-                        vertexInfo.Tex.x = 0.0f;
-                        vertexInfo.Tex.y = 0.0f;
+                        vertexInfo.TexCoord.x = 0.0f;
+                        vertexInfo.TexCoord.y = 0.0f;
                         if (mesh->GetElementUVCount() > 0)
                         {
                             meshData.HasTexture = true;
@@ -217,8 +221,8 @@ void ModelImporter::parseMesh()
                                 uv = texture->GetDirectArray().GetAt(indexOfVertex).mData;
                             }
 
-                            vertexInfo.Tex.x = uv[0];
-                            vertexInfo.Tex.y = 1.0f - uv[1];
+                            vertexInfo.TexCoord.x = uv[0];
+                            vertexInfo.TexCoord.y = 1.0f - uv[1];
                         }
 
                         meshData.Vertex.push_back(vertexInfo);
@@ -259,4 +263,140 @@ void ModelImporter::parseMesh()
         mVertexDuplicationCheck.clear();
         mIndexMap.clear();
     }
+}
+
+void ModelImporter::parseTextureInfo()
+{
+    OutputDebugStringA("========== Texture Info Extraction start ==========\n");
+
+    for (size_t objectIndex = 0; objectIndex < mFbxObjects.size(); ++objectIndex)
+    {
+        FbxNode* currentNode = mFbxObjects[objectIndex].Current;
+
+        for (size_t materialIndex = 0; materialIndex < currentNode->GetSrcObjectCount<FbxSurfaceMaterial>(); ++materialIndex)
+        {
+            FbxSurfaceMaterial* material = currentNode->GetSrcObject<FbxSurfaceMaterial>(materialIndex);
+
+            if (material == nullptr)
+            {
+                OutputDebugStringA("material is nullptr");
+                continue;
+            }
+
+            FbxProperty property = material->FindProperty(FbxSurfaceMaterial::sDiffuse);
+
+            size_t layerTextureCount = property.GetSrcObjectCount<FbxLayeredTexture>();
+            if (layerTextureCount > 0)
+            {
+                OutputDebugStringA("Get Texture from layered\n");
+
+                for (size_t layerIndex = 0; layerIndex < layerTextureCount; ++layerIndex)
+                {
+                    FbxLayeredTexture* layeredTexture = FbxCast<FbxLayeredTexture>(property.GetSrcObject<FbxLayeredTexture>(layerIndex));
+
+                    for (size_t textureIndex = 0; textureIndex < layeredTexture->GetSrcObjectCount<FbxTexture>(); ++textureIndex)
+                    {
+                        FbxFileTexture* texture = FbxCast<FbxFileTexture>(layeredTexture->GetSrcObject< FbxFileTexture>(textureIndex));
+                        OutputDebugStringA(texture->GetName());
+                        OutputDebugStringA("\n");
+                    }
+                }
+            }
+            else
+            {
+                OutputDebugStringA("Get Texture Direct\n");
+
+                const int textureCount = property.GetSrcObjectCount<FbxTexture>();
+                ASSERT(textureCount == 1, "다중 텍스처 대응 필요");
+
+                mMeshes[objectIndex].NumTexuture = static_cast<uint8>(textureCount);
+
+                D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+                ZeroMemory(&desc, sizeof(desc));
+
+                desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                desc.Texture2D.MipLevels = 1;
+                desc.Texture2D.MostDetailedMip = 0;
+
+                for (int j = 0; j < textureCount; j++)
+                {
+                    FbxFileTexture* texture = FbxCast<FbxFileTexture>(property.GetSrcObject<FbxFileTexture>(j));
+                    FbxTexture* texture1 = FbxCast<FbxTexture>(property.GetSrcObject<FbxTexture>(j));
+                    
+                    // Then, you can get all the properties of the texture, include its name
+                    if(texture)
+                    {
+                        OutputDebugStringA(texture->GetName());
+                        OutputDebugStringA("\n");
+
+                        enum{TEXTURE_NAME_LENGTH = 256};
+                        wchar_t texturePath[TEXTURE_NAME_LENGTH];
+                        wchar_t textureName[TEXTURE_NAME_LENGTH];
+                        size_t a;
+                        mbstowcs_s(&a, textureName, TEXTURE_NAME_LENGTH,texture->GetName(), TEXTURE_NAME_LENGTH);
+
+                        wsprintf(texturePath, L"textures/%s", textureName);
+                        if(FAILED(loadTextureFromFileAndCreateResource(texturePath, desc, &mMeshes[objectIndex].Texture)))
+                        {
+                            ASSERT(FALSE, "failed to create texture");
+                        }
+                        mMeshes[objectIndex].HasTexture = true;
+                    }
+                    else
+                    {
+                        OutputDebugStringA("texture not found : set default texture");
+                        OutputDebugStringA("\n");
+                        ASSERT(false, "default texture에 대한 처리를 하지 않음.");
+                    }
+
+                   /* FbxProperty p = texture1->RootProperty.Find("Filename");
+                    OutputDebugStringA(p.Get<FbxString>());*/
+                }
+            }
+        }
+    }
+    OutputDebugStringA("========== Texture Info Extraction end==========\n");
+}
+
+HRESULT ModelImporter::loadTextureFromFileAndCreateResource(
+    const WCHAR* fileName,
+    const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
+    ID3D11ShaderResourceView** outShaderResourceView)
+{
+    ASSERT(*outShaderResourceView == nullptr, "nullptr가 아닌 ID3D11ShaderResourceView가 전달 되었습니다.");
+
+    ScratchImage image;
+    ID3D11Resource* textureResource = nullptr;
+    HRESULT result = LoadFromWICFile(fileName, WIC_FLAGS_NONE, nullptr, image);
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"ModelImporter::loadTextureFromFileAndCreateResource - 이미지 로드 실패");
+        ASSERT(false, "이미지 로드 실패");
+        goto FAILED;
+    }
+
+    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &textureResource);
+    if (FAILED(result))
+    {
+        OutputDebugStringW(L"ModelImporter::loadTextureFromFileAndCreateResource - CreateTexture 생성 실패");
+        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
+        goto FAILED;
+    }
+
+    result = mDevice->CreateShaderResourceView(textureResource, &srvDesc, &(*outShaderResourceView));
+    if (FAILED(result))
+    {
+        ASSERT(false, "ModelImporter::loadTextureFromFileAndCreateResource - outShaderResourceView 생성 실패");
+        goto FAILED;
+    }
+
+    result = S_OK;
+
+FAILED:
+    image.Release();
+    SAFETY_RELEASE(textureResource);
+
+    return result;
+
+
 }

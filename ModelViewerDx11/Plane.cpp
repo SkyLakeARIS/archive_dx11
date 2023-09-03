@@ -6,22 +6,22 @@ Plane::Plane()
 {
     
     mMesh.HasTexture = false;
-    VertexInfo vertex;
+    Vertex vertex;
 
-    vertex.Pos = XMFLOAT3(-0.5f, -0.5f, 0.5f);
-    vertex.Tex = XMFLOAT2(0.0f, 1.0f);
+    vertex.Position = XMFLOAT3(-0.5f, -0.5f, 0.5f);
+    vertex.TexCoord = XMFLOAT2(0.0f, 1.0f);
     mMesh.Vertex.push_back(vertex);
 
-    vertex.Pos = XMFLOAT3(-0.5f, 0.5f, 0.5f);
-    vertex.Tex = XMFLOAT2(0.0f, 0.0f);
+    vertex.Position = XMFLOAT3(-0.5f, 0.5f, 0.5f);
+    vertex.TexCoord = XMFLOAT2(0.0f, 0.0f);
     mMesh.Vertex.push_back(vertex);
 
-    vertex.Pos = XMFLOAT3(0.5f, 0.5f, 0.5f);
-    vertex.Tex = XMFLOAT2(1.0f, 0.0f);
+    vertex.Position = XMFLOAT3(0.5f, 0.5f, 0.5f);
+    vertex.TexCoord = XMFLOAT2(1.0f, 0.0f);
     mMesh.Vertex.push_back(vertex);
 
-    vertex.Pos = XMFLOAT3(0.5f, -0.5f, 0.5f);
-    vertex.Tex = XMFLOAT2(1.0f, 1.0f);
+    vertex.Position = XMFLOAT3(0.5f, -0.5f, 0.5f);
+    vertex.TexCoord = XMFLOAT2(1.0f, 1.0f);
     mMesh.Vertex.push_back(vertex);
 
 
@@ -42,7 +42,7 @@ Plane::~Plane()
     
 }
 
-void Plane::GetVertices(std::vector<VertexInfo>* const outVertices) const
+void Plane::GetVertices(std::vector<Vertex>* const outVertices) const
 {
     outVertices->clear();
 

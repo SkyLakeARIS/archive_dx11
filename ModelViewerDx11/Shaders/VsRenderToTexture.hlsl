@@ -1,3 +1,10 @@
+
+cbuffer cbChangesEveryFrame : register(b0)
+{
+    matrix Plane;
+}
+
+
 struct VS_INPUT
 {
     float4 Pos : POSITION;
@@ -12,11 +19,6 @@ struct PS_INPUT
     float2 Tex : TEXCOORD0;
 };
 
-
-cbuffer cbChangesEveryFrame : register(b0)
-{
-    matrix Plane;
-}
 
 
 PS_INPUT main(VS_INPUT input)

@@ -10,12 +10,12 @@ class ModelImporter
 
     struct ObjectNode
     {
-        FbxNode* parent;
-        FbxNode* current;
+        FbxNode* Parent;
+        FbxNode* Current;
     };
 
 public:
-    ModelImporter();
+    ModelImporter(ID3D11Device* device);
     ~ModelImporter();
 
     void                            Initialize();
@@ -31,7 +31,17 @@ private:
 
     void    parseMesh();
 
+    void    parseTextureInfo();
+
+    HRESULT loadTextureFromFileAndCreateResource(
+        const WCHAR* fileName,
+        const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
+        ID3D11ShaderResourceView** outShaderResourceView);
+
 private:
+
+    ID3D11Device* mDevice;
+
 
     FbxManager*     mFbxManager;
     FbxImporter*    mImporter;
