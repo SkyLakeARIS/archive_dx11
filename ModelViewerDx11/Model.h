@@ -23,6 +23,11 @@ struct Mesh
     uint8 NumTexuture;
 };
 
+enum eShader
+{
+    BASIC,
+    OUTLINE,
+};
 class Model
 {
 
@@ -32,16 +37,25 @@ public:
 
     void                Draw();
 
-    void                SetupMesh(ModelImporter& importer);
+    HRESULT             SetupMesh(ModelImporter& importer);
 
-    void                UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex);
-    void                UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex);
+    // 일단 여기에 때려 박는다.
+    // 하다보면 다른 곳으로 빼야할 부분이 보이겠지...
+    HRESULT             SetupShader(eShader shaderType, ID3D11VertexShader* tempVsShaderToSet, ID3D11PixelShader* tempPsShaderToSet, ID3D11InputLayout* tempInputLayout);
+
+    //void                UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex);
+    //void                UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex);
 
     size_t              GetMeshCount() const;
     const WCHAR*        GetMeshName(size_t meshIndex) const;
 
     size_t              GetVertexCount(size_t meshIndex) const;
     size_t              GetIndexListCount(size_t meshIndex) const;
+
+    XMFLOAT3            GetCenterPoint() const;
+private:
+
+    void prepare();
 
 private:
 
@@ -53,6 +67,19 @@ private:
     size_t mNumVertex;
 
     std::vector<Mesh> mMeshes;
+
+    ID3D11Buffer* mVertexBuffers;
+    ID3D11Buffer* mIndexBuffers;
+
+    XMFLOAT3 mCenterPosition;
+    XMMATRIX mWorldMatrix;
+
+    ID3D11VertexShader* mVertexShader;
+    ID3D11PixelShader* mPixelShader;
+    ID3D11InputLayout* mInputLayout;
+
+    Vertex* vertices;
+    uint32* indices;
 };
 
 

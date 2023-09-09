@@ -79,8 +79,8 @@ ID3D11SamplerState*             gSamplerAnisotropic = nullptr;
 //ID3D11ShaderResourceView*       gShaderResourceView[NUMBER_TEXTURE];
 
 ID3D11InputLayout*              gVertexLayout = nullptr;
-ID3D11Buffer*                   gVertexBuffer = nullptr;
-ID3D11Buffer*                   gIndexBuffer = nullptr;
+//ID3D11Buffer*                   gVertexBuffer = nullptr;
+//ID3D11Buffer*                   gIndexBuffer = nullptr;
 
 ID3D11Buffer*                   gCBCamera = nullptr;
 ID3D11Buffer*                   gCBChangeOnResize = nullptr;
@@ -93,10 +93,10 @@ ID3D11Buffer*                   gCBOutline = nullptr;
 ModelImporter*          gImporter = nullptr;
 Model*                  gModel = nullptr;
 
-size_t                  gVertexCount = 0;
-Vertex*             gVertexList = nullptr;
-size_t                  gIndexListCount = 0;
-unsigned int*           gIndexList = nullptr;
+//size_t                  gVertexCount = 0;
+//Vertex*             gVertexList = nullptr;
+//size_t                  gIndexListCount = 0;
+//unsigned int*           gIndexList = nullptr;
 
 #ifdef USING_MYINPUT
 MyInput*                gMyInput = nullptr;
@@ -115,7 +115,7 @@ Camera gCamera(XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
 
 // 물체 관련 전역 - 임시
 float   gScaleFactor = 1.0f;
-size_t  gIndexOfFocusedVertex;
+//size_t  gIndexOfFocusedVertex;
 
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
@@ -611,7 +611,7 @@ HRESULT SetupGeometry()
     //// 보통 IASetVertexBuffer 세팅은 렌더링할 때 사용한다고 한다.
     //// stride는 몇바이트 건너뛰어야 다음 버텍스가 나오는가, offset은 데이터 내부에서 몇번째 바이트에 버텍스 정보가 있는가.
     //// 예제에서는 단순하기 때문에 미리 세팅.
-    gDeviceContext->IASetInputLayout(gVertexLayout);
+   // gDeviceContext->IASetInputLayout(gVertexLayout);
 
 
     // 픽셀 셰이더도 마찬가지로 진행
@@ -663,77 +663,85 @@ HRESULT SetupGeometry()
     }
     gImporter = new ModelImporter(gDevice);
     gImporter->Initialize();
-    Renderer renderer; // dummy
+    Renderer renderer(gDevice, gDeviceContext); // dummy
 
     gModel = new Model(&renderer, gDevice, gDeviceContext);
 
     gImporter->LoadFbxModel("/models/unagi.fbx");
 
-    gModel->SetupMesh(*gImporter);
-
-    size_t numMesh = gImporter->GetMeshCount();
-    for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
+    result = gModel->SetupMesh(*gImporter);
+    if (FAILED(result))
     {
-        OutputDebugStringW(gModel->GetMeshName(meshIndex));
-        OutputDebugStringW(L"\n");
-        gVertexCount += gModel->GetVertexCount(meshIndex);
+        return result;
     }
 
-    gVertexList = new Vertex[gVertexCount];
-    gModel->UpdateVertexBuffer(gVertexList, gVertexCount, 0);
+    result = gModel->SetupShader(eShader::BASIC, gVertexShader, gPixelShaderTextureAndLighting, gVertexLayout);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    //size_t numMesh = gImporter->GetMeshCount();
+    //for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
+    //{
+    //    OutputDebugStringW(gModel->GetMeshName(meshIndex));
+    //    OutputDebugStringW(L"\n");
+    //    gVertexCount += gModel->GetVertexCount(meshIndex);
+    //}
+
+    //gVertexList = new Vertex[gVertexCount];
+    //gModel->UpdateVertexBuffer(gVertexList, gVertexCount, 0);
 
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(Vertex) * gVertexCount;
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    //bd.ByteWidth = sizeof(Vertex) * gVertexCount;
+    //bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = gVertexList;
+    //D3D11_SUBRESOURCE_DATA initData = {};
+    //initData.pSysMem = gVertexList;
 
-    result = gDevice->CreateBuffer(&bd, &initData, &gVertexBuffer);
-    if (FAILED(result))
-    {
-        ASSERT(false, "버텍스 버퍼 생성 실패 : gVertexBuffer");
-        return E_FAIL;
-    }
+    //result = gDevice->CreateBuffer(&bd, &initData, &gVertexBuffer);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "버텍스 버퍼 생성 실패 : gVertexBuffer");
+    //    return E_FAIL;
+    //}
 
     // 메모리를 아끼려는건지?
     // 내부에서 저장하고 쓰는게 아니라 넘겨준 변수를 그대로 활용하는 듯.
     // 따라서 0도 변수로 전달.
-    UINT32 stride = sizeof(Vertex);
-    UINT32 offset = 0;
-    gDeviceContext->IASetVertexBuffers(0, 1, &gVertexBuffer, &stride, &offset);
+
 
     /*
      *  인덱스 버퍼
      */
-    for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
-    {
-        gIndexListCount += gModel->GetIndexListCount(meshIndex);
-    }
-    gIndexList = new unsigned int[gIndexListCount];
-    gModel->UpdateIndexBuffer(gIndexList, gIndexListCount, 0);
+    //for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
+    //{
+    //    gIndexListCount += gModel->GetIndexListCount(meshIndex);
+    //}
+    //gIndexList = new unsigned int[gIndexListCount];
+    //gModel->UpdateIndexBuffer(gIndexList, gIndexListCount, 0);
 
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    //bd.ByteWidth = sizeof(WORD) * 36;
-    bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
+    //bd.Usage = D3D11_USAGE_DEFAULT;
+    ////bd.ByteWidth = sizeof(WORD) * 36;
+    //bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
+    //bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    //bd.CPUAccessFlags = 0;
 
     //initData.pSysMem = indices;
-    initData.pSysMem = gIndexList;
+    //initData.pSysMem = gIndexList;
 
-    result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
-    if (FAILED(result))
-    {
-        ASSERT(false, "인덱스 버퍼 생성 실패");
-        return E_FAIL;
-    }
+    //result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "인덱스 버퍼 생성 실패");
+    //    return E_FAIL;
+    //}
 
     //  DXGI_FORMAT_R16_UINT DXGI_FORMAT_R32G32_UINT
-    gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+    //gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
     
 
     gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -821,8 +829,8 @@ HRESULT SetupGeometry()
     gMatWorld1 = XMMatrixIdentity();
 
     // 초점 대상의 버텍스를 월드로 변환 (임시로 render와 동일한 world TM 사용)
-    gIndexOfFocusedVertex = (int)(gVertexCount / (float)2);
-    XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
+  //  gIndexOfFocusedVertex = (int)(gVertexCount / (float)2);
+    XMFLOAT3 focusPoint = gModel->GetCenterPoint();
     XMMATRIX matFocus = XMMatrixIdentity()* XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
     XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
 
@@ -984,7 +992,9 @@ HRESULT UpdateFrame(float deltaTime)
         // 변경된 사이즈에 의해 달라진 초점 위치를 다시 계산한 뒤,
         // 월드공간으로 변환하여 카메라에 전달.
         XMFLOAT3 newFocus;
-        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Position);
+        XMFLOAT3 center = gModel->GetCenterPoint();
+
+        XMVECTOR lookAt = XMLoadFloat3(&center);
         XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
         XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
@@ -999,7 +1009,9 @@ HRESULT UpdateFrame(float deltaTime)
             gScaleFactor = 0.2f;
         }
         XMFLOAT3 newFocus;
-        XMVECTOR lookAt = XMLoadFloat3(&gVertexList[gIndexOfFocusedVertex].Position);
+        XMFLOAT3 center = gModel->GetCenterPoint();
+
+        XMVECTOR lookAt = XMLoadFloat3(&center);
         XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
         XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
@@ -1012,16 +1024,19 @@ HRESULT UpdateFrame(float deltaTime)
         gDirectInput->SetControlMode((uint32)eControlFlags::KEYBOARD_MOVEMENT_MODE);
     }
 
-    // 초점 정점 변경
-    if (gKeyboard[DIK_H] & 0x80)
-    {
-        gIndexOfFocusedVertex = rand()%gVertexCount;
-        XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
-        XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
-        XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
+    //// 초점 정점 변경
+    //if (gKeyboard[DIK_H] & 0x80)
+    //{
+    //    //
+    //    // 랜덤 버텍스 말고, Model에서 최대/최소 y값의 중간값으로 설정.
+    //    //
+    //    gIndexOfFocusedVertex = rand()%gVertexCount;
+    //    XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
+    //    XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
+    //    XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
 
-        gCamera.ChangeFocus(focusPoint);
-    }
+    //    gCamera.ChangeFocus(focusPoint);
+    //}
 
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
@@ -1044,32 +1059,33 @@ HRESULT Render(float deltaTime)
 
 
     // outline
-    gDeviceContext->RSSetState(gOutlineRasterState);
+    //gDeviceContext->RSSetState(gOutlineRasterState);
 
-    gDeviceContext->VSSetShader(gVsOutline, nullptr, 0);
-    gDeviceContext->PSSetShader(gPsOutline, nullptr, 0);
+    //gDeviceContext->VSSetShader(gVsOutline, nullptr, 0);
+    //gDeviceContext->PSSetShader(gPsOutline, nullptr, 0);
 
-    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBOutline);
-    
-    // arbit fbx model
-    gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor) * gCamera.GetViewMatrix() * gCamera.GetProjectionMatrix();
+    //gDeviceContext->VSSetConstantBuffers(0, 1, &gCBOutline);
+    //
+    //// arbit fbx model
+    //gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor) * gCamera.GetViewMatrix() * gCamera.GetProjectionMatrix();
 
-    CBOutline cbOutline;
-    cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
+    //CBOutline cbOutline;
+    //cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
+    //gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
 
-    gModel->Draw();
+    //gModel->Draw();
 
 
     //
     // render front
     //
-    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+   //gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     gDeviceContext->RSSetState(gBasicRasterState);
 
-    gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
-    gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
+    //gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
+   //gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
 
     gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
     gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
@@ -1171,8 +1187,8 @@ void Cleanup()
     {
         gDeviceContext->ClearState();
     }
-    delete[] gVertexList;
-    delete[] gIndexList;
+    //delete[] gVertexList;
+    //delete[] gIndexList;
 
     delete gModel;
 
@@ -1196,8 +1212,8 @@ void Cleanup()
     SAFETY_RELEASE(gCBLight);
     SAFETY_RELEASE(gCBOutline);
 
-    SAFETY_RELEASE(gIndexBuffer);
-    SAFETY_RELEASE(gVertexBuffer);
+    //SAFETY_RELEASE(gIndexBuffer);
+    //SAFETY_RELEASE(gVertexBuffer);
     SAFETY_RELEASE(gVertexLayout);
     SAFETY_RELEASE(gPixelShaderTextureAndLighting);
     SAFETY_RELEASE(gVertexShader);

@@ -75,11 +75,10 @@ void ModelImporter::LoadFbxModel(const char* fileName)
     parseTextureInfo();
 
     mImporter->Destroy();
-
 }
 
 
-const std::vector<Mesh>* ModelImporter::GetMesh() const
+std::vector<Mesh>* ModelImporter::GetMesh()
 {
     return &mMeshes;
 }
@@ -87,6 +86,16 @@ const std::vector<Mesh>* ModelImporter::GetMesh() const
 size_t ModelImporter::GetMeshCount() const
 {
     return mMeshes.size();
+}
+
+uint32 ModelImporter::GetSumVertexCount() const
+{
+    return mSumVertexCount;
+}
+
+uint32 ModelImporter::GetSumIndexCount() const
+{
+    return mSumIndexCount;
 }
 
 void ModelImporter::preprocess(FbxNode* Parent, FbxNode* Current)
@@ -104,8 +113,10 @@ void ModelImporter::preprocess(FbxNode* Parent, FbxNode* Current)
     if (Current->GetMesh())
     {
         node.Current = Current;
-        // 현재 아직은 쓸모 없는데, 계층 구조 구성시 사용되지 않을까 예상.
+        // 현재 아직은 쓸모 없는데, 애니메이션을 위한 계층 구조 구성시 사용되지 않을까 예상.
         node.Parent = Parent;
+
+        // FbxNode::EvaluateGlobalBoundingBoxMinMaxCenter();
 
         mFbxObjects.push_back(node);
     }
@@ -129,7 +140,6 @@ void ModelImporter::parseMesh()
         Mesh& meshData = mMeshes.back();
         
         FbxMesh* mesh = mFbxObjects[nodeIndex].Current->GetMesh();
-
         size_t numConverted = 0;
         mbstowcs_s(&numConverted, meshData.Name, MESH_NAME_LENGTH, mesh->GetName(), strlen(mesh->GetName()));
         meshData.Name[127] = (WCHAR)L"\n";
@@ -258,6 +268,10 @@ void ModelImporter::parseMesh()
                 }
             }
         }
+
+        // 해당 메시가 가지는 버텍스 수를 알기 좋은 위치
+        mSumVertexCount += meshData.Vertex.size();
+        mSumIndexCount += meshData.IndexList.size();
 
         // 다음 메시를 세팅을 위한 초기화. 
         mVertexDuplicationCheck.clear();
