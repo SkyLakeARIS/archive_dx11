@@ -5,10 +5,14 @@ using namespace DirectX;
 
 class Camera final
 {
+
 public:
-    Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
-    Camera(XMFLOAT3 focus);
+    Camera(ID3D11Device* device, ID3D11DeviceContext* deviceContext, uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
     virtual ~Camera();
+
+    void SetupD3D();
+
+    //void UpdateCbMatrix() const;
 
     void RotateAxis(float yawRad, float pitchRad);
     
@@ -17,14 +21,20 @@ public:
     void ChangeFocus(XMFLOAT3 newFocus);
 
     inline XMMATRIX GetViewMatrix() const;
-    inline XMMATRIX GetProjectionMatrix();
+    inline XMMATRIX GetViewProjectionMatrix() const;
+    inline XMMATRIX GetProjectionMatrix() const;
 private:
 
     void calcCameraPosition();
 
     void makeViewMatrix();
+    void makeProjectionMatrix();
 
 private:
+
+    ID3D11Device* mDevice;
+    ID3D11DeviceContext* mDeviceContext;
+
     XMFLOAT2    mAnglesRad;         // (가상의) 구면에서의 위치를 계산하기 위한 각, x == pi, y == theta
     XMVECTOR    mPositionInSphere;  // (가상의) 구면에서의 좌표
 
@@ -37,10 +47,14 @@ private:
     XMVECTOR    mvForward;          // 필요없음.
     XMVECTOR    mvRight;            // 필요없음.
 
+    uint32      mScreenWidth;
+    uint32      mScreenHeight;
 
     XMMATRIX    mMatView;
     XMMATRIX    mMatProjection;
+    XMMATRIX    mMatViewProjection;
 
+  //  ID3D11Buffer* mCbViewProjection;    // 모델에서 가지게 될 듯.
 };
 
 inline XMMATRIX Camera::GetViewMatrix() const
@@ -48,10 +62,12 @@ inline XMMATRIX Camera::GetViewMatrix() const
     return mMatView;
 }
 
-inline XMMATRIX Camera::GetProjectionMatrix()
+inline XMMATRIX Camera::GetProjectionMatrix() const
 {
-    INT32 width = 1024;
-    INT32 height = 720;
-    mMatProjection = XMMatrixPerspectiveFovLH(XM_PIDIV4, width / (FLOAT)height, 0.001f, 1000.0f);
     return mMatProjection;
+}
+
+inline XMMATRIX Camera::GetViewProjectionMatrix() const
+{
+    return mMatViewProjection;
 }

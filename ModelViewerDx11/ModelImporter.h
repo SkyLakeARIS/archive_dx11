@@ -28,6 +28,8 @@ public:
     size_t                          GetMeshCount() const;
     uint32                          GetSumVertexCount() const;
     uint32                          GetSumIndexCount() const;
+
+    XMFLOAT3                        GetModelCenter() const;
 private:
 
     void    preprocess(FbxNode* parent, FbxNode* current);
@@ -55,6 +57,8 @@ private:
     std::vector<Mesh>       mMeshes;
     uint32                  mSumVertexCount; // 메시 버텍스를 하나로 뭉치기 위함.
     uint32                  mSumIndexCount; // 메시 버텍스를 하나로 뭉치기 위함.
+
+    FbxVector4              mModelCenter;
 
     std::set<int>           mVertexDuplicationCheck;    // 폴리곤을 이용하여 모델을 구성하면 버텍스 중복이 생기므로 제거
     std::map<int, int>      mIndexMap;                  // 올바른 인덱스리스트 구성을 위한 PolygonVertex와 벡터와 연결

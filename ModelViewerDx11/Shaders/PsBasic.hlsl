@@ -6,7 +6,7 @@ Texture2D txDiffuse : register(t0);
 
 SamplerState samLinear : register(s0);
 
-cbuffer cbLight : register(b3)
+cbuffer cbLight : register(b0)
 {
     float4 vLightColor;
     float4 vLightDir;

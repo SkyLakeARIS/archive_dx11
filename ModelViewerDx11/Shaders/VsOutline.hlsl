@@ -1,6 +1,11 @@
-cbuffer cbOutline : register(b0)
+cbuffer cbMatrix : register(b0)
 {
-    matrix WorldViewProjectionMat;
+    matrix WVP;
+}
+
+cbuffer cbOutline : register(b1)
+{
+    float OutlineWidth;
 }
 
 struct VsInput
@@ -20,7 +25,7 @@ PsInput main(VsInput input)
 {
     PsInput output;
     float outlineWidth = 0.01f;
-    output.Position = mul(float4(input.Normal.xyz * outlineWidth + input.Position.xyz, 1), WorldViewProjectionMat);
+    output.Position = mul(float4(input.Normal.xyz * outlineWidth + input.Position.xyz, 1), WVP);
     output.TexCoord = input.TexCoord;
 	return output;
 }

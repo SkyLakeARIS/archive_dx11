@@ -109,9 +109,7 @@ DirectInput*            gDirectInput = nullptr;
 // 여기는 카메라+물체가 가지는 행렬, 굳이 전역으로 뺄 필요없긴 함.
 XMMATRIX gMatWorld1;
 
-Camera gCamera(XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
-    , XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f)
-    , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+Camera* gCamera = nullptr;
 
 // 물체 관련 전역 - 임시
 float   gScaleFactor = 1.0f;
@@ -530,23 +528,23 @@ HRESULT InitializeD3D()
 
     gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, gDepthStencilView);
 
-    // 기본 래스터 스테이트
-    D3D11_RASTERIZER_DESC basicRasterDesc;
-    ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+    //// 기본 래스터 스테이트
+    //D3D11_RASTERIZER_DESC basicRasterDesc;
+    //ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
 
-    basicRasterDesc.CullMode = D3D11_CULL_BACK;
-    basicRasterDesc.FillMode = D3D11_FILL_SOLID;
-    basicRasterDesc.FrontCounterClockwise = false;
-    gDevice->CreateRasterizerState(&basicRasterDesc, &gBasicRasterState);
+    //basicRasterDesc.CullMode = D3D11_CULL_BACK;
+    //basicRasterDesc.FillMode = D3D11_FILL_SOLID;
+    //basicRasterDesc.FrontCounterClockwise = false;
+    //gDevice->CreateRasterizerState(&basicRasterDesc, &gBasicRasterState);
 
-    // 아웃라인용 래스터 스테이트
-    D3D11_RASTERIZER_DESC outlineRasterDesc;
-    ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+    //// 아웃라인용 래스터 스테이트
+    //D3D11_RASTERIZER_DESC outlineRasterDesc;
+    //ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
 
-    outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
-    outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
-    outlineRasterDesc.FrontCounterClockwise = false;
-    gDevice->CreateRasterizerState(&outlineRasterDesc, &gOutlineRasterState);
+    //outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
+    //outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
+    //outlineRasterDesc.FrontCounterClockwise = false;
+    //gDevice->CreateRasterizerState(&outlineRasterDesc, &gOutlineRasterState);
 
     //
     // DirectInput/MyInput initialize
@@ -661,11 +659,19 @@ HRESULT SetupGeometry()
     {
         return result;
     }
+
+
+    gCamera = new Camera(gDevice, gDeviceContext, gWidth, gHeight
+        , XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
+        , XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f)
+        , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+
+
     gImporter = new ModelImporter(gDevice);
     gImporter->Initialize();
     Renderer renderer(gDevice, gDeviceContext); // dummy
 
-    gModel = new Model(&renderer, gDevice, gDeviceContext);
+    gModel = new Model(&renderer, gDevice, gDeviceContext, gCamera);
 
     gImporter->LoadFbxModel("/models/unagi.fbx");
 
@@ -745,37 +751,37 @@ HRESULT SetupGeometry()
     
 
     gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    
-    // 상수 버퍼 생성 : matView
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(CBCamera);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
+    //
+    //// 상수 버퍼 생성 : matView
+    //bd.Usage = D3D11_USAGE_DEFAULT;
+    //bd.ByteWidth = sizeof(CBCamera);
+    //bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    //bd.CPUAccessFlags = 0;
 
-    result = gDevice->CreateBuffer(&bd, nullptr, &gCBCamera);
-    if (FAILED(result))
-    {
-        ASSERT(false, "상수 버퍼 생성 실패 : gCBCamera");
-        return E_FAIL;
-    }
+    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBCamera);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBCamera");
+    //    return E_FAIL;
+    //}
 
-    // 상수 버퍼 생성 : projectionView
-    bd.ByteWidth = sizeof(CBChangeOnResize);
-    result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangeOnResize);
-    if (FAILED(result))
-    {
-        ASSERT(false, "상수 버퍼 생성 실패 : gCBChangeOnResize");
-        return E_FAIL;
-    }
+    //// 상수 버퍼 생성 : projectionView
+    //bd.ByteWidth = sizeof(CBChangeOnResize);
+    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangeOnResize);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBChangeOnResize");
+    //    return E_FAIL;
+    //}
 
-    // 상수 버퍼 생성 : matWorld and color
-    bd.ByteWidth = sizeof(CBChangesEveryFrame);
-    result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangesEveryFrame1);
-    if (FAILED(result))
-    {
-        ASSERT(false, "상수 버퍼 생성 실패 : gCBChangesEveryFrame");
-        return E_FAIL;
-    }
+    //// 상수 버퍼 생성 : matWorld and color
+    //bd.ByteWidth = sizeof(CBChangesEveryFrame);
+    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangesEveryFrame1);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBChangesEveryFrame");
+    //    return E_FAIL;
+    //}
     // 상수 버퍼 생성 : light
     bd.ByteWidth = sizeof(CBLight);
     result = gDevice->CreateBuffer(&bd, nullptr, &gCBLight);
@@ -785,31 +791,15 @@ HRESULT SetupGeometry()
         return E_FAIL;
     }
 
-    // 상수 버퍼 생성 : light
-    bd.ByteWidth = sizeof(CBOutline);
-    result = gDevice->CreateBuffer(&bd, nullptr, &gCBOutline);
-    if (FAILED(result))
-    {
-        ASSERT(false, "상수 버퍼 생성 실패 : CBOutline");
-        return E_FAIL;
-    }
-    
-    D3D11_SAMPLER_DESC samplerDesc = {};
-    // D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR  D3D11_FILTER_MIN_MAG_MIP_POINT
-    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
-    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER; // 아직 정확히는 잘 모름.
-    samplerDesc.MinLOD = 0;
-    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-    result = gDevice->CreateSamplerState(&samplerDesc, &gSamplerAnisotropic);
-    if (FAILED(result))
-    {
-        ASSERT(false, "SamplerState 생성 실패");
-        return E_FAIL;
-    }
+    //// 상수 버퍼 생성
+    //bd.ByteWidth = sizeof(CBOutline);
+    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBOutline);
+    //if (FAILED(result))
+    //{
+    //    ASSERT(false, "상수 버퍼 생성 실패 : CBOutline");
+    //    return E_FAIL;
+    //}
+    //
 
     // 텍스처 입힐 때 다시 활성화
     //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
@@ -834,11 +824,11 @@ HRESULT SetupGeometry()
     XMMATRIX matFocus = XMMatrixIdentity()* XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
     XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
 
-    gCamera.ChangeFocus(focusPoint);
+    gCamera->ChangeFocus(focusPoint);
 
-    CBChangeOnResize cbChangeOnResize;
-    cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
-    gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
+   // CBChangeOnResize cbChangeOnResize;
+   // cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera->GetProjectionMatrix());
+  //  gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
 
 
     srand(time(NULL));
@@ -945,27 +935,27 @@ HRESULT UpdateFrame(float deltaTime)
         int mouseX = 0;
         int mouseY = 0;
         gDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
-        gCamera.RotateAxis(XMConvertToRadians(mouseX * deltaTime), XMConvertToRadians(mouseY * deltaTime));
+        gCamera->RotateAxis(XMConvertToRadians(mouseX * deltaTime), XMConvertToRadians(mouseY * deltaTime));
     }
     else
     {
         if (gKeyboard[DIK_W] & 0x80)
         {
-            gCamera.RotateAxis( 0.0f, XMConvertToRadians(-speed * deltaTime));
+            gCamera->RotateAxis( 0.0f, XMConvertToRadians(-speed * deltaTime));
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            gCamera.RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime));
+            gCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime));
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            gCamera.RotateAxis(XMConvertToRadians(-speed * deltaTime), 0.0f);
+            gCamera->RotateAxis(XMConvertToRadians(-speed * deltaTime), 0.0f);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            gCamera.RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f);
+            gCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f);
         }       
     }
 
@@ -973,56 +963,58 @@ HRESULT UpdateFrame(float deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        gCamera.AddRadiusSphere(speed * deltaTime);
+        gCamera->AddRadiusSphere(speed * deltaTime);
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        gCamera.AddRadiusSphere(-speed * deltaTime);
+        gCamera->AddRadiusSphere(-speed * deltaTime);
     }
 
-    // 물체 스케일링
-    if (gKeyboard[DIK_R] & 0x80)
-    {
-        gScaleFactor += 0.1f * speed * deltaTime;
-        if(gScaleFactor > 15.0f)
-        {
-            gScaleFactor = 15.0f;
-        }
-        // 변경된 사이즈에 의해 달라진 초점 위치를 다시 계산한 뒤,
-        // 월드공간으로 변환하여 카메라에 전달.
-        XMFLOAT3 newFocus;
-        XMFLOAT3 center = gModel->GetCenterPoint();
+    //// 물체 스케일링
+    //if (gKeyboard[DIK_R] & 0x80)
+    //{
+    //    gScaleFactor += 0.1f * speed * deltaTime;
+    //    if(gScaleFactor > 15.0f)
+    //    {
+    //        gScaleFactor = 15.0f;
+    //    }
+    //    // 변경된 사이즈에 의해 달라진 초점 위치를 다시 계산한 뒤,
+    //    // 월드공간으로 변환하여 카메라에 전달.
+    //    XMFLOAT3 newFocus;
+    //    XMFLOAT3 center = gModel->GetCenterPoint();
 
-        XMVECTOR lookAt = XMLoadFloat3(&center);
-        XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
-        XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
+    //    XMVECTOR lookAt = XMLoadFloat3(&center);
+    //    XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
+    //    XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
-        gCamera.ChangeFocus(newFocus);
-    }
+    //    gCamera->ChangeFocus(newFocus);
+    //}
 
-    if (gKeyboard[DIK_F] & 0x80)
-    {
-        gScaleFactor -= 0.1f * speed * deltaTime;
-        if (gScaleFactor < 0.2f)
-        {
-            gScaleFactor = 0.2f;
-        }
-        XMFLOAT3 newFocus;
-        XMFLOAT3 center = gModel->GetCenterPoint();
+    //if (gKeyboard[DIK_F] & 0x80)
+    //{
+    //    gScaleFactor -= 0.1f * speed * deltaTime;
+    //    if (gScaleFactor < 0.2f)
+    //    {
+    //        gScaleFactor = 0.2f;
+    //    }
+    //    XMFLOAT3 newFocus;
+    //    XMFLOAT3 center = gModel->GetCenterPoint();
 
-        XMVECTOR lookAt = XMLoadFloat3(&center);
-        XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
-        XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
+    //    XMVECTOR lookAt = XMLoadFloat3(&center);
+    //    XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
+    //    XMStoreFloat3(&newFocus, XMVector3TransformCoord(lookAt, matFocus));
 
-        gCamera.ChangeFocus(newFocus);
-    }
+    //    gCamera->ChangeFocus(newFocus);
+    //}
 
     // 키보드<-> 마우스 조작 전환
-    if (gKeyboard[DIK_C] & 0x80)
+    static bool bPressKey = false;
+    if (!(gKeyboard[DIK_C] & 0x80) && bPressKey)
     {
         gDirectInput->SetControlMode((uint32)eControlFlags::KEYBOARD_MOVEMENT_MODE);
     }
+    bPressKey = gKeyboard[DIK_C] & 0x80;
 
     //// 초점 정점 변경
     //if (gKeyboard[DIK_H] & 0x80)
@@ -1082,50 +1074,50 @@ HRESULT Render(float deltaTime)
 
    //gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-    gDeviceContext->RSSetState(gBasicRasterState);
+//    gDeviceContext->RSSetState(gBasicRasterState);
 
     //gDeviceContext->VSSetShader(gVertexShader, nullptr, 0);
    //gDeviceContext->PSSetShader(gPixelShaderTextureAndLighting, nullptr, 0);
 
-    gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
-    gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
-    gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    //gDeviceContext->VSSetConstantBuffers(0, 1, &gCBCamera);
+    //gDeviceContext->VSSetConstantBuffers(1, 1, &gCBChangeOnResize);
+    //gDeviceContext->VSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
 
-    gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
-    gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
+    //gDeviceContext->PSSetConstantBuffers(2, 1, &gCBChangesEveryFrame1);
+    //gDeviceContext->PSSetConstantBuffers(3, 1, &gCBLight);
 
-    gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
+    //gDeviceContext->PSSetSamplers(0, 1, &gSamplerAnisotropic);
 
 
-    // Setup our lighting parameters
-    static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.550f, 1.0f);
-    XMFLOAT4 lightColor(0.1f, 0.1f, 0.1f, 1.0f);
+    //// Setup our lighting parameters
+    //static XMFLOAT4 lightDirs(0.0f, 0.577f, -0.550f, 1.0f);
+    //XMFLOAT4 lightColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    XMMATRIX matRotateLight = XMMatrixRotationY(deltaTime);
-    XMVECTOR vLightDir = XMLoadFloat4(&lightDirs);
-    vLightDir = XMVector3Transform(vLightDir, matRotateLight);
+    //XMMATRIX matRotateLight = XMMatrixRotationY(deltaTime);
+    //XMVECTOR vLightDir = XMLoadFloat4(&lightDirs);
+    //vLightDir = XMVector3Transform(vLightDir, matRotateLight);
 
-    XMStoreFloat4(&lightDirs, vLightDir);
+    //XMStoreFloat4(&lightDirs, vLightDir);
 
-    gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
+    //gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
 
-    CBChangesEveryFrame cbChangesEveryFrame;
-    cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
-    gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
+    //CBChangesEveryFrame cbChangesEveryFrame;
+    //cbChangesEveryFrame.mWorld = XMMatrixTranspose(gMatWorld1);
+    //gDeviceContext->UpdateSubresource(gCBChangesEveryFrame1, 0, nullptr, &cbChangesEveryFrame, 0, 0);
 
-    CBCamera camera;
-    camera.mView = XMMatrixTranspose(gCamera.GetViewMatrix());
-    gDeviceContext->UpdateSubresource(gCBCamera, 0, nullptr, &camera, 0, 0);
+    //CBCamera camera;
+    //camera.mView = XMMatrixTranspose(gCamera->GetViewMatrix());
+    //gDeviceContext->UpdateSubresource(gCBCamera, 0, nullptr, &camera, 0, 0);
 
-    CBChangeOnResize projection;
-    projection.mProjection = XMMatrixTranspose(gCamera.GetProjectionMatrix());
-    gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &projection, 0, 0);
+    //CBChangeOnResize projection;
+    //projection.mProjection = XMMatrixTranspose(gCamera->GetProjectionMatrix());
+    //gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &projection, 0, 0);
 
-    CBLight cbLight;
-    cbLight.vLightColor = lightColor;
-    cbLight.vLightDir = lightDirs;
+    //CBLight cbLight;
+    //cbLight.vLightColor = lightColor;
+    //cbLight.vLightDir = lightDirs;
 
-    gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
+    //gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
     gModel->Draw();
@@ -1191,6 +1183,7 @@ void Cleanup()
     //delete[] gIndexList;
 
     delete gModel;
+    delete gCamera;
 
     SAFETY_RELEASE(gSamplerAnisotropic);
 

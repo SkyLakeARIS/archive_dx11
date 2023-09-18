@@ -1,15 +1,23 @@
 ﻿#include "Model.h"
 #include "ModelImporter.h"
 
-Model::Model(Renderer* renderer, ID3D11Device* device, ID3D11DeviceContext* deviceContext)
+Model::Model(Renderer* renderer, ID3D11Device* device, ID3D11DeviceContext* deviceContext, Camera* camera)
     : mNumMesh(0)
     , mNumVertex(0)
     , mRenderer(renderer)
     , mDevice(device)
     , mDeviceContext(deviceContext)
+    , mCamera(camera)
 {
+    ASSERT(renderer != nullptr, "do not pass nullptr");
+    ASSERT(device != nullptr, "do not pass nullptr");
+    ASSERT(deviceContext != nullptr, "do not pass nullptr");
+    ASSERT(camera != nullptr, "do not pass nullptr");
+
     mDevice->AddRef();
     mDeviceContext->AddRef();
+
+    mMatWorld = XMMatrixIdentity();
 }
 
 Model::~Model()
@@ -20,8 +28,22 @@ Model::~Model()
     }
 
     SAFETY_RELEASE(mVertexBuffers);
-
     SAFETY_RELEASE(mIndexBuffers);
+
+    SAFETY_RELEASE(mCbOutlineShader);
+    SAFETY_RELEASE(mCbOutlineWidth);
+    SAFETY_RELEASE(mCbBasicShader);
+
+
+    SAFETY_RELEASE(mVertexShader);
+    SAFETY_RELEASE(mPixelShader);
+
+    SAFETY_RELEASE(mInputLayout);
+
+    SAFETY_RELEASE(mRasterBasic);
+    SAFETY_RELEASE(mRasterOutline);
+    SAFETY_RELEASE(mSamplerState);
+
 
     mDevice->Release();
     mDevice = nullptr;
@@ -30,6 +52,7 @@ Model::~Model()
 
     delete[] vertices;
     delete[] indices;
+
 }
 
 void Model::Draw()
@@ -38,6 +61,8 @@ void Model::Draw()
         // 근데 buffer를 여러개로 나누면 draw는 어떻게 ..?
         // => DrawIndexedInstanced 조사
     //prepare();
+    mDeviceContext->RSSetState(mRasterBasic);
+
     mDeviceContext->IASetInputLayout(mInputLayout);
     const uint32 stride = sizeof(Vertex);
     const uint32 offset = 0;
@@ -45,11 +70,18 @@ void Model::Draw()
     mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffers, &stride, &offset);
     mDeviceContext->IASetIndexBuffer(mIndexBuffers, DXGI_FORMAT_R32_UINT, 0);
 
-   mDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
+    mDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
+    mDeviceContext->VSSetConstantBuffers(0, 1, &mCbBasicShader);
+
     mDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
+    mDeviceContext->PSSetSamplers(0, 1, &mSamplerState);
 
 
+    CbBasic cbMatrices;
+    cbMatrices.World = XMMatrixTranspose(mMatWorld);
+    cbMatrices.WVP = XMMatrixTranspose(mMatWorld * mCamera->GetViewProjectionMatrix());
 
+    mDeviceContext->UpdateSubresource(mCbBasicShader, 0, nullptr, &cbMatrices, 0, 0);
     // Draw
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
     size_t vertexOffset = 0;
@@ -65,7 +97,6 @@ void Model::Draw()
         vertexOffset += mMeshes[index].Vertex.size();
         indexOffset += mMeshes[index].IndexList.size();
     }
-
 }
 
 HRESULT Model::SetupMesh(ModelImporter& importer)
@@ -82,7 +113,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     mMeshes.swap(*importer.GetMesh());
 
     mNumMesh = mMeshes.size();
-    ASSERT(mNumMesh > 0, "Model::SetupMesh num of mesh is 0.");
+    ASSERT(mNumMesh > 0, "Model::SetupMesh 메시 수는 1 이상이어야 합니다. num of mesh must be over 0.");
 
     Vertex* posInVertices = vertices;
     uint32* posInIndices = indices;
@@ -121,11 +152,22 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
                 minHeight = mMeshes[meshIndex].Vertex[vertexIndex].Position;
             }
         }
+
+
         // calc center of object
+
+               // 센터 값이 바닥쪽에 있음.
+        // 어떻게 보면 아래 방식이 뭔가 모델링 툴의 진짜 원점같아 보이긴 한다. 그래서 일단 남겨놓을 예정.
         XMVECTOR min= XMLoadFloat3(&minHeight);
         XMVECTOR max = XMLoadFloat3(&maxHeight);
         max += min;
         XMStoreFloat3(&mCenterPosition, (max / 2.0f));
+
+        // 물체의 정중앙을 초점으로 삼고 싶기 때문에 변경
+        //mCenterPosition = importer.GetModelCenter();
+
+ 
+
 
         // indexList info
         //const int numIndexList = meshes[meshIndex].IndexList.size();
@@ -165,25 +207,88 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
         result = mDevice->CreateBuffer(&desc, &subData, &mVertexBuffers);
         if (FAILED(result))
         {
-            ASSERT(false, "버텍스 버퍼 생성 실패");
+            ASSERT(false, "버텍스 버퍼 생성 실패 failed to create VertexBuffers");
             return E_FAIL;
         }
    // }
 
     // index buffer
     desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    desc.ByteWidth = sizeof(uint32)*sumIndexCount;
+    subData.pSysMem = indices;
+    result = mDevice->CreateBuffer(&desc, &subData, &mIndexBuffers);
+    if (FAILED(result))
+    {
+        ASSERT(false, "인덱스 버퍼 생성 실패 failed to create IndexBuffers");
+        return E_FAIL;
+    }
 
-   // for(uint32 i = 0; i < mNumMesh; ++i)
-   // {
-        desc.ByteWidth = sizeof(uint32)*sumIndexCount;
-        subData.pSysMem = indices;
-        result = mDevice->CreateBuffer(&desc, &subData, &mIndexBuffers);
-        if (FAILED(result))
-        {
-            ASSERT(false, "인덱스 버퍼 생성 실패");
-            return E_FAIL;
-        }
-   // }
+
+    // constant buffers
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.ByteWidth = sizeof(CbBasic);
+    desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    desc.CPUAccessFlags = 0;
+
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbBasicShader);
+    if (FAILED(result))
+    {
+        ASSERT(false, "CbBasic상수 버퍼 생성 실패 failed to create CbBasic");
+        return E_FAIL;
+    }
+
+    desc.ByteWidth = sizeof(CbOutline);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineShader);
+    if (FAILED(result))
+    {
+        ASSERT(false, "CbOutline상수 버퍼 생성 실패  failed to create CbOutline");
+        return E_FAIL;
+    }
+
+    desc.ByteWidth = sizeof(CbOutlineWidth);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineWidth);
+    if (FAILED(result))
+    {
+        ASSERT(false, "CbOutlineWidth상수 버퍼 생성 실패  failed to create CbOutlineWidth");
+        return E_FAIL;
+    }
+
+    // sampler
+    D3D11_SAMPLER_DESC samplerDesc = {};
+    // D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR  D3D11_FILTER_MIN_MAG_MIP_POINT
+    samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+    samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER; // 아직 정확히는 잘 모름.
+    samplerDesc.MinLOD = 0;
+    samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+    result = mDevice->CreateSamplerState(&samplerDesc, &mSamplerState);
+    if (FAILED(result))
+    {
+        ASSERT(false, "SamplerState 생성 실패");
+        return E_FAIL;
+    }
+
+    //
+        // 기본 래스터 스테이트
+    D3D11_RASTERIZER_DESC basicRasterDesc;
+    ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    basicRasterDesc.CullMode = D3D11_CULL_BACK;
+    basicRasterDesc.FillMode = D3D11_FILL_SOLID;
+    basicRasterDesc.FrontCounterClockwise = false;
+    mDevice->CreateRasterizerState(&basicRasterDesc, &mRasterBasic);
+
+    // 아웃라인용 래스터 스테이트
+    D3D11_RASTERIZER_DESC outlineRasterDesc;
+    ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
+    outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
+    outlineRasterDesc.FrontCounterClockwise = false;
+    mDevice->CreateRasterizerState(&outlineRasterDesc, &mRasterOutline);
 
     return result;
 }
@@ -197,6 +302,11 @@ HRESULT Model::SetupShader(
     mVertexShader = tempVsShaderToSet;
     mPixelShader = tempPsShaderToSet;
     mInputLayout = tempInputLayout;
+
+    mVertexShader->AddRef();
+    mPixelShader->AddRef();
+    mInputLayout->AddRef();
+
     return S_OK;
 }
 

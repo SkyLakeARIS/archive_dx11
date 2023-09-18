@@ -5,6 +5,7 @@ ModelImporter::ModelImporter(ID3D11Device* device)
     : mFbxScene(nullptr)
     , mFbxManager(nullptr)
     , mDevice(device)
+    , mModelCenter(0.0f, 0.0f, 0.0f)
 {
     mFbxObjects.reserve(64);
 }
@@ -74,6 +75,9 @@ void ModelImporter::LoadFbxModel(const char* fileName)
 
     parseTextureInfo();
 
+    mModelCenter /= mMeshes.size();
+
+
     mImporter->Destroy();
 }
 
@@ -98,6 +102,11 @@ uint32 ModelImporter::GetSumIndexCount() const
     return mSumIndexCount;
 }
 
+XMFLOAT3 ModelImporter::GetModelCenter() const
+{
+    return XMFLOAT3(mModelCenter.mData[0], mModelCenter.mData[1], mModelCenter.mData[2]);
+}
+
 void ModelImporter::preprocess(FbxNode* Parent, FbxNode* Current)
 {
     if(Current->GetCamera() || Current->GetLight())
@@ -115,9 +124,13 @@ void ModelImporter::preprocess(FbxNode* Parent, FbxNode* Current)
         node.Current = Current;
         // 현재 아직은 쓸모 없는데, 애니메이션을 위한 계층 구조 구성시 사용되지 않을까 예상.
         node.Parent = Parent;
-
-        // FbxNode::EvaluateGlobalBoundingBoxMinMaxCenter();
-
+        
+        FbxVector4 min;
+        FbxVector4 max;
+        FbxVector4 center;
+        FbxTime time;
+        Current->EvaluateGlobalBoundingBoxMinMaxCenter(min, max, center, time);
+        mModelCenter += center;
         mFbxObjects.push_back(node);
     }
 

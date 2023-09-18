@@ -1,12 +1,22 @@
 ﻿#include "Camera.h"
 #include "cmath"
 
-Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
-    : mvEye(vEye)
+Camera::Camera(ID3D11Device* device, ID3D11DeviceContext* deviceContext, uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
+    : mDevice(device)
+    , mDeviceContext(deviceContext)
+    , mScreenWidth(screenWidth)
+    , mScreenHeight(screenHeight)
+    , mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
     , mRadiusOfSphere(10.0f)
 {
+    ASSERT(device != nullptr, "do not pass nullptr");
+    ASSERT(deviceContext != nullptr, "do not pass nullptr");
+
+
+    mDevice->AddRef();
+    mDeviceContext->AddRef();
 
     /*
      * 직교좌표에서 구면좌표로 역계산.
@@ -22,6 +32,8 @@ Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
     mAnglesRad.x = atan(eyePos.x / -eyePos.z);
     mAnglesRad.y = acos(eyePos.y);
 
+    makeViewMatrix();
+    makeProjectionMatrix();
 }
 
 //// lookat의 위치를 setter로 받으므로 eye, up이 전달받을 필요가 없기 때문에
@@ -59,8 +71,29 @@ Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
 
 Camera::~Camera()
 {
-    
+    SAFETY_RELEASE(mDevice);
+    SAFETY_RELEASE(mDeviceContext);
+
+   // SAFETY_RELEASE(mCbViewProjection);
+
 }
+
+void Camera::SetupD3D()
+{
+    //D3D11_BUFFER_DESC desc;
+    //ZeroMemory(&desc, sizeof(desc));
+    //desc.Usage = D3D11_USAGE_DEFAULT;
+    //desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    //desc.CPUAccessFlags = 0;
+    //
+    //mDevice->CreateBuffer(&desc, nullptr, &mCbViewProjection);
+}
+//
+//void Camera::UpdateCbMatrix() const
+//{
+//
+//    mDeviceContext->UpdateSubresource(mCbViewProjection, )
+//}
 
 
 void Camera::RotateAxis(float yawRad, float pitchRad)
@@ -138,9 +171,17 @@ void Camera::calcCameraPosition()
     const XMVECTOR newPositionInOrbit = XMVectorScale(XMLoadFloat3(&positionInSphere), mRadiusOfSphere);
     // 가상의 구체를 통해 얻은 좌표로 실제 위치인 mvLookAtCenter를 중심으로 하는 궤도로 이동
     mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
+
 }
 
 void Camera::makeViewMatrix()
 {
     mMatView = XMMatrixLookAtLH(mvEye, mvLookAtCenter, mvUp);
+    mMatViewProjection = mMatView * mMatProjection;
+}
+
+void Camera::makeProjectionMatrix()
+{
+    mMatProjection = XMMatrixPerspectiveFovLH(XM_PIDIV4, mScreenWidth / (float)mScreenHeight, 0.001f, 1000.0f);
+    mMatViewProjection = mMatView * mMatProjection;
 }

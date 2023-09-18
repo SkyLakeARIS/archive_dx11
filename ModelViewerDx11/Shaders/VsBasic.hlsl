@@ -1,17 +1,8 @@
 
-cbuffer cbNerverChanges : register(b0)
-{
-    matrix View;
-}
-
-cbuffer cbChangeOnResize : register(b1)
-{
-    matrix Projection;
-}
-
-cbuffer cbChangesEveryFrame : register(b2)
+cbuffer cbMatrices : register(b0)
 {
     matrix World;
+    matrix WVP;
 }
 
 struct VS_INPUT
@@ -33,9 +24,7 @@ struct PS_INPUT
 PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT)0;
-    output.Pos = mul(input.Pos, World);
-    output.Pos = mul(output.Pos, View);
-    output.Pos = mul(output.Pos, Projection);
+    output.Pos = mul(input.Pos, WVP);
     output.Norm = mul(float4(input.Norm, 1), World).xyz;
 
     output.Tex = input.Tex;
