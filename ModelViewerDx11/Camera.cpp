@@ -1,22 +1,14 @@
 ﻿#include "Camera.h"
 #include "cmath"
 
-Camera::Camera(ID3D11Device* device, ID3D11DeviceContext* deviceContext, uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
-    : mDevice(device)
-    , mDeviceContext(deviceContext)
-    , mScreenWidth(screenWidth)
+Camera::Camera(uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
+    : mScreenWidth(screenWidth)
     , mScreenHeight(screenHeight)
     , mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
-    , mRadiusOfSphere(10.0f)
+    , mRadiusOfSphere(5.0f)
 {
-    ASSERT(device != nullptr, "do not pass nullptr");
-    ASSERT(deviceContext != nullptr, "do not pass nullptr");
-
-
-    mDevice->AddRef();
-    mDeviceContext->AddRef();
 
     /*
      * 직교좌표에서 구면좌표로 역계산.
@@ -36,44 +28,8 @@ Camera::Camera(ID3D11Device* device, ID3D11DeviceContext* deviceContext, uint32 
     makeProjectionMatrix();
 }
 
-//// lookat의 위치를 setter로 받으므로 eye, up이 전달받을 필요가 없기 때문에
-//// 해당 생성자를 이용하도록 할 수 있게 만드는 중
-//Camera::Camera(XMFLOAT3 lookAt)
-//    : mRadiusOfSphere(10.0f)
-//{
-//    mvLookAtCenter = XMLoadFloat3(&lookAt);
-//
-//    XMFLOAT3 eyePos = lookAt;
-//    eyePos.z -= 10.0f;
-//
-//    mvEye = XMLoadFloat3(&eyePos);
-//    /*
-//     * 직교좌표에서 구면좌표로 역계산.
-//     * 카메라 위치와 가상의 구면 위치와 동기화하기 위함.
-//     * (반지름) r이 1인 단위 구체로 생각하고 계산한다.
-//     */
-//    XMStoreFloat3(&eyePos, mvEye);
-//    eyePos.x = XMConvertToRadians(eyePos.x);
-//    eyePos.y = XMConvertToRadians(eyePos.y);
-//    eyePos.z = XMConvertToRadians(eyePos.z);
-//
-//    mAnglesRad.x = atan(eyePos.x / -eyePos.z);
-//    mAnglesRad.y = acos(eyePos.y/ mRadiusOfSphere);
-//
-//    /*
-//     *  up 벡터 계산
-//     */
-//    XMVECTOR vForward = XMVectorSubtract(mvLookAtCenter, mvEye);
-//    XMVECTOR vRight = XMVectorSet(lookAt.x, 0.0f, 0.0f, 0.0f);
-//    mvUp = XMVector3Cross(vForward, vRight);
-//
-//}
-
 Camera::~Camera()
 {
-    SAFETY_RELEASE(mDevice);
-    SAFETY_RELEASE(mDeviceContext);
-
    // SAFETY_RELEASE(mCbViewProjection);
 
 }
@@ -103,7 +59,7 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
 
     // pitch만 클램프, yaw는 순환
     // pitch limit는 -85.0~85.0
-    constexpr float PITCH_LIMIT = 0.261799; // 15 degree
+    constexpr float PITCH_LIMIT = 0.261799; // 15 degrees
     if(mAnglesRad.x >= XM_2PI)
     {
         mAnglesRad.x -= XM_2PI;
@@ -130,7 +86,7 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
 
 void Camera::AddRadiusSphere(float scaleFactor)
 {
-    constexpr float MAX_RADIUS = 80.0f;
+    constexpr float MAX_RADIUS = 50.0f;
     constexpr float MIN_RADIUS = 5.0f;
 
     mRadiusOfSphere += scaleFactor;

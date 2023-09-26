@@ -12,37 +12,7 @@
 using namespace DirectX;
 #define MAX_LOADSTRING 100
 
-//#define USING_MYINPUT
 
-
-
-// 16byte aligned
-struct CBCamera
-{
-    XMMATRIX mView;
-};
-
-struct CBChangeOnResize
-{
-    XMMATRIX mProjection;
-};
-
-struct CBChangesEveryFrame
-{
-    XMMATRIX mWorld;
-};
-
-// outline
-struct CBOutline
-{
-    XMMATRIX mWorldViewProjection;
-};
-
-struct CBLight
-{
-    XMFLOAT4 vLightColor;
-    XMFLOAT4 vLightDir;
-};
 
 // 전역 변수:
 HINSTANCE   ghInst;                                // 현재 인스턴스입니다.
@@ -53,19 +23,16 @@ INT32       gWidth = 1024;
 INT32       gHeight = 720;
 
 // global d3d11 objects
-ID3D11Device*                   gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
-ID3D11DeviceContext*            gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
-IDXGISwapChain*                 gSwapChain = nullptr;                // 렌더링한 결과를 출력할 대상
-ID3D11RenderTargetView*         gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
-ID3D11Texture2D*                gDepthStencil = nullptr;
-ID3D11DepthStencilView*         gDepthStencilView = nullptr;
-ID3D11RasterizerState*          gBasicRasterState = nullptr;
+//ID3D11Device*                   gDevice = nullptr;                   // 본체, 리소스, 개체 생성 해제 기능.
+//ID3D11DeviceContext*            gDeviceContext = nullptr;            // 흐름(전역적인 현재 상태), 여러 개 사용가능하긴 함., 화면에 그리는 것, 상태바꾸는 기능.
+//IDXGISwapChain*                 gSwapChain = nullptr;                // 렌더링한 결과를 출력할 대상
+//ID3D11RenderTargetView*         gRenderTargetView = nullptr;         // 화면에 그려질 버퍼
+//ID3D11Texture2D*                gDepthStencil = nullptr;
+//ID3D11DepthStencilView*         gDepthStencilView = nullptr;
+//ID3D11RasterizerState*          gBasicRasterState = nullptr;
 
 ID3D11VertexShader* gVsOutline = nullptr;
 ID3D11PixelShader* gPsOutline = nullptr;
-
-// outline
-ID3D11RasterizerState*          gOutlineRasterState = nullptr;
 
 
 D3D_DRIVER_TYPE                 gDriverType = D3D_DRIVER_TYPE_NULL;
@@ -74,29 +41,12 @@ D3D_FEATURE_LEVEL               gFeatureLevel = D3D_FEATURE_LEVEL_11_0;
 ID3D11VertexShader*             gVertexShader = nullptr;
 ID3D11PixelShader*              gPixelShaderTextureAndLighting = nullptr;
 
-ID3D11SamplerState*             gSamplerAnisotropic = nullptr;
-//enum {NUMBER_TEXTURE = 5};
-//ID3D11ShaderResourceView*       gShaderResourceView[NUMBER_TEXTURE];
-
 ID3D11InputLayout*              gVertexLayout = nullptr;
-//ID3D11Buffer*                   gVertexBuffer = nullptr;
-//ID3D11Buffer*                   gIndexBuffer = nullptr;
-
-ID3D11Buffer*                   gCBCamera = nullptr;
-ID3D11Buffer*                   gCBChangeOnResize = nullptr;
-ID3D11Buffer*                   gCBChangesEveryFrame1 = nullptr;
-ID3D11Buffer*                   gCBLight = nullptr;
-ID3D11Buffer*                   gCBOutline = nullptr;
 
 
 // global model
 ModelImporter*          gImporter = nullptr;
 Model*                  gModel = nullptr;
-
-//size_t                  gVertexCount = 0;
-//Vertex*             gVertexList = nullptr;
-//size_t                  gIndexListCount = 0;
-//unsigned int*           gIndexList = nullptr;
 
 #ifdef USING_MYINPUT
 MyInput*                gMyInput = nullptr;
@@ -106,14 +56,8 @@ DirectInput*            gDirectInput = nullptr;
 
 #endif
 
-// 여기는 카메라+물체가 가지는 행렬, 굳이 전역으로 뺄 필요없긴 함.
-XMMATRIX gMatWorld1;
 
 Camera* gCamera = nullptr;
-
-// 물체 관련 전역 - 임시
-float   gScaleFactor = 1.0f;
-//size_t  gIndexOfFocusedVertex;
 
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
@@ -129,108 +73,8 @@ HRESULT             Render(float deltaTime);
 void                Cleanup();
 
 
-//--------------------------------------------------------------------------------------
-// Helper for compiling shaders with D3DCompile
-//
-// With VS 11, we could load up prebuilt .cso files instead...
-//--------------------------------------------------------------------------------------
-HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
-{
-    HRESULT result = S_OK;
-
-    DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-#ifdef _DEBUG
-    // Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
-    // Setting this flag improves the shader debugging experience, but still allows 
-    // the shaders to be optimized and to run exactly the way they will run in 
-    // the release configuration of this program.
-    dwShaderFlags |= D3DCOMPILE_DEBUG;
-
-    // Disable optimizations to further improve shader debugging
-    dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-
-    ID3DBlob* pErrorBlob = nullptr;
-    result = D3DCompileFromFile(szFileName, nullptr, nullptr, szEntryPoint, szShaderModel,
-        dwShaderFlags, 0, ppBlobOut, &pErrorBlob);
-
-    if (FAILED(result))
-    {
-        if (pErrorBlob)
-        {
-            OutputDebugStringA(reinterpret_cast<const char*>(pErrorBlob->GetBufferPointer()));
-            pErrorBlob->Release();
-        }
-        return result;
-    }
-
-    if (pErrorBlob)
-    {
-        pErrorBlob->Release();
-    }
-
-    return S_OK;
-}
 
 
-#ifdef _DEBUG
-void CheckLiveObjects()
-{
-    HMODULE dxgidebugdll = GetModuleHandleW(L"dxgidebug.dll");
-    ASSERT(dxgidebugdll != NULL, "dxgidebug.dll 로드 실패");
-
-    decltype(&DXGIGetDebugInterface) GetDebugInterface = reinterpret_cast<decltype(&DXGIGetDebugInterface)>(GetProcAddress(dxgidebugdll, "DXGIGetDebugInterface"));
-
-    IDXGIDebug* debug;
-
-    GetDebugInterface(IID_PPV_ARGS(&debug));
-
-    OutputDebugStringW(L"====================== Direct3D Object ref count 메모리 누수 체크 ===================================\r\n");
-    debug->ReportLiveObjects(DXGI_DEBUG_D3D11, DXGI_DEBUG_RLO_DETAIL);
-    OutputDebugStringW(L"====================== 반환되지 않은 IUnknown 객체가 있을경우 위에 나타납니다. ======================\r\n");
-
-
-    debug->Release();
-}
-#endif
-
-HRESULT LoadTextureFromFileAndCreateResource(ID3D11Device& device, const WCHAR* fileName, const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView)
-{
-    ScratchImage image;
-    ID3D11Resource* textureResource = nullptr;
-
-    HRESULT result = LoadFromWICFile(fileName, WIC_FLAGS_NONE, nullptr, image);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"이미지 로드 실패", MB_OK);
-        ASSERT(false, "이미지 로드 실패");
-        goto FAILED;
-    }
-
-    result = CreateTexture(gDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &textureResource);
-    if (FAILED(result))
-    {
-        MessageBox(gWnd, std::to_wstring(result).c_str(), L"CreateTexture gTextureResource 생성 실패", MB_OK);
-        ASSERT(false, "CreateTexture gTextureResource 생성 실패");
-        goto FAILED;
-    }
-
-
-    result = gDevice->CreateShaderResourceView(textureResource, &srvDesc, &(*outShaderResourceView));
-    if (FAILED(result))
-    {
-        ASSERT(false, "outShaderResourceView 생성 실패");
-        goto FAILED;
-    }
-
-    result = S_OK;
-
-    FAILED:
-    image.Release();
-    SAFETY_RELEASE(textureResource);
-
-    return result;
-}
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -316,7 +160,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     EXIT_PROGRAM:
     Cleanup();
 #ifdef _DEBUG
-    CheckLiveObjects();
+    Renderer::CheckLiveObjects();
+
 #endif
     return programReturn;
 }
@@ -402,22 +247,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 HRESULT InitializeD3D()
 {
-    D3D_DRIVER_TYPE driverTypes[] =
-    {
-        D3D_DRIVER_TYPE_HARDWARE,
-        D3D_DRIVER_TYPE_WARP,
-        D3D_DRIVER_TYPE_REFERENCE
-    };
-    UINT32 numDriverTypes = ARRAYSIZE(driverTypes);
 
-    // gpu가 지원하는 최신버전으로 맞춰질 것이다.
-    D3D_FEATURE_LEVEL featureLevels[] =
-    {
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0
-    };
-    UINT32 numFeatureLevels = ARRAYSIZE(featureLevels);
 
     // 백버퍼와 프론트 버퍼를 스왑하는 방식, 백버퍼에서 프론트로 카피하는 방식 두 개가 존재함.
     DXGI_SWAP_CHAIN_DESC swapDesc;
@@ -434,117 +264,10 @@ HRESULT InitializeD3D()
     swapDesc.SampleDesc.Quality = 0;
     swapDesc.Windowed = TRUE;
 
-    UINT32 createDeviceFlag = 0;
-#ifdef _DEBUG
-    createDeviceFlag |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
-    HRESULT result = NULL;
-    for (UINT32 driverTypeIndex = 0; driverTypeIndex < numDriverTypes; ++driverTypeIndex)
-    {
-        gDriverType = driverTypes[driverTypeIndex];
-        result = D3D11CreateDeviceAndSwapChain(nullptr, gDriverType, nullptr, createDeviceFlag, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swapDesc, &gSwapChain, &gDevice, &gFeatureLevel, &gDeviceContext);
-        if (SUCCEEDED(result))
-        {
-            break;
-        }
-    }
-
-    if (FAILED(result))
+    if (FAILED(Renderer::GetInstance()->CreateDeviceAndSetup(swapDesc, gWnd, gHeight, gWidth, true)))
     {
         return E_FAIL;
     }
-
-    SET_PRIVATE_DATA(gDevice, "gDevice");
-
-
-
-    // 백버퍼를 얻어와서 렌더타겟으로 설정하는 부분
-    ID3D11Texture2D* backBuffer = nullptr;
-    // 데스크탑 버전에서는 기본적으로 스왑체인은 하나의 백버퍼를 가지고 있고, uwp는 만들어줘야한다.
-    result = gSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&backBuffer);
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
-    // view가 붙은것과 아닌것의 차이가 있다.
-    // 어떤 리소스가 있고 그것을 사용하기 위한 파생 인터페이스. 보통 읽기전용으로 동작한다.
-    // 9과달리 11에서는 어떤 원천 리소스를 가지고 어떤 방식으로 사용하냐에 따라 인터페이스가 다 나뉘어 있다고 한다.
-    result = gDevice->CreateRenderTargetView(backBuffer, nullptr, &gRenderTargetView);
-    // 백버퍼의 역할은 렌더타겟으로 지정해주는 것이 끝이다.
-    // refCount이기 때문에 바로 사라지는건 아니고, gRenderTargetView가 백버퍼를 가지기 때문에 이후에 사라질 것.
-    backBuffer->Release();
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
-
-    // output merger, 그래픽 버퍼에 써넣는 일을 할 때 OM이 붙음.
-    gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, nullptr);
-
-    D3D11_VIEWPORT viewport;
-    viewport.Width = (FLOAT)gWidth;
-    viewport.Height = (FLOAT)gHeight;
-    // 보통 0~1 값으로 지정한다.
-    viewport.MinDepth = 0.0f;
-    viewport.MaxDepth = 1.0f;
-    viewport.TopLeftX = 0;
-    viewport.TopLeftY = 0;
-    // 렌더링될 영역을 지정. s가 붙으니까 여러개 지정가능.(모델링 프로그램을 생각)
-    // rasterizer stage
-    gDeviceContext->RSSetViewports(1, &viewport);
-
-    D3D11_TEXTURE2D_DESC depthDesc = {};
-    depthDesc.Width = gWidth;
-    depthDesc.Height = gHeight;
-    depthDesc.MipLevels = 1;
-    depthDesc.ArraySize = 1;
-    depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    depthDesc.SampleDesc.Count = 1;                      // 멀티샘플링 수
-    depthDesc.SampleDesc.Quality = 0;                    // 멀티샘플링 퀼리티
-    depthDesc.Usage = D3D11_USAGE_DEFAULT;               // 디폴트로 사용
-    depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    depthDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
-    depthDesc.MiscFlags = 0;
-
-    result = gDevice->CreateTexture2D(&depthDesc, nullptr, &gDepthStencil);
-    if (FAILED(result))
-    {
-        ASSERT(false, "depth stencil 생성 실패");
-        return E_FAIL;
-    }
-
-    D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
-    depthStencilViewDesc.Format = depthDesc.Format;
-    depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-    depthStencilViewDesc.Texture2D.MipSlice = 0;
-
-    result = gDevice->CreateDepthStencilView(gDepthStencil, &depthStencilViewDesc, &gDepthStencilView);
-    if (FAILED(result))
-    {
-        ASSERT(false, "depth stencil view 생성 실패");
-        return E_FAIL;
-    }
-
-    gDeviceContext->OMSetRenderTargets(1, &gRenderTargetView, gDepthStencilView);
-
-    //// 기본 래스터 스테이트
-    //D3D11_RASTERIZER_DESC basicRasterDesc;
-    //ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-
-    //basicRasterDesc.CullMode = D3D11_CULL_BACK;
-    //basicRasterDesc.FillMode = D3D11_FILL_SOLID;
-    //basicRasterDesc.FrontCounterClockwise = false;
-    //gDevice->CreateRasterizerState(&basicRasterDesc, &gBasicRasterState);
-
-    //// 아웃라인용 래스터 스테이트
-    //D3D11_RASTERIZER_DESC outlineRasterDesc;
-    //ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-
-    //outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
-    //outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
-    //outlineRasterDesc.FrontCounterClockwise = false;
-    //gDevice->CreateRasterizerState(&outlineRasterDesc, &gOutlineRasterState);
 
     //
     // DirectInput/MyInput initialize
@@ -571,22 +294,22 @@ HRESULT SetupGeometry()
     HRESULT result;
 
 
-    ID3DBlob* vsBlob = nullptr;
+    //ID3DBlob* vsBlob = nullptr;
 
-    result = CompileShaderFromFile(L"Shaders/VsBasic.hlsl", "main", "vs_5_0", &vsBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
+  //  result = CompileShaderFromFile(L"Shaders/VsBasic.hlsl", "main", "vs_5_0", &vsBlob);
+  //  if (FAILED(result))
+ //   {
+   //     MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
+   //     return E_FAIL;
+ //   }
 
-    result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVertexShader);
+  //  result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &);
 
-    if (FAILED(result))
-    {
-        vsBlob->Release();
-        return E_FAIL;
-    }
+    //if (FAILED(result))
+    //{
+    //    vsBlob->Release();
+    //    return E_FAIL;
+    //}
 
     // 셰이더에 전달할 정보. 시멘틱.
     D3D11_INPUT_ELEMENT_DESC layout[] =
@@ -596,82 +319,79 @@ HRESULT SetupGeometry()
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 
     };
-    UINT numElements = ARRAYSIZE(layout);
-    
-    result = gDevice->CreateInputLayout(layout, numElements, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &gVertexLayout);
-    vsBlob->Release();
+  //  UINT numElements = ARRAYSIZE(layout);
+
+    result = Renderer::GetInstance()->CreateVertexShader(L"Shaders/VsBasic.hlsl", layout, ARRAYSIZE(layout), &gVertexShader, &gVertexLayout);
+  //  result = gDevice->CreateInputLayout(layout, numElements, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &);
+  //  vsBlob->Release();
     if (FAILED(result))
     {
         return E_FAIL;
     }
-
-
-    //// 보통 IASetVertexBuffer 세팅은 렌더링할 때 사용한다고 한다.
-    //// stride는 몇바이트 건너뛰어야 다음 버텍스가 나오는가, offset은 데이터 내부에서 몇번째 바이트에 버텍스 정보가 있는가.
-    //// 예제에서는 단순하기 때문에 미리 세팅.
-   // gDeviceContext->IASetInputLayout(gVertexLayout);
 
 
     // 픽셀 셰이더도 마찬가지로 진행
     // 4.0은 D3D10버전 셰이더
     // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
-    ID3DBlob* psBlob = nullptr;
-    // PS_Lighting
-    result = CompileShaderFromFile(L"Shaders/PsBasic.hlsl", "main", "ps_5_0", &psBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
+    //ID3DBlob* psBlob = nullptr;
+    //// PS_Lighting
+    //result = CompileShaderFromFile(, "main", "ps_5_0", &psBlob);
+    //if (FAILED(result))
+    //{
+    //    MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
+    //    return E_FAIL;
+    //}
 
-    result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPixelShaderTextureAndLighting);
-    psBlob->Release();
-    if (FAILED(result))
-    {
-        return result;
-    }
-
-    result = CompileShaderFromFile(L"Shaders/VsOutline.hlsl", "main", "vs_5_0", &vsBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
-
-    result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVsOutline);
-
-    vsBlob->Release();
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
-
-    result = CompileShaderFromFile(L"Shaders/PsOutline.hlsl", "main", "ps_5_0", &psBlob);
-    if (FAILED(result))
-    {
-        MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
-        return E_FAIL;
-    }
-
-    result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPsOutline);
-    psBlob->Release();
+    result = Renderer::GetInstance()->CreatePixelShader(L"Shaders/PsBasic.hlsl", &gPixelShaderTextureAndLighting);
+   //     gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPixelShaderTextureAndLighting);
+   // psBlob->Release();
     if (FAILED(result))
     {
         return result;
     }
 
+    
 
-    gCamera = new Camera(gDevice, gDeviceContext, gWidth, gHeight
+    //result = CompileShaderFromFile(L"Shaders/VsOutline.hlsl", "main", "vs_5_0", &vsBlob);
+    //if (FAILED(result))
+    //{
+    //    MessageBoxA(gWnd, "vertex shader can not be compiled. please check the file", "ERROR", MB_OK);
+    //    return E_FAIL;
+    //}
+
+    //result = gDevice->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &gVsOutline);
+
+    //vsBlob->Release();
+    //if (FAILED(result))
+    //{
+    //    return E_FAIL;
+    //}
+
+    //result = CompileShaderFromFile(L"Shaders/PsOutline.hlsl", "main", "ps_5_0", &psBlob);
+    //if (FAILED(result))
+    //{
+    //    MessageBoxA(gWnd, "pixel shader solid can not be compiled. please check the file", "ERROR", MB_OK);
+    //    return E_FAIL;
+    //}
+
+    //result = gDevice->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &gPsOutline);
+    //psBlob->Release();
+    //if (FAILED(result))
+    //{
+    //    return result;
+    //}
+
+
+    gCamera = new Camera(gWidth, gHeight
         , XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
         , XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f)
         , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
 
-    gImporter = new ModelImporter(gDevice);
+    gImporter = new ModelImporter(Renderer::GetInstance()->GetDevice());
     gImporter->Initialize();
-    Renderer renderer(gDevice, gDeviceContext); // dummy
 
-    gModel = new Model(&renderer, gDevice, gDeviceContext, gCamera);
+    gModel = new Model(Renderer::GetInstance(), gCamera);
 
     gImporter->LoadFbxModel("/models/unagi.fbx");
 
@@ -687,151 +407,10 @@ HRESULT SetupGeometry()
         return result;
     }
 
-    //size_t numMesh = gImporter->GetMeshCount();
-    //for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
-    //{
-    //    OutputDebugStringW(gModel->GetMeshName(meshIndex));
-    //    OutputDebugStringW(L"\n");
-    //    gVertexCount += gModel->GetVertexCount(meshIndex);
-    //}
+    //gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    Renderer::GetInstance()->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    gCamera->ChangeFocus(gModel->GetCenterPoint());
 
-    //gVertexList = new Vertex[gVertexCount];
-    //gModel->UpdateVertexBuffer(gVertexList, gVertexCount, 0);
-
-
-    D3D11_BUFFER_DESC bd = {};
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    //bd.ByteWidth = sizeof(Vertex) * gVertexCount;
-    //bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-
-    //D3D11_SUBRESOURCE_DATA initData = {};
-    //initData.pSysMem = gVertexList;
-
-    //result = gDevice->CreateBuffer(&bd, &initData, &gVertexBuffer);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "버텍스 버퍼 생성 실패 : gVertexBuffer");
-    //    return E_FAIL;
-    //}
-
-    // 메모리를 아끼려는건지?
-    // 내부에서 저장하고 쓰는게 아니라 넘겨준 변수를 그대로 활용하는 듯.
-    // 따라서 0도 변수로 전달.
-
-
-    /*
-     *  인덱스 버퍼
-     */
-    //for (size_t meshIndex = 0; meshIndex < numMesh; ++meshIndex)
-    //{
-    //    gIndexListCount += gModel->GetIndexListCount(meshIndex);
-    //}
-    //gIndexList = new unsigned int[gIndexListCount];
-    //gModel->UpdateIndexBuffer(gIndexList, gIndexListCount, 0);
-
-    //bd.Usage = D3D11_USAGE_DEFAULT;
-    ////bd.ByteWidth = sizeof(WORD) * 36;
-    //bd.ByteWidth = sizeof(unsigned int) * gIndexListCount;
-    //bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    //bd.CPUAccessFlags = 0;
-
-    //initData.pSysMem = indices;
-    //initData.pSysMem = gIndexList;
-
-    //result = gDevice->CreateBuffer(&bd, &initData, &gIndexBuffer);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "인덱스 버퍼 생성 실패");
-    //    return E_FAIL;
-    //}
-
-    //  DXGI_FORMAT_R16_UINT DXGI_FORMAT_R32G32_UINT
-    //gDeviceContext->IASetIndexBuffer(gIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-    
-
-    gDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    //
-    //// 상수 버퍼 생성 : matView
-    //bd.Usage = D3D11_USAGE_DEFAULT;
-    //bd.ByteWidth = sizeof(CBCamera);
-    //bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    //bd.CPUAccessFlags = 0;
-
-    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBCamera);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBCamera");
-    //    return E_FAIL;
-    //}
-
-    //// 상수 버퍼 생성 : projectionView
-    //bd.ByteWidth = sizeof(CBChangeOnResize);
-    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangeOnResize);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBChangeOnResize");
-    //    return E_FAIL;
-    //}
-
-    //// 상수 버퍼 생성 : matWorld and color
-    //bd.ByteWidth = sizeof(CBChangesEveryFrame);
-    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBChangesEveryFrame1);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "상수 버퍼 생성 실패 : gCBChangesEveryFrame");
-    //    return E_FAIL;
-    //}
-    // 상수 버퍼 생성 : light
-    bd.ByteWidth = sizeof(CBLight);
-    result = gDevice->CreateBuffer(&bd, nullptr, &gCBLight);
-    if (FAILED(result))
-    {
-        ASSERT(false, "상수 버퍼 생성 실패 : gCBLight");
-        return E_FAIL;
-    }
-
-    //// 상수 버퍼 생성
-    //bd.ByteWidth = sizeof(CBOutline);
-    //result = gDevice->CreateBuffer(&bd, nullptr, &gCBOutline);
-    //if (FAILED(result))
-    //{
-    //    ASSERT(false, "상수 버퍼 생성 실패 : CBOutline");
-    //    return E_FAIL;
-    //}
-    //
-
-    // 텍스처 입힐 때 다시 활성화
-    //// 로드한 텍스처의 리소스를 셰이더 리소스뷰로 전환 생성
-    //D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    //ZeroMemory(&srvDesc, sizeof(srvDesc));
-    //srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    //srvDesc.Texture2D.MipLevels = 1;
-    //srvDesc.Texture2D.MostDetailedMip = 0;
-
-    // Anbi_Body  Anbi_Hair  Anbi_Face AnbiWeapon_CompanyB_Blade_Fire01
-    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Body.png", srvDesc, &gShaderResourceView[0]);
-    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Hair.png", srvDesc, &gShaderResourceView[2]);
-    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Face.png", srvDesc, &gShaderResourceView[1]);
-    //LoadTextureFromFileAndCreateResource(*gDevice, L"textures/Unagi_Weapon.png", srvDesc, &gShaderResourceView[3]);
-
-
-    gMatWorld1 = XMMatrixIdentity();
-
-    // 초점 대상의 버텍스를 월드로 변환 (임시로 render와 동일한 world TM 사용)
-  //  gIndexOfFocusedVertex = (int)(gVertexCount / (float)2);
-    XMFLOAT3 focusPoint = gModel->GetCenterPoint();
-    XMMATRIX matFocus = XMMatrixIdentity()* XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
-    XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
-
-    gCamera->ChangeFocus(focusPoint);
-
-   // CBChangeOnResize cbChangeOnResize;
-   // cbChangeOnResize.mProjection = XMMatrixTranspose(gCamera->GetProjectionMatrix());
-  //  gDeviceContext->UpdateSubresource(gCBChangeOnResize, 0, nullptr, &cbChangeOnResize, 0, 0);
-
-
-    srand(time(NULL));
     return S_OK;
 }
 
@@ -1016,21 +595,6 @@ HRESULT UpdateFrame(float deltaTime)
     }
     bPressKey = gKeyboard[DIK_C] & 0x80;
 
-    //// 초점 정점 변경
-    //if (gKeyboard[DIK_H] & 0x80)
-    //{
-    //    //
-    //    // 랜덤 버텍스 말고, Model에서 최대/최소 y값의 중간값으로 설정.
-    //    //
-    //    gIndexOfFocusedVertex = rand()%gVertexCount;
-    //    XMFLOAT3 focusPoint = gVertexList[gIndexOfFocusedVertex].Position;
-    //    XMMATRIX matFocus = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor);
-    //    XMStoreFloat3(&focusPoint, XMVector3TransformCoord(XMLoadFloat3(&focusPoint), matFocus));
-
-    //    gCamera.ChangeFocus(focusPoint);
-    //}
-
-
     if (gKeyboard[DIK_ESCAPE] & 0x80)
     {
         SendMessage(gWnd, WM_DESTROY, 0, 0);
@@ -1044,11 +608,6 @@ HRESULT UpdateFrame(float deltaTime)
 
 HRESULT Render(float deltaTime)
 {
-    
-    float clearToSkyColor[] = { 0.4f, 0.6f, 1.0f, 1.0f };
-    gDeviceContext->ClearRenderTargetView(gRenderTargetView, clearToSkyColor);
-    gDeviceContext->ClearDepthStencilView(gDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
-
 
     // outline
     //gDeviceContext->RSSetState(gOutlineRasterState);
@@ -1118,46 +677,15 @@ HRESULT Render(float deltaTime)
     //cbLight.vLightDir = lightDirs;
 
     //gDeviceContext->UpdateSubresource(gCBLight, 0, nullptr, &cbLight, 0, 0);
+    Renderer::GetInstance()->ClearScreen();
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
     gModel->Draw();
 
-
-    gSwapChain->Present(0, 0);
+    Renderer::GetInstance()->Present();
     //디바이스 로스트 처리
     // dx11부터는 처리가 사실상 필요없다는 정보가 있음.
-    HRESULT result = gDevice->GetDeviceRemovedReason();
-
-    switch (result)
-    {
-    case S_OK:
-        return S_OK;
-
-    case DXGI_ERROR_DEVICE_HUNG:
-    case DXGI_ERROR_DEVICE_RESET:
-
-        Cleanup();
-
-        if (FAILED(InitializeD3D()))
-        {
-            SendMessage(gWnd, WM_DESTROY, 0, 0);
-            return E_FAIL;
-        }
-
-        if (FAILED(SetupGeometry()))
-        {
-            SendMessage(gWnd, WM_DESTROY, 0, 0);
-            return E_FAIL;
-        }
-
-        return S_OK;
-    case DXGI_ERROR_DEVICE_REMOVED:
-    case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
-    case DXGI_ERROR_INVALID_CALL:
-    default:
-        SendMessage(gWnd, WM_DESTROY, 0, 0);
-        return E_FAIL;
-    }
+    return S_OK;
 }
 
 void Cleanup()
@@ -1175,45 +703,27 @@ void Cleanup()
     gImporter->Release();
     delete gImporter;
 
-    if (gDeviceContext)
-    {
-        gDeviceContext->ClearState();
-    }
-    //delete[] gVertexList;
-    //delete[] gIndexList;
+    //if (gDeviceContext)
+    //{
+    //    gDeviceContext->ClearState();
+    //}
 
     delete gModel;
     delete gCamera;
-
-    SAFETY_RELEASE(gSamplerAnisotropic);
-
-
-    //for (size_t textureIndex = 0; textureIndex < NUMBER_TEXTURE; ++textureIndex)
-    //{
-    //    SAFETY_RELEASE(gShaderResourceView[textureIndex]);
-    //}
-
     // outline
     SAFETY_RELEASE(gVsOutline); // shaders
     SAFETY_RELEASE(gPsOutline);
-    SAFETY_RELEASE(gBasicRasterState);
-    SAFETY_RELEASE(gOutlineRasterState);
 
-    SAFETY_RELEASE(gCBCamera);
-    SAFETY_RELEASE(gCBChangeOnResize);
-    SAFETY_RELEASE(gCBChangesEveryFrame1);
-    SAFETY_RELEASE(gCBLight);
-    SAFETY_RELEASE(gCBOutline);
-
-    //SAFETY_RELEASE(gIndexBuffer);
-    //SAFETY_RELEASE(gVertexBuffer);
     SAFETY_RELEASE(gVertexLayout);
     SAFETY_RELEASE(gPixelShaderTextureAndLighting);
     SAFETY_RELEASE(gVertexShader);
-    SAFETY_RELEASE(gDepthStencil);
-    SAFETY_RELEASE(gDepthStencilView);
-    SAFETY_RELEASE(gRenderTargetView);
-    SAFETY_RELEASE(gSwapChain);
-    SAFETY_RELEASE(gDeviceContext);
-    SAFETY_RELEASE(gDevice);
+    // device가 가장 마지막에 해제되도록.
+    Renderer::GetInstance()->Release();
+
+    //SAFETY_RELEASE(gDepthStencil);
+    //SAFETY_RELEASE(gDepthStencilView);
+    //SAFETY_RELEASE(gRenderTargetView);
+    //SAFETY_RELEASE(gSwapChain);
+    //SAFETY_RELEASE(gDeviceContext);
+    //SAFETY_RELEASE(gDevice);
 }

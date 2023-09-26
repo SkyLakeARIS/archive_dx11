@@ -1,21 +1,24 @@
 ﻿#include "Model.h"
 #include "ModelImporter.h"
 
-Model::Model(Renderer* renderer, ID3D11Device* device, ID3D11DeviceContext* deviceContext, Camera* camera)
+Model::Model(Renderer* renderer, Camera* camera)
     : mNumMesh(0)
     , mNumVertex(0)
     , mRenderer(renderer)
-    , mDevice(device)
-    , mDeviceContext(deviceContext)
     , mCamera(camera)
 {
     ASSERT(renderer != nullptr, "do not pass nullptr");
-    ASSERT(device != nullptr, "do not pass nullptr");
-    ASSERT(deviceContext != nullptr, "do not pass nullptr");
     ASSERT(camera != nullptr, "do not pass nullptr");
 
-    mDevice->AddRef();
-    mDeviceContext->AddRef();
+    mRenderer->AddRef();
+
+    mDevice = mRenderer->GetDevice();
+    ASSERT(mDevice != nullptr, "renderer was not initialized ");
+    //mDevice->AddRef();
+
+    mDeviceContext = mRenderer->GetDeviceContext();
+    ASSERT(mDeviceContext != nullptr, "renderer was not initialized");
+    //mDeviceContext->AddRef();
 
     mMatWorld = XMMatrixIdentity();
 }
@@ -50,6 +53,9 @@ Model::~Model()
     mDeviceContext->Release();
     mDeviceContext = nullptr;
 
+    mRenderer->Release();
+    mRenderer = nullptr;
+
     delete[] vertices;
     delete[] indices;
 
@@ -58,15 +64,15 @@ Model::~Model()
 void Model::Draw()
 {
     // 현재는 비효율적 같지만 다른 오브젝트도 그리기 시작하면 해야하지 않을까 생각 중.
-        // 근데 buffer를 여러개로 나누면 draw는 어떻게 ..?
-        // => DrawIndexedInstanced 조사
+    // 근데 buffer를 여러개로 나누면 draw는 어떻게 ..?
+    // => DrawIndexedInstanced 조사
     //prepare();
     mDeviceContext->RSSetState(mRasterBasic);
 
     mDeviceContext->IASetInputLayout(mInputLayout);
+
     const uint32 stride = sizeof(Vertex);
     const uint32 offset = 0;
-
     mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffers, &stride, &offset);
     mDeviceContext->IASetIndexBuffer(mIndexBuffers, DXGI_FORMAT_R32_UINT, 0);
 
@@ -117,32 +123,21 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
 
     Vertex* posInVertices = vertices;
     uint32* posInIndices = indices;
+    uint32 offset = 0;
     for(size_t meshIndex = 0; meshIndex < mNumMesh; ++meshIndex)
     {
-      //  mMeshes.push_back(Mesh());
-     //   Mesh& mesh = mMeshes.back();
-
-
         memcpy_s(posInVertices, sizeof(Vertex) * sumVertexCount, mMeshes[meshIndex].Vertex.data(), sizeof(Vertex)*mMeshes[meshIndex].Vertex.size());
         posInVertices += mMeshes[meshIndex].Vertex.size();
 
         memcpy_s(posInIndices, sizeof(uint32) * sumIndexCount, mMeshes[meshIndex].IndexList.data(), sizeof(uint32)*mMeshes[meshIndex].IndexList.size());
         posInIndices += mMeshes[meshIndex].IndexList.size();
 
-        // vertex info
-     //   const uint16 numVertex = meshes[meshIndex].Vertex.size(); // ..?
-      //  mMeshes[meshIndex].Vertex.reserve(numVertex);
+        // model importer로 이동하는게 좋을 것 같다.
         XMFLOAT3 minHeight = XMFLOAT3(100000.0f, 100000.0f, 100000.0f);
         XMFLOAT3 maxHeight = XMFLOAT3(0.0f, 0.0f, 0.0f);
         for (size_t vertexIndex = 0; vertexIndex < mMeshes[meshIndex].Vertex.size(); ++vertexIndex)
         {
-            //// 괜히 일을 두번하는 느낌. vector가 push, emplace시에 복사로 동작하는지 확인해보기 
-            //mesh.Vertex.push_back(Vertex());
-            //Vertex& vertex = mesh.Vertex.back();
 
-            //vertex.Position = meshes[meshIndex].Vertex[vertexIndex].Position;
-            //vertex.Normal = meshes[meshIndex].Vertex[vertexIndex].Normal;
-            //vertex.TexCoord = meshes[meshIndex].Vertex[vertexIndex].TexCoord;
             if(maxHeight.y < mMeshes[meshIndex].Vertex[vertexIndex].Position.y)
             {
                 maxHeight = mMeshes[meshIndex].Vertex[vertexIndex].Position;
@@ -156,7 +151,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
 
         // calc center of object
 
-               // 센터 값이 바닥쪽에 있음.
+        // 센터 값이 바닥쪽에 있음.
         // 어떻게 보면 아래 방식이 뭔가 모델링 툴의 진짜 원점같아 보이긴 한다. 그래서 일단 남겨놓을 예정.
         XMVECTOR min= XMLoadFloat3(&minHeight);
         XMVECTOR max = XMLoadFloat3(&maxHeight);
@@ -165,27 +160,6 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
 
         // 물체의 정중앙을 초점으로 삼고 싶기 때문에 변경
         //mCenterPosition = importer.GetModelCenter();
-
- 
-
-
-        // indexList info
-        //const int numIndexList = meshes[meshIndex].IndexList.size();
-        //mMeshes[meshIndex].IndexList.reserve(numIndexList);
-        //for (size_t index = 0; index < numIndexList; ++index)
-        //{
-        //    mesh.IndexList.push_back(meshes[meshIndex].IndexList[index]);
-        //}
-
-        // mesh name
-       // wcscpy_s(mesh.Name, MESH_NAME_LENGTH, meshes[meshIndex].Name);
-        //mesh.Name[MESH_NAME_LENGTH - 1] = (WCHAR)L"\n";
-
-        // texture info
-       // mesh.Texture = meshes[meshIndex].Texture;
-       // mesh.NumTexuture = meshes[meshIndex].NumTexuture;
-       // mesh.HasTexture = meshes[meshIndex].HasTexture;
-        
     }
 
     // and make d3d buffer

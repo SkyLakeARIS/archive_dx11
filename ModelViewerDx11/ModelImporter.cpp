@@ -27,6 +27,8 @@ void ModelImporter::Initialize()
 
 void ModelImporter::Release()
 {
+    mDevice->Release();
+
     if(!mFbxScene)
     {
         mFbxScene->Destroy();

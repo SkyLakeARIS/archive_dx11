@@ -15,6 +15,9 @@ struct Vertex
 
 struct Mesh
 {
+    /*
+     * vertex/index list는 하나로 관리하고 mesh는 각 vertex, index에 대해서 offset만 가지도록 변경 (하면 또 대규모 공사인데)
+     */
     WCHAR Name[MESH_NAME_LENGTH];
     std::vector<Vertex> Vertex;
     std::vector<unsigned int> IndexList;
@@ -39,12 +42,12 @@ class Model
     {
         XMMATRIX WVP;
     };
-    struct alignas(16) CbOutlineWidth // 셰이더 고정값으로 할지, 그냥 12바이트 낭비할지
+    struct alignas(16) CbOutlineWidth // CB생성시 byteWidth는 16바이트 배수 셰이더 고정값으로 할지, 그냥 12바이트 낭비할지
     {
         float OutlineWidth;
     };
 public:
-    Model(Renderer* renderer, ID3D11Device* device, ID3D11DeviceContext* deviceContext, Camera* camera);
+    Model(Renderer* renderer, Camera* camera);
     ~Model();
 
     void                Draw();

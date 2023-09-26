@@ -7,7 +7,7 @@ class Camera final
 {
 
 public:
-    Camera(ID3D11Device* device, ID3D11DeviceContext* deviceContext, uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
+    Camera(uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
     virtual ~Camera();
 
     void SetupD3D();
@@ -31,9 +31,6 @@ private:
     void makeProjectionMatrix();
 
 private:
-
-    ID3D11Device* mDevice;
-    ID3D11DeviceContext* mDeviceContext;
 
     XMFLOAT2    mAnglesRad;         // (가상의) 구면에서의 위치를 계산하기 위한 각, x == pi, y == theta
     XMVECTOR    mPositionInSphere;  // (가상의) 구면에서의 좌표
