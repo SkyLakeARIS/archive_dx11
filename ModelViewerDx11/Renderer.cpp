@@ -35,6 +35,17 @@ ID3D11DeviceContext* Renderer::GetDeviceContext() const
     return mDeviceContext;
 }
 
+void Renderer::GetWindowSize(uint32& outWidth, uint32& outHeight) const
+{
+    outWidth = mWindowWidth;
+    outHeight = mWindowHeight;
+}
+
+HWND Renderer::GetWindowHandle() const
+{
+    return mhWindow;
+}
+
 Renderer::Renderer()
     : mDevice(nullptr)
     , mDeviceContext(nullptr)
@@ -52,6 +63,9 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
+
+    SAFETY_RELEASE(mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+    SAFETY_RELEASE(mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
 
     SAFETY_RELEASE(DefaultTexture);
     SAFETY_RELEASE(mBackBufferRTV);
@@ -101,6 +115,38 @@ HRESULT Renderer::compileShaderFromFile(
 
     return S_OK;
 }
+
+HRESULT Renderer::createRasterState()
+{
+    HRESULT result = S_OK;
+    // 기본 래스터 스테이트
+    D3D11_RASTERIZER_DESC basicRasterDesc;
+    ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    basicRasterDesc.CullMode = D3D11_CULL_BACK;
+    basicRasterDesc.FillMode = D3D11_FILL_SOLID;
+    basicRasterDesc.FrontCounterClockwise = false;
+    result = mDevice->CreateRasterizerState(&basicRasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+    if (FAILED(result))
+    {
+        ASSERT(false, "Failed to create RasterState for basic");
+    }
+    // 아웃라인용 래스터 스테이트
+    D3D11_RASTERIZER_DESC outlineRasterDesc;
+    ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
+    outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
+    outlineRasterDesc.FrontCounterClockwise = false;
+    result = mDevice->CreateRasterizerState(&outlineRasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
+    if(FAILED(result))
+    {
+        ASSERT(false, "Failed to create RasterState for outline");
+    }
+
+    return result;
+}
+
 
 Renderer* Renderer::GetInstance()
 {
@@ -250,6 +296,13 @@ HRESULT Renderer::CreateDeviceAndSetup(
 
     mDeviceContext->OMSetRenderTargets(1, &mBackBufferRTV, mDepthStencilView);
 
+
+    result = createRasterState();
+    if(FAILED(result))
+    {
+        return E_FAIL;
+    }
+
     return S_OK;
 }
 
@@ -351,6 +404,11 @@ FAILED:
 void Renderer::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const
 {
     mDeviceContext->IASetPrimitiveTopology(topology);
+}
+
+void Renderer::SetRasterState(eRasterType type)
+{
+    mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
 }
 
 void Renderer::ClearScreen()

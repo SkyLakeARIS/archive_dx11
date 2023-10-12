@@ -1,14 +1,15 @@
 ﻿#include "Camera.h"
+
+#include "Renderer.h"
 #include "cmath"
 
-Camera::Camera(uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
-    : mScreenWidth(screenWidth)
-    , mScreenHeight(screenHeight)
-    , mvEye(vEye)
+Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
+    : mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
     , mRadiusOfSphere(5.0f)
 {
+    Renderer::GetInstance()->GetWindowSize(mScreenWidth, mScreenHeight);
 
     /*
      * 직교좌표에서 구면좌표로 역계산.

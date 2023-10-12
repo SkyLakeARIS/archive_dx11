@@ -1,14 +1,17 @@
 ﻿#include "Input.h"
 
-DirectInput::DirectInput()
+DirectInput::DirectInput(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight)
     : mDirectInput(nullptr)
     , mKeyboardInput(nullptr)
+    , mhInstance(hInstance)
+    , mhWnd(hwnd)
     , mMouseInput(nullptr)
     , mMouseX(0)
     , mMouseY(0)
-    , mScreenWidth(0)
-    , mScreenHeight(0)
+    , mScreenWidth(screenWidth)
+    , mScreenHeight(screenHeight)
     , mControlState(0)
+    , mMouseInputFlag(0)
 {
     ZeroMemory(&mMouseState, sizeof(mMouseState));
     ZeroMemory(&mKeyboardState, sizeof(mKeyboardState));
@@ -20,11 +23,11 @@ DirectInput::~DirectInput()
     ASSERT(mMouseInput == nullptr, "mMouseInput가 Unacquire되지 않았습니다");
 }
 
-HRESULT DirectInput::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight)
+HRESULT DirectInput::Initialize()
 {
     HRESULT result = S_OK;
 
-    result = DirectInput8Create(hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&mDirectInput, nullptr);
+    result = DirectInput8Create(mhInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&mDirectInput, nullptr);
     if (FAILED(result))
     {
         return E_FAIL;
@@ -35,9 +38,7 @@ HRESULT DirectInput::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth,
     {
         return E_FAIL;
     }
-
-    mScreenWidth = screenWidth;
-    mScreenHeight = screenHeight;
+    
     //
     // keyboard
     //
@@ -48,7 +49,7 @@ HRESULT DirectInput::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth,
         return E_FAIL;
     }
 
-    result = mKeyboardInput->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_EXCLUSIVE);
+    result = mKeyboardInput->SetCooperativeLevel(mhWnd, DISCL_FOREGROUND | DISCL_EXCLUSIVE);
     if (FAILED(result))
     {
         return E_FAIL;
@@ -78,7 +79,8 @@ HRESULT DirectInput::Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth,
         return E_FAIL;
     }
 
-    mMouseInput->SetCooperativeLevel(hwnd, DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND);
+    mMouseInputFlag = DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND;
+    mMouseInput->SetCooperativeLevel(mhWnd, mMouseInputFlag);
     if (FAILED(result))
     {
         return E_FAIL;
@@ -117,7 +119,7 @@ HRESULT DirectInput::UpdateInput()
     HRESULT result = mKeyboardInput->GetDeviceState(sizeof(mKeyboardState), &mKeyboardState);
     if (FAILED(result))
     {
-        if ((result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED))
+        if (result | (DIERR_INPUTLOST | DIERR_NOTACQUIRED))
         {
             mKeyboardInput->Acquire();
 
@@ -128,14 +130,39 @@ HRESULT DirectInput::UpdateInput()
         }
     }
 
+    uint32 flag = 0;
+    if(mKeyboardState[DIK_LALT])
+    {
+        flag = DISCL_NOWINKEY | DISCL_NONEXCLUSIVE | DISCL_FOREGROUND;
+    }
+    else
+    {
+        flag = DISCL_EXCLUSIVE | DISCL_NOWINKEY | DISCL_FOREGROUND;
+    }
+
+    if(mMouseInputFlag != flag)
+    {
+        mMouseInputFlag = flag;
+        mMouseInput->SetCooperativeLevel(mhWnd, mMouseInputFlag);
+        if (FAILED(result))
+        {
+            return E_FAIL;
+        }
+
+        result = mMouseInput->Acquire();
+        if (FAILED(result))
+        {
+            return E_FAIL;
+        }
+    }
+
     //
     // mouse
     //
-
     result = mMouseInput->GetDeviceState(sizeof(mMouseState), &mMouseState);
     if (FAILED(result))
     {
-        if((result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED))
+        if(result | (DIERR_INPUTLOST | DIERR_NOTACQUIRED))
         {
             mMouseInput->Acquire();
 
@@ -145,6 +172,15 @@ HRESULT DirectInput::UpdateInput()
             return E_FAIL;
         }
     }
+
+    if(mKeyboardState[DIK_LALT])
+    {
+        mOriginalMouseX = 0;
+        mOriginalMouseY = 0;
+        // ALT key is cursor control mode
+        return S_OK;
+    }
+
     mMouseX = mScreenWidth / 2;
     mMouseY = mScreenHeight / 2;
 
@@ -249,22 +285,29 @@ void MyInput::UpdateWindowSize(int newWidth, int newHeight)
 bool MyInput::UpdateMouseInput(const MSG& msg)
 {
 
-    if (msg.message == WM_MOUSEMOVE)
+    if (msg.message != WM_MOUSEMOVE)
     {
-        POINT curPosition;
-        GetCursorPos(&curPosition);
-
-        POINT centerPosition;
-        centerPosition.x = mScreenWidth / (float)2;
-        centerPosition.y = mScreenHeight / (float)2;
-
-        mMouseDeltaX = curPosition.x - centerPosition.x;
-        mMouseDeltaY = curPosition.y - centerPosition.y;
-
-        SetCursorPos(centerPosition.x, centerPosition.y);
-        return true;
+        return false;
     }
-    return false;
+
+    if(mKeyboardState[DIK_LALT])
+    {
+        return false;
+    }
+
+    POINT curPosition;
+    GetCursorPos(&curPosition);
+
+    POINT centerPosition;
+    centerPosition.x = mScreenWidth / (float)2;
+    centerPosition.y = mScreenHeight / (float)2;
+
+    mMouseDeltaX = curPosition.x - centerPosition.x;
+    mMouseDeltaY = curPosition.y - centerPosition.y;
+
+    SetCursorPos(centerPosition.x, centerPosition.y);
+
+    return true;
 }
 
 bool MyInput::UpdateKeyboardInput(const MSG& msg)

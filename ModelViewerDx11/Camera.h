@@ -7,7 +7,7 @@ class Camera final
 {
 
 public:
-    Camera(uint32 screenWidth, uint32 screenHeight, XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
+    Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
     virtual ~Camera();
 
     void SetupD3D();

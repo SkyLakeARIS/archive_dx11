@@ -43,8 +43,6 @@ Model::~Model()
 
     SAFETY_RELEASE(mInputLayout);
 
-    SAFETY_RELEASE(mRasterBasic);
-    SAFETY_RELEASE(mRasterOutline);
     SAFETY_RELEASE(mSamplerState);
 
 
@@ -67,7 +65,7 @@ void Model::Draw()
     // 근데 buffer를 여러개로 나누면 draw는 어떻게 ..?
     // => DrawIndexedInstanced 조사
     //prepare();
-    mDeviceContext->RSSetState(mRasterBasic);
+    Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Basic);
 
     mDeviceContext->IASetInputLayout(mInputLayout);
 
@@ -103,11 +101,30 @@ void Model::Draw()
         vertexOffset += mMeshes[index].Vertex.size();
         indexOffset += mMeshes[index].IndexList.size();
     }
+
+
+    //// outline
+        //gDeviceContext->RSSetState(gOutlineRasterState);
+
+    //gDeviceContext->VSSetShader(gVsOutline, nullptr, 0);
+    //gDeviceContext->PSSetShader(gPsOutline, nullptr, 0);
+
+    //gDeviceContext->VSSetConstantBuffers(0, 1, &gCBOutline);
+    //
+    //// arbit fbx model
+    //gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor) * gCamera.GetViewMatrix() * gCamera.GetProjectionMatrix();
+
+    //CBOutline cbOutline;
+    //cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
+    //gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
+
+    //gModel->Draw();
+
 }
 
 HRESULT Model::SetupMesh(ModelImporter& importer)
 {
-        // vertex / index list 데이터 합치기 용
+    // vertex / index list 데이터 합치기 용
     const uint32 sumVertexCount = importer.GetSumVertexCount();
     const uint32 sumIndexCount = importer.GetSumIndexCount();
 
@@ -245,25 +262,6 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
         return E_FAIL;
     }
 
-    //
-        // 기본 래스터 스테이트
-    D3D11_RASTERIZER_DESC basicRasterDesc;
-    ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-
-    basicRasterDesc.CullMode = D3D11_CULL_BACK;
-    basicRasterDesc.FillMode = D3D11_FILL_SOLID;
-    basicRasterDesc.FrontCounterClockwise = false;
-    mDevice->CreateRasterizerState(&basicRasterDesc, &mRasterBasic);
-
-    // 아웃라인용 래스터 스테이트
-    D3D11_RASTERIZER_DESC outlineRasterDesc;
-    ZeroMemory(&outlineRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-
-    outlineRasterDesc.CullMode = D3D11_CULL_FRONT;
-    outlineRasterDesc.FillMode = D3D11_FILL_SOLID;
-    outlineRasterDesc.FrontCounterClockwise = false;
-    mDevice->CreateRasterizerState(&outlineRasterDesc, &mRasterOutline);
-
     return result;
 }
 
@@ -282,6 +280,32 @@ HRESULT Model::SetupShader(
     mInputLayout->AddRef();
 
     return S_OK;
+}
+
+HRESULT Model::SetupShaderFromRenderer()
+{
+    D3D11_INPUT_ELEMENT_DESC layout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+
+    };
+    //  UINT numElements = ARRAYSIZE(layout);
+
+    HRESULT result = Renderer::GetInstance()->CreateVertexShader(L"Shaders/VsBasic.hlsl", layout, ARRAYSIZE(layout), &mVertexShader, &mInputLayout);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    result = Renderer::GetInstance()->CreatePixelShader(L"Shaders/PsBasic.hlsl", &mPixelShader);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    return result;
 }
 
 //

@@ -57,6 +57,8 @@ public:
     // 일단 여기에 때려 박는다.
     // 하다보면 다른 곳으로 빼야할 부분이 보이겠지...
     HRESULT             SetupShader(eShader shaderType, ID3D11VertexShader* tempVsShaderToSet, ID3D11PixelShader* tempPsShaderToSet, ID3D11InputLayout* tempInputLayout);
+    HRESULT             SetupShaderFromRenderer(); // 셰이더 관리하는 무언가가 나오기 전까지
+
 
     //void                UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex);
     //void                UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex);
@@ -69,6 +71,7 @@ public:
 
     XMFLOAT3            GetCenterPoint() const;
 private:
+
 
     void prepare();
 
@@ -109,9 +112,7 @@ private:
     // texture
     ID3D11SamplerState* mSamplerState;
 
-    // raster state
-    ID3D11RasterizerState* mRasterBasic;        // back cull
-    ID3D11RasterizerState* mRasterOutline; // front cull
+
 };
 
 

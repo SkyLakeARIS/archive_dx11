@@ -15,10 +15,10 @@ class DirectInput final
 
 public:
 
-    DirectInput();
+    DirectInput(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight);
     ~DirectInput();
 
-    HRESULT     Initialize(HINSTANCE hInstance, HWND hwnd, int screenWidth, int screenHeight);
+    HRESULT     Initialize();
     void        Release();
 
     void        UpdateWindowSize(int newWidth, int newHeight);
@@ -36,6 +36,11 @@ private:
     IDirectInput8*           mDirectInput;
     IDirectInputDevice8*     mKeyboardInput;
     IDirectInputDevice8*     mMouseInput;
+
+    HINSTANCE               mhInstance;
+    HWND                    mhWnd;
+
+    uint32                  mMouseInputFlag;
 
     unsigned char           mKeyboardState[256];
     DIMOUSESTATE            mMouseState;

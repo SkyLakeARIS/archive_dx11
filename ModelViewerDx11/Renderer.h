@@ -4,6 +4,13 @@
 class Renderer final : IUnknown
 {
 public:
+    enum class eRasterType
+    {
+        Basic,
+        Outline
+    };
+
+public:
 
     static Renderer* GetInstance();
 
@@ -24,7 +31,6 @@ public:
         , const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc
         , ID3D11ShaderResourceView** outShaderResourceView);
 
-    void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const;
 
     void ClearScreen();
     void Present() const;
@@ -41,37 +47,52 @@ public:
     HRESULT QueryInterface(const IID& riid, void** ppvObject) override;
 
 
+    //  setter state
+    void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const;
+
+    void SetRasterState(eRasterType type);
+
     // getter
     ID3D11Device*           GetDevice() const;
     ID3D11DeviceContext*    GetDeviceContext() const;
+
+    void                    GetWindowSize(uint32& outWidth, uint32& outHeight) const;
+    HWND                    GetWindowHandle() const;
+
 private:
     Renderer();
     ~Renderer();
 
     HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
+    HRESULT createRasterState();
    // bool SetInputLayout();
 public:
 
-    ID3D11ShaderResourceView* DefaultTexture;
+    ID3D11ShaderResourceView*   DefaultTexture;
 private:
-    static Renderer* mInstance;
+    static Renderer*            mInstance;
 
-    ULONG mRefCount;
+    ULONG                       mRefCount;
+
     // D3D Device
-    ID3D11Device* mDevice;
-    ID3D11DeviceContext* mDeviceContext;
-    IDXGISwapChain* mSwapChain;
-    ID3D11RenderTargetView* mBackBufferRTV;
-    ID3D11DepthStencilView* mDepthStencilView;
+    ID3D11Device*               mDevice;
+    ID3D11DeviceContext*        mDeviceContext;
+    IDXGISwapChain*             mSwapChain;
+    ID3D11RenderTargetView*     mBackBufferRTV;
+    ID3D11DepthStencilView*     mDepthStencilView;
 
-    ID3D11Texture2D* mDepthStencilTexture;
+    ID3D11Texture2D*            mDepthStencilTexture;
+
+    // raster state
+    enum {RasterStateCount = 2 };
+    ID3D11RasterizerState*      mRasterStates[RasterStateCount]; // 0: back cull, 1: front cull
 
     //
     
     // window
-    HWND mhWindow;
-    uint32 mWindowHeight;
-    uint32 mWindowWidth;
+    HWND        mhWindow;
+    uint32      mWindowHeight;
+    uint32      mWindowWidth;
 
 };
