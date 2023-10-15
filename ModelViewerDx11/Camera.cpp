@@ -35,24 +35,6 @@ Camera::~Camera()
 
 }
 
-void Camera::SetupD3D()
-{
-    //D3D11_BUFFER_DESC desc;
-    //ZeroMemory(&desc, sizeof(desc));
-    //desc.Usage = D3D11_USAGE_DEFAULT;
-    //desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    //desc.CPUAccessFlags = 0;
-    //
-    //mDevice->CreateBuffer(&desc, nullptr, &mCbViewProjection);
-}
-//
-//void Camera::UpdateCbMatrix() const
-//{
-//
-//    mDeviceContext->UpdateSubresource(mCbViewProjection, )
-//}
-
-
 void Camera::RotateAxis(float yawRad, float pitchRad)
 {
     mAnglesRad.x += yawRad;         // pi, yaw

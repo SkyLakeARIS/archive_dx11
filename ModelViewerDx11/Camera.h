@@ -10,10 +10,6 @@ public:
     Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp);
     virtual ~Camera();
 
-    void SetupD3D();
-
-    //void UpdateCbMatrix() const;
-
     void RotateAxis(float yawRad, float pitchRad);
     
     void AddRadiusSphere(float scaleFactor);

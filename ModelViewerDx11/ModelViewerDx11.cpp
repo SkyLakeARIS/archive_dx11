@@ -17,10 +17,9 @@ using namespace DirectX;
 WCHAR       szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR       szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
-
-// global model
 ModelImporter*          gImporter = nullptr;
-Model*                  gModel = nullptr;
+Model*                  gCharacter = nullptr;
+Camera* gCamera = nullptr;
 
 #ifdef USING_MYINPUT
 MyInput*                gMyInput = nullptr;
@@ -31,7 +30,6 @@ DirectInput*            gDirectInput = nullptr;
 #endif
 
 
-Camera* gCamera = nullptr;
 
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
@@ -64,7 +62,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     const int WINDOW_WIDTH = 1024;
     const int WINDOW_HEIGHT = 720;
-    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+    const HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
         0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
@@ -119,13 +117,36 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 #endif
 
+    gCamera = new Camera(
+        XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
+        , XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f)
+        , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
 
-    if (FAILED(SetupGeometry()))
+    gImporter = new ModelImporter(Renderer::GetInstance()->GetDevice());
+    gImporter->Initialize();
+
+    gCharacter = new Model(Renderer::GetInstance(), gCamera);
+
+    gImporter->LoadFbxModel("/models/unagi.fbx");
+
+    result = gCharacter->SetupMesh(*gImporter);
+    if (FAILED(result))
     {
-        ASSERT(false, "모델데이터 초기화 실패 SetupGeometry");
+        ASSERT(false, "gCharacter::SetupMesh 모델데이터 혹은 D3D개체 초기화 실패 _ could not initialize mesh or d3d obj");
         goto EXIT_PROGRAM;
     }
+
+    result = gCharacter->SetupShaderFromRenderer();
+    //gCharacter->SetupShader(eShader::BASIC, gVertexShader, gPixelShaderTextureAndLighting, gVertexLayout);
+    if (FAILED(result))
+    {
+        ASSERT(false, "gCharacter::SetupShaderFromRenderer 초기화 실패 -failed to create shader");
+        goto EXIT_PROGRAM;
+    }
+
+    Renderer::GetInstance()->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    gCamera->ChangeFocus(gCharacter->GetCenterPoint());
 
 
     MSG msg;
@@ -234,34 +255,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 HRESULT SetupGeometry()
 {
-    gCamera = new Camera(
-        XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
-        , XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f)
-        , XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
-
-    gImporter = new ModelImporter(Renderer::GetInstance()->GetDevice());
-    gImporter->Initialize();
-
-    gModel = new Model(Renderer::GetInstance(), gCamera);
-
-    gImporter->LoadFbxModel("/models/unagi.fbx");
-
-    HRESULT result = gModel->SetupMesh(*gImporter);
-    if (FAILED(result))
-    {
-        return result;
-    }
-
-    result = gModel->SetupShaderFromRenderer();
-        //gModel->SetupShader(eShader::BASIC, gVertexShader, gPixelShaderTextureAndLighting, gVertexLayout);
-    if (FAILED(result))
-    {
-        return result;
-    }
-
-    Renderer::GetInstance()->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    gCamera->ChangeFocus(gModel->GetCenterPoint());
 
     return S_OK;
 }
@@ -409,6 +403,15 @@ HRESULT UpdateFrame(float deltaTime)
     }
     bPressKey = gKeyboard[DIK_C] & 0x80;
 
+    static bool bPressHKey = false;
+    static bool bHightlight = false;
+    if (!(gKeyboard[DIK_H] & 0x80) && bPressHKey)
+    {
+        bHightlight = bHightlight ? false : true;
+        gCharacter->SetHighlight(bHightlight);
+    }
+    bPressHKey = gKeyboard[DIK_H] & 0x80;
+
     if (gKeyboard[DIK_ESCAPE] & 0x80)
     {
         SendMessage(Renderer::GetInstance()->GetWindowHandle(), WM_DESTROY, 0, 0);
@@ -423,10 +426,10 @@ HRESULT UpdateFrame(float deltaTime)
 HRESULT Render(float deltaTime)
 {
 
-    Renderer::GetInstance()->ClearScreen();
+    Renderer::GetInstance()->ClearScreenAndDepth();
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
-    gModel->Draw();
+    gCharacter->Draw();
 
     Renderer::GetInstance()->Present();
 
@@ -445,10 +448,10 @@ void Cleanup()
     gDirectInput = nullptr;
 #endif
 
-    gImporter->Release();
+ //   gImporter->Release();
     delete gImporter;
 
-    delete gModel;
+    delete gCharacter;
     delete gCamera;
  
     // device가 가장 마지막에 해제되도록.

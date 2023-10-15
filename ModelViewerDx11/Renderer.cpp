@@ -306,7 +306,7 @@ HRESULT Renderer::CreateDeviceAndSetup(
     return S_OK;
 }
 
-HRESULT Renderer::CreateVertexShader(
+HRESULT Renderer::CreateVertexShaderAndInputLayout(
     const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc, uint32 numDescElements,
     ID3D11VertexShader** const outVertexShader, ID3D11InputLayout** const outInputLayout)
 {
@@ -334,6 +334,31 @@ HRESULT Renderer::CreateVertexShader(
         ASSERT(false, "failed to create InputLayout : CreateInputLayout");
         return E_FAIL;
     }
+    blob->Release();
+
+    return result;
+}
+
+HRESULT Renderer::CreateVertexShader(
+    const WCHAR* const path, ID3D11VertexShader** const outVertexShader)
+{
+    ASSERT(outVertexShader != nullptr, "do not pass nullptr");
+
+    ID3DBlob* blob = nullptr;
+    HRESULT result = compileShaderFromFile(path, "main", "vs_5_0", &blob);
+    if (FAILED(result))
+    {
+        ASSERT(false, "failed to compile vertex shader : compileShaderFromFile");
+        return E_FAIL;
+    }
+
+    result = mDevice->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &(*outVertexShader));
+    if (FAILED(result))
+    {
+        ASSERT(false, "failed to create InputLayout : CreateInputLayout");
+        return E_FAIL;
+    }
+
     blob->Release();
 
     return result;
@@ -411,10 +436,15 @@ void Renderer::SetRasterState(eRasterType type)
     mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
 }
 
-void Renderer::ClearScreen()
+void Renderer::ClearScreenAndDepth()
 {
     constexpr float CLEAR_COLOR[] = { 0.4f, 0.6f, 1.0f, 1.0f };
     mDeviceContext->ClearRenderTargetView(mBackBufferRTV, CLEAR_COLOR);
+    mDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void Renderer::ClearDepthBuffer()
+{
     mDeviceContext->ClearDepthStencilView(mDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
 

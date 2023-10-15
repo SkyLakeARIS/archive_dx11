@@ -17,6 +17,8 @@ struct Mesh
 {
     /*
      * vertex/index list는 하나로 관리하고 mesh는 각 vertex, index에 대해서 offset만 가지도록 변경 (하면 또 대규모 공사인데)
+     * -> draw 로직에 큰 변화는 없음. 하지만 모델에서 임포터에서 받은 메시데이터를 다시 하나로 뭉치는 작업을 임포터로 옮길 수 있음.
+     * -> 근데 그 뿐이기 때문에 좀 더 고민
      */
     WCHAR Name[MESH_NAME_LENGTH];
     std::vector<Vertex> Vertex;
@@ -42,9 +44,10 @@ class Model
     {
         XMMATRIX WVP;
     };
-    struct alignas(16) CbOutlineWidth // CB생성시 byteWidth는 16바이트 배수 셰이더 고정값으로 할지, 그냥 12바이트 낭비할지
+    struct CbOutlineProperty
     {
-        float OutlineWidth;
+        XMFLOAT3    OutlineColor;
+        float       OutlineWidth;
     };
 public:
     Model(Renderer* renderer, Camera* camera);
@@ -59,7 +62,7 @@ public:
     HRESULT             SetupShader(eShader shaderType, ID3D11VertexShader* tempVsShaderToSet, ID3D11PixelShader* tempPsShaderToSet, ID3D11InputLayout* tempInputLayout);
     HRESULT             SetupShaderFromRenderer(); // 셰이더 관리하는 무언가가 나오기 전까지
 
-
+    void                SetHighlight(bool bSelection);
     //void                UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex);
     //void                UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex);
 
@@ -77,9 +80,9 @@ private:
 
 private:
 
-    Renderer* mRenderer;
-    ID3D11Device* mDevice;
-    ID3D11DeviceContext* mDeviceContext;
+    Renderer*               mRenderer;
+    ID3D11Device*           mDevice;
+    ID3D11DeviceContext*    mDeviceContext;
     Camera* mCamera; // 나중에 모델에 카메라를 붙이도록(상호참조해야 할 것 같음. 아니면 다른 방법)
 
     size_t mNumMesh;
@@ -87,8 +90,8 @@ private:
 
     std::vector<Mesh> mMeshes;
 
-    Vertex* vertices;
-    uint32* indices;
+    Vertex* mVertices;
+    uint32* mIndices;
 
     ID3D11Buffer* mVertexBuffers;
     ID3D11Buffer* mIndexBuffers;
@@ -97,21 +100,26 @@ private:
     ID3D11Buffer* mCbBasicShader;
 
     ID3D11Buffer* mCbOutlineShader;
-    ID3D11Buffer* mCbOutlineWidth;
+    ID3D11Buffer* mCbOutlineProperty;
 
     XMFLOAT3 mCenterPosition;
     XMMATRIX mMatWorld;
     XMMATRIX mMatRotation;
     XMMATRIX mMatScale;
 
-
+    // 나중에 Renderer로 이동 (셰이더 매니저 생기면 그쪽으로) 및 세팅하도록
     ID3D11VertexShader* mVertexShader;
-    ID3D11PixelShader* mPixelShader;
-    ID3D11InputLayout* mInputLayout;
+    ID3D11PixelShader*  mPixelShader;
+
+    ID3D11VertexShader* mVertexShaderOutline;
+    ID3D11PixelShader*  mPixelShaderOutline;
+    ID3D11InputLayout*  mInputLayout;
 
     // texture
     ID3D11SamplerState* mSamplerState;
 
+
+    bool mbHighlight;
 
 };
 

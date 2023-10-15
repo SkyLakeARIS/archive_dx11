@@ -14,11 +14,9 @@ Model::Model(Renderer* renderer, Camera* camera)
 
     mDevice = mRenderer->GetDevice();
     ASSERT(mDevice != nullptr, "renderer was not initialized ");
-    //mDevice->AddRef();
 
     mDeviceContext = mRenderer->GetDeviceContext();
     ASSERT(mDeviceContext != nullptr, "renderer was not initialized");
-    //mDeviceContext->AddRef();
 
     mMatWorld = XMMatrixIdentity();
 }
@@ -34,38 +32,37 @@ Model::~Model()
     SAFETY_RELEASE(mIndexBuffers);
 
     SAFETY_RELEASE(mCbOutlineShader);
-    SAFETY_RELEASE(mCbOutlineWidth);
+    SAFETY_RELEASE(mCbOutlineProperty);
     SAFETY_RELEASE(mCbBasicShader);
-
 
     SAFETY_RELEASE(mVertexShader);
     SAFETY_RELEASE(mPixelShader);
+
+    SAFETY_RELEASE(mVertexShaderOutline);
+    SAFETY_RELEASE(mPixelShaderOutline);
 
     SAFETY_RELEASE(mInputLayout);
 
     SAFETY_RELEASE(mSamplerState);
 
-
-    mDevice->Release();
-    mDevice = nullptr;
     mDeviceContext->Release();
     mDeviceContext = nullptr;
+    mDevice->Release();
+    mDevice = nullptr;
+
 
     mRenderer->Release();
     mRenderer = nullptr;
 
-    delete[] vertices;
-    delete[] indices;
+    delete[] mVertices;
+    delete[] mIndices;
 
 }
 
 void Model::Draw()
 {
-    // 현재는 비효율적 같지만 다른 오브젝트도 그리기 시작하면 해야하지 않을까 생각 중.
-    // 근데 buffer를 여러개로 나누면 draw는 어떻게 ..?
-    // => DrawIndexedInstanced 조사
-    //prepare();
-    Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Basic);
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
 
     mDeviceContext->IASetInputLayout(mInputLayout);
 
@@ -73,6 +70,37 @@ void Model::Draw()
     const uint32 offset = 0;
     mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffers, &stride, &offset);
     mDeviceContext->IASetIndexBuffer(mIndexBuffers, DXGI_FORMAT_R32_UINT, 0);
+
+    // outline
+    if(mbHighlight)
+    {
+        Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Outline);
+
+
+        mDeviceContext->VSSetShader(mVertexShaderOutline, nullptr, 0);
+        mDeviceContext->PSSetShader(mPixelShaderOutline, nullptr, 0);
+
+        mDeviceContext->VSSetConstantBuffers(0, 1, &mCbOutlineShader);
+        CbOutline cbOutline;
+        cbOutline.WVP = XMMatrixTranspose(mMatWorld * mCamera->GetViewProjectionMatrix());
+
+        mDeviceContext->UpdateSubresource(mCbOutlineShader, 0, nullptr, &cbOutline, 0, 0);
+        for (size_t index = 0; index < mNumMesh; ++index)
+        {
+            mDeviceContext->DrawIndexed(mMeshes[index].IndexList.size(), indexOffset, vertexOffset);
+
+            vertexOffset += mMeshes[index].Vertex.size();
+            indexOffset += mMeshes[index].IndexList.size();
+        }
+
+        // reset for basic draw
+        Renderer::GetInstance()->ClearDepthBuffer();
+        vertexOffset = 0;
+        indexOffset = 0;
+    }
+
+    Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Basic);
+
 
     mDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
     mDeviceContext->VSSetConstantBuffers(0, 1, &mCbBasicShader);
@@ -88,8 +116,7 @@ void Model::Draw()
     mDeviceContext->UpdateSubresource(mCbBasicShader, 0, nullptr, &cbMatrices, 0, 0);
     // Draw
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
-    size_t vertexOffset = 0;
-    size_t indexOffset = 0;
+
     for (size_t index = 0; index < mNumMesh; ++index)
     {
 
@@ -101,25 +128,6 @@ void Model::Draw()
         vertexOffset += mMeshes[index].Vertex.size();
         indexOffset += mMeshes[index].IndexList.size();
     }
-
-
-    //// outline
-        //gDeviceContext->RSSetState(gOutlineRasterState);
-
-    //gDeviceContext->VSSetShader(gVsOutline, nullptr, 0);
-    //gDeviceContext->PSSetShader(gPsOutline, nullptr, 0);
-
-    //gDeviceContext->VSSetConstantBuffers(0, 1, &gCBOutline);
-    //
-    //// arbit fbx model
-    //gMatWorld1 = XMMatrixIdentity() * XMMatrixScaling(gScaleFactor, gScaleFactor, gScaleFactor) * gCamera.GetViewMatrix() * gCamera.GetProjectionMatrix();
-
-    //CBOutline cbOutline;
-    //cbOutline.mWorldViewProjection = XMMatrixTranspose(gMatWorld1);
-    //gDeviceContext->UpdateSubresource(gCBOutline, 0, nullptr, &cbOutline, 0, 0);
-
-    //gModel->Draw();
-
 }
 
 HRESULT Model::SetupMesh(ModelImporter& importer)
@@ -129,8 +137,8 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     const uint32 sumIndexCount = importer.GetSumIndexCount();
 
     // 하나로 뭉침
-    vertices = new Vertex[sumVertexCount];
-    indices = new uint32[sumIndexCount];
+    mVertices = new Vertex[sumVertexCount];
+    mIndices = new uint32[sumIndexCount];
 
     // mesh - vertices, indices, textures ...
     mMeshes.swap(*importer.GetMesh());
@@ -138,8 +146,8 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     mNumMesh = mMeshes.size();
     ASSERT(mNumMesh > 0, "Model::SetupMesh 메시 수는 1 이상이어야 합니다. num of mesh must be over 0.");
 
-    Vertex* posInVertices = vertices;
-    uint32* posInIndices = indices;
+    Vertex* posInVertices = mVertices;
+    uint32* posInIndices = mIndices;
     uint32 offset = 0;
     for(size_t meshIndex = 0; meshIndex < mNumMesh; ++meshIndex)
     {
@@ -193,7 +201,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
    // for(uint32 i = 0; i < mNumMesh; ++i)
     //{
         desc.ByteWidth = sizeof(Vertex)*sumVertexCount;
-        subData.pSysMem = vertices;
+        subData.pSysMem = mVertices;
 
         result = mDevice->CreateBuffer(&desc, &subData, &mVertexBuffers);
         if (FAILED(result))
@@ -206,7 +214,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     // index buffer
     desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     desc.ByteWidth = sizeof(uint32)*sumIndexCount;
-    subData.pSysMem = indices;
+    subData.pSysMem = mIndices;
     result = mDevice->CreateBuffer(&desc, &subData, &mIndexBuffers);
     if (FAILED(result))
     {
@@ -236,8 +244,8 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
         return E_FAIL;
     }
 
-    desc.ByteWidth = sizeof(CbOutlineWidth);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineWidth);
+    desc.ByteWidth = sizeof(CbOutlineProperty);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineProperty);
     if (FAILED(result))
     {
         ASSERT(false, "CbOutlineWidth상수 버퍼 생성 실패  failed to create CbOutlineWidth");
@@ -293,7 +301,7 @@ HRESULT Model::SetupShaderFromRenderer()
     };
     //  UINT numElements = ARRAYSIZE(layout);
 
-    HRESULT result = Renderer::GetInstance()->CreateVertexShader(L"Shaders/VsBasic.hlsl", layout, ARRAYSIZE(layout), &mVertexShader, &mInputLayout);
+    HRESULT result = Renderer::GetInstance()->CreateVertexShaderAndInputLayout(L"Shaders/VsBasic.hlsl", layout, ARRAYSIZE(layout), &mVertexShader, &mInputLayout);
     if (FAILED(result))
     {
         return result;
@@ -305,7 +313,26 @@ HRESULT Model::SetupShaderFromRenderer()
         return result;
     }
 
+    // for outline
+    result = Renderer::GetInstance()->CreateVertexShader(L"Shaders/VsOutline.hlsl", &mVertexShaderOutline);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    result = Renderer::GetInstance()->CreatePixelShader(L"Shaders/PsOutline.hlsl", &mPixelShaderOutline);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+
     return result;
+}
+
+void Model::SetHighlight(bool bSelection)
+{
+    mbHighlight = bSelection;
 }
 
 //

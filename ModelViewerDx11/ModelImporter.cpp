@@ -27,7 +27,7 @@ void ModelImporter::Initialize()
 
 void ModelImporter::Release()
 {
-    mDevice->Release();
+    SAFETY_RELEASE(mDevice);
 
     if(!mFbxScene)
     {

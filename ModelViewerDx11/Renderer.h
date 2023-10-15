@@ -17,12 +17,16 @@ public:
     // D3D
     HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, HWND hWnd, uint32 height, uint32 width, bool bDebugMode);
 
-    HRESULT CreateVertexShader(
+    HRESULT CreateVertexShaderAndInputLayout(
         const WCHAR* const path
         , D3D11_INPUT_ELEMENT_DESC* const desc
         , uint32 numDescElements
         , ID3D11VertexShader** const outVertexShader
         , ID3D11InputLayout** const outInputLayout);
+
+    HRESULT CreateVertexShader(
+        const WCHAR* const path
+        , ID3D11VertexShader** const outVertexShader);
 
     HRESULT CreatePixelShader(const WCHAR* const path, ID3D11PixelShader** const outPixelShader);
 
@@ -32,7 +36,8 @@ public:
         , ID3D11ShaderResourceView** outShaderResourceView);
 
 
-    void ClearScreen();
+    void ClearScreenAndDepth();
+    void ClearDepthBuffer();
     void Present() const;
 
     //
@@ -66,7 +71,7 @@ private:
     HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
     HRESULT createRasterState();
-   // bool SetInputLayout();
+
 public:
 
     ID3D11ShaderResourceView*   DefaultTexture;
