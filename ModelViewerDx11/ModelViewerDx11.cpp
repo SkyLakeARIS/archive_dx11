@@ -8,6 +8,8 @@
 
 #include <string>
 
+#include "Sky.h"
+
 
 using namespace DirectX;
 #define MAX_LOADSTRING 100
@@ -20,6 +22,7 @@ WCHAR       szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 �
 ModelImporter*          gImporter = nullptr;
 Model*                  gCharacter = nullptr;
 Camera* gCamera = nullptr;
+Sky* gSkybox = nullptr;
 
 #ifdef USING_MYINPUT
 MyInput*                gMyInput = nullptr;
@@ -129,6 +132,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     gCharacter = new Model(Renderer::GetInstance(), gCamera);
 
     gImporter->LoadFbxModel("/models/unagi.fbx");
+
+    gSkybox = new Sky(*Renderer::GetInstance(), *gCamera);
+    gSkybox->Initialize(10, 10);
 
     result = gCharacter->SetupMesh(*gImporter);
     if (FAILED(result))
@@ -429,6 +435,7 @@ HRESULT Render(float deltaTime)
     Renderer::GetInstance()->ClearScreenAndDepth();
 
     // 리소스뷰를 어떻게 괜찮은 방법으로 처리할 방법을 검색하기
+    gSkybox->Draw();
     gCharacter->Draw();
 
     Renderer::GetInstance()->Present();
@@ -449,6 +456,7 @@ void Cleanup()
 #endif
 
  //   gImporter->Release();
+    delete gSkybox;
     delete gImporter;
 
     delete gCharacter;

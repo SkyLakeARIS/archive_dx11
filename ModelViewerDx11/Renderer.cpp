@@ -58,18 +58,22 @@ Renderer::Renderer()
     , mDepthStencilView(nullptr)
     , mDepthStencilTexture(nullptr)
     , mRefCount(1)
+    , mSkyboxDepthStencil(nullptr)
 {
 }
 
 Renderer::~Renderer()
 {
 
-    SAFETY_RELEASE(mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
-    SAFETY_RELEASE(mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
-
+    for(uint32 i = 0; i < static_cast<uint32>(eRasterType::RasterCount); ++i)
+    {
+        SAFETY_RELEASE(mRasterStates[i]);
+    }
+    
     SAFETY_RELEASE(DefaultTexture);
     SAFETY_RELEASE(mBackBufferRTV);
     SAFETY_RELEASE(mDepthStencilTexture);
+    SAFETY_RELEASE(mSkyboxDepthStencil);
     SAFETY_RELEASE(mDepthStencilView);
     SAFETY_RELEASE(mSwapChain);
     SAFETY_RELEASE(mDeviceContext);
@@ -140,6 +144,19 @@ HRESULT Renderer::createRasterState()
     outlineRasterDesc.FrontCounterClockwise = false;
     result = mDevice->CreateRasterizerState(&outlineRasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
     if(FAILED(result))
+    {
+        ASSERT(false, "Failed to create RasterState for outline");
+    }
+
+    // 스카이박스용 래스터 스테이트
+    D3D11_RASTERIZER_DESC skyboxRasterDesc;
+    ZeroMemory(&skyboxRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+
+    skyboxRasterDesc.CullMode = D3D11_CULL_NONE;
+    skyboxRasterDesc.FillMode = D3D11_FILL_SOLID;
+    skyboxRasterDesc.FrontCounterClockwise = true;
+    result = mDevice->CreateRasterizerState(&skyboxRasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Skybox)]);
+    if (FAILED(result))
     {
         ASSERT(false, "Failed to create RasterState for outline");
     }
@@ -297,6 +314,18 @@ HRESULT Renderer::CreateDeviceAndSetup(
     mDeviceContext->OMSetRenderTargets(1, &mBackBufferRTV, mDepthStencilView);
 
 
+    D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
+    ZeroMemory(&depthStencilDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+
+    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    depthStencilDesc.DepthEnable = true;
+    depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+    result = mDevice->CreateDepthStencilState(&depthStencilDesc, &mSkyboxDepthStencil);
+    if (FAILED(result))
+    {
+        return E_FAIL;
+    }
+
     result = createRasterState();
     if(FAILED(result))
     {
@@ -389,13 +418,15 @@ HRESULT Renderer::CreatePixelShader(
 }
 
 HRESULT Renderer::CreateTextureResource(
-    const WCHAR* fileName, const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
+    const WCHAR* fileName,
+    WIC_FLAGS flag,
+    const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
     ID3D11ShaderResourceView** outShaderResourceView)
 {
     ScratchImage image;
     ID3D11Resource* textureResource = nullptr;
-
-    HRESULT result = LoadFromWICFile(fileName, WIC_FLAGS_NONE, nullptr, image);
+    
+    HRESULT result = LoadFromWICFile(fileName, flag, nullptr, image);
     if (FAILED(result))
     {
         ASSERT(false, "failed to load imamge file : 이미지 로드 실패");
@@ -426,6 +457,46 @@ FAILED:
     
 }
 
+HRESULT Renderer::CreateDdsTextureResource(const WCHAR* fileName, DDS_FLAGS flag,
+    D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView)
+{
+    ScratchImage image;
+    ID3D11Texture2D* textureResource = nullptr;
+
+    HRESULT result = LoadFromDDSFile(fileName, flag, nullptr, image);
+    if (FAILED(result))
+    {
+        ASSERT(false, "failed to load DDS file : DDS 로드 실패");
+        goto FAILED;
+    }
+    
+    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**) & textureResource);
+    if (FAILED(result))
+    {
+        ASSERT(false, "failed to create TextureResource : gTextureResource 생성 실패");
+        goto FAILED;
+    }
+    D3D11_TEXTURE2D_DESC desc;
+    textureResource->GetDesc(&desc);
+    srvDesc.Format = desc.Format;
+    srvDesc.TextureCube.MipLevels = desc.MipLevels;
+
+    result = mDevice->CreateShaderResourceView(textureResource, &srvDesc, &(*outShaderResourceView));
+    if (FAILED(result))
+    {
+        ASSERT(false, "failed to create outShaderResourceView : outShaderResourceView 생성 실패");
+        goto FAILED;
+    }
+
+    result = S_OK;
+
+FAILED:
+    image.Release();
+    SAFETY_RELEASE(textureResource);
+
+    return result;
+}
+
 void Renderer::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const
 {
     mDeviceContext->IASetPrimitiveTopology(topology);
@@ -434,6 +505,18 @@ void Renderer::SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const
 void Renderer::SetRasterState(eRasterType type)
 {
     mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
+}
+
+void Renderer::SetDepthStencilState(bool bSkybox)
+{
+    if(bSkybox)
+    {
+        mDeviceContext->OMSetDepthStencilState(mSkyboxDepthStencil, 0);
+    }
+    else
+    {
+        mDeviceContext->OMSetDepthStencilState(nullptr, 0);
+    }
 }
 
 void Renderer::ClearScreenAndDepth()

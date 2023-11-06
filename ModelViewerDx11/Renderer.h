@@ -7,7 +7,9 @@ public:
     enum class eRasterType
     {
         Basic,
-        Outline
+        Outline,
+        Skybox,
+        RasterCount,
     };
 
 public:
@@ -32,7 +34,14 @@ public:
 
     HRESULT CreateTextureResource(
         const WCHAR* fileName
+        , WIC_FLAGS flag
         , const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc
+        , ID3D11ShaderResourceView** outShaderResourceView);
+
+    HRESULT CreateDdsTextureResource(
+        const WCHAR* fileName
+        , DDS_FLAGS flag
+        , D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc
         , ID3D11ShaderResourceView** outShaderResourceView);
 
 
@@ -56,6 +65,8 @@ public:
     void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const;
 
     void SetRasterState(eRasterType type);
+
+    void SetDepthStencilState(bool bSkybox); // 현재는 스카이박스만 사용하므로
 
     // getter
     ID3D11Device*           GetDevice() const;
@@ -88,10 +99,9 @@ private:
     ID3D11DepthStencilView*     mDepthStencilView;
 
     ID3D11Texture2D*            mDepthStencilTexture;
-
+    ID3D11DepthStencilState*    mSkyboxDepthStencil;
     // raster state
-    enum {RasterStateCount = 2 };
-    ID3D11RasterizerState*      mRasterStates[RasterStateCount]; // 0: back cull, 1: front cull
+    ID3D11RasterizerState*      mRasterStates[static_cast<uint32>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull
 
     //
     

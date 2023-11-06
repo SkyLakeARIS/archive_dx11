@@ -99,6 +99,18 @@ void Camera::ChangeFocus(XMFLOAT3 newFocus)
     makeViewMatrix();
 }
 
+XMVECTOR Camera::GetCameraPositionVector() const
+{
+    return mvEye;
+}
+
+XMFLOAT3 Camera::GetCameraPositionFloat() const
+{
+    XMFLOAT3 position;
+    XMStoreFloat3(&position, mvEye);
+    return position;
+}
+
 void Camera::calcCameraPosition()
 {
     // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.

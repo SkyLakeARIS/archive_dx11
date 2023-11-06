@@ -16,6 +16,9 @@ public:
 
     void ChangeFocus(XMFLOAT3 newFocus);
 
+    XMFLOAT3 GetCameraPositionFloat() const;
+    XMVECTOR GetCameraPositionVector() const;
+
     inline XMMATRIX GetViewMatrix() const;
     inline XMMATRIX GetViewProjectionMatrix() const;
     inline XMMATRIX GetProjectionMatrix() const;
