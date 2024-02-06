@@ -7,7 +7,7 @@ Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
     : mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
-    , mRadiusOfSphere(5.0f)
+    , mRadiusOfSphere(2.0f)
 {
     Renderer::GetInstance()->GetWindowSize(mScreenWidth, mScreenHeight);
 
@@ -69,8 +69,8 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
 
 void Camera::AddRadiusSphere(float scaleFactor)
 {
-    constexpr float MAX_RADIUS = 50.0f;
-    constexpr float MIN_RADIUS = 5.0f;
+    constexpr float MAX_RADIUS = 10.0f;
+    constexpr float MIN_RADIUS = 0.1f;
 
     mRadiusOfSphere += scaleFactor;
 
@@ -84,6 +84,24 @@ void Camera::AddRadiusSphere(float scaleFactor)
     }
 
     // 변경된 거리를 적용한다.
+    calcCameraPosition();
+
+    makeViewMatrix();
+}
+
+void Camera::AddHeight(float height)
+{
+    XMFLOAT3 eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    XMFLOAT3 lookAt = XMFLOAT3(0.0f, 0.0f, 0.0f);
+    XMStoreFloat3(&eye, mvEye);
+    XMStoreFloat3(&lookAt, mvLookAtCenter);
+
+    eye.y += height;
+    lookAt.y += height;
+
+    mvEye = XMLoadFloat3(&eye);
+    mvLookAtCenter = XMLoadFloat3(&lookAt);
+
     calcCameraPosition();
 
     makeViewMatrix();

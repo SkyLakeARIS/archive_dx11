@@ -13,6 +13,7 @@ public:
     void RotateAxis(float yawRad, float pitchRad);
     
     void AddRadiusSphere(float scaleFactor);
+    void AddHeight(float height);
 
     void ChangeFocus(XMFLOAT3 newFocus);
 
