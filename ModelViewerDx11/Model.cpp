@@ -6,6 +6,12 @@ Model::Model(Renderer* renderer, Camera* camera)
     , mNumVertex(0)
     , mRenderer(renderer)
     , mCamera(camera)
+    , mCbLight(nullptr)
+    , mCbBasicShader(nullptr)
+    , mCbOutlineShader(nullptr)
+    , mCbOutlineProperty(nullptr)
+    , mCbMaterial(nullptr)
+    , mCbCamera(nullptr)
 {
     ASSERT(renderer != nullptr, "do not pass nullptr");
     ASSERT(camera != nullptr, "do not pass nullptr");
@@ -26,6 +32,7 @@ Model::~Model()
     for(Mesh& mesh : mMeshes)
     {
         SAFETY_RELEASE(mesh.Texture);
+        SAFETY_RELEASE(mesh.TextureNormal);
     }
 
     SAFETY_RELEASE(mVertexBuffers);
@@ -34,6 +41,9 @@ Model::~Model()
     SAFETY_RELEASE(mCbOutlineShader);
     SAFETY_RELEASE(mCbOutlineProperty);
     SAFETY_RELEASE(mCbBasicShader);
+    SAFETY_RELEASE(mCbLight);
+    SAFETY_RELEASE(mCbMaterial);
+    SAFETY_RELEASE(mCbCamera);
 
     SAFETY_RELEASE(mVertexShader);
     SAFETY_RELEASE(mPixelShader);
@@ -104,9 +114,13 @@ void Model::Draw()
 
     mDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
     mDeviceContext->VSSetConstantBuffers(0, 1, &mCbBasicShader);
+    mDeviceContext->VSSetConstantBuffers(1, 1, &mCbLight);
+    mDeviceContext->VSSetConstantBuffers(2, 1, &mCbCamera);
 
     mDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
     mDeviceContext->PSSetSamplers(0, 1, &mSamplerState);
+
+    mDeviceContext->PSSetConstantBuffers(0, 1, &mCbMaterial);
 
 
     CbBasic cbMatrices;
@@ -114,13 +128,42 @@ void Model::Draw()
     cbMatrices.WVP = XMMatrixTranspose(mMatWorld * mCamera->GetViewProjectionMatrix());
 
     mDeviceContext->UpdateSubresource(mCbBasicShader, 0, nullptr, &cbMatrices, 0, 0);
+
+    CbLight cbLight;
+
+    // TODO : light 클래스 제작필요
+    cbLight.LightColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    cbLight.LightDir = XMFLOAT4(1000.0f, 1000.0f, 1.0f, 0.0f);
+    mDeviceContext->UpdateSubresource(mCbLight, 0, nullptr, &cbLight, 0, 0);
+
+    CbCamera cbCamera;
+    cbCamera.Position = mCamera->GetCameraPositionFloat();
+    mDeviceContext->UpdateSubresource(mCbCamera, 0, nullptr, &cbCamera, 0, 0);
+
+ 
     // Draw
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
-
     for (size_t index = 0; index < mNumMesh; ++index)
     {
-
         mDeviceContext->PSSetShaderResources(0, 1, &mMeshes[index].Texture);
+        mDeviceContext->PSSetShaderResources(1, 1, &mMeshes[index].TextureNormal);
+        CbMaterial cbMaterial;
+        ZeroMemory(&cbMaterial, sizeof(CbMaterial));
+        cbMaterial.Specular = mMeshes[index].Material.Specular;
+        cbMaterial.Diffuse = mMeshes[index].Material.Diffuse;
+        cbMaterial.Ambient = mMeshes[index].Material.Ambient;
+        cbMaterial.Emissive = mMeshes[index].Material.Emissive;
+        cbMaterial.Opacity = mMeshes[index].Material.Opacity;
+        cbMaterial.Shininess = mMeshes[index].Material.Shininess;
+        cbMaterial.Reflectivity = mMeshes[index].Material.Reflectivity;
+
+        // TODO ligtmap 테스트 - 별도 셰이더를 제작하는 방법도 고려
+        if(mMeshes[index].HasTexture == false)
+        {
+            cbMaterial.Reserve4 = 1.0f;
+        }
+
+        mDeviceContext->UpdateSubresource(mCbMaterial, 0, nullptr, &cbMaterial, 0, 0);
 
         //deviceContext->Draw(mMeshes[index].Vertex.size(), offset);
         mDeviceContext->DrawIndexed(mMeshes[index].IndexList.size(), indexOffset, vertexOffset);
@@ -141,9 +184,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     mIndices = new uint32[sumIndexCount];
 
     // mesh - vertices, indices, textures ...
-    mMeshes.swap(*importer.GetMesh());
-
-    mNumMesh = mMeshes.size();
+    mNumMesh = importer.GetMeshCount();
     ASSERT(mNumMesh > 0, "Model::SetupMesh 메시 수는 1 이상이어야 합니다. num of mesh must be over 0.");
 
     Vertex* posInVertices = mVertices;
@@ -151,6 +192,21 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     uint32 offset = 0;
     for(size_t meshIndex = 0; meshIndex < mNumMesh; ++meshIndex)
     {
+        Mesh* mesh = importer.GetMesh(meshIndex);
+        Mesh newMesh;
+        newMesh.Vertex.swap(mesh->Vertex);
+        newMesh.IndexList.swap(mesh->IndexList);
+        newMesh.HasTexture = mesh->HasTexture;
+        memcpy(newMesh.Name, mesh->Name, sizeof(WCHAR) * MESH_NAME_LENGTH);
+        newMesh.Texture = mesh->Texture;
+        mesh->Texture = nullptr;
+        newMesh.TextureNormal = mesh->TextureNormal;
+        mesh->TextureNormal = nullptr;
+        newMesh.NumTexuture = mesh->NumTexuture;
+        memcpy(&newMesh.Material, &mesh->Material, sizeof(Material));
+
+        mMeshes.push_back(newMesh);
+
         memcpy_s(posInVertices, sizeof(Vertex) * sumVertexCount, mMeshes[meshIndex].Vertex.data(), sizeof(Vertex)*mMeshes[meshIndex].Vertex.size());
         posInVertices += mMeshes[meshIndex].Vertex.size();
 
@@ -249,6 +305,30 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     if (FAILED(result))
     {
         ASSERT(false, "CbOutlineWidth상수 버퍼 생성 실패  failed to create CbOutlineWidth");
+        return E_FAIL;
+    }
+
+    desc.ByteWidth = sizeof(CbLight);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbLight);
+    if (FAILED(result))
+    {
+        ASSERT(false, "CbLight상수 버퍼 생성 실패  failed to create CbLight");
+        return E_FAIL;
+    }
+
+    desc.ByteWidth = sizeof(CbMaterial);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbMaterial);
+    if (FAILED(result))
+    {
+        ASSERT(false, "mCbMaterial상수 버퍼 생성 실패  failed to create mCbMaterial");
+        return E_FAIL;
+    }
+
+    desc.ByteWidth = sizeof(CbCamera);
+    result = mDevice->CreateBuffer(&desc, nullptr, &mCbCamera);
+    if (FAILED(result))
+    {
+        ASSERT(false, "mCbCamera상수 버퍼 생성 실패  failed to create mCbCamera");
         return E_FAIL;
     }
 
@@ -403,7 +483,9 @@ size_t Model::GetIndexListCount(size_t meshIndex) const
 
 XMFLOAT3 Model::GetCenterPoint() const
 {
-    return mCenterPosition;
+    XMFLOAT3 pos = mCenterPosition;
+    pos.y += 1.0f;
+    return pos;
 }
 
 void Model::prepare()

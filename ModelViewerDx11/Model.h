@@ -6,12 +6,32 @@ class ModelImporter;
 
 constexpr size_t MESH_NAME_LENGTH = 128;
 
-struct Vertex
+struct Vertex // 4bytes align
 {
     XMFLOAT3 Position;
     XMFLOAT3 Normal;
     XMFLOAT2 TexCoord;
+    float    Reserve1;
 };
+
+// 모델링 프로그램에서 미리 계산된 값으로 사용
+struct Material // 16 bytes align
+{
+    XMFLOAT3 Diffuse;
+    float    Reserve0;
+    XMFLOAT3 Ambient;
+    float    Reserve1;
+    XMFLOAT3 Specular;
+    float    Reserve2;
+    XMFLOAT3 Emissive;
+    float    Reserve3;
+    float    Opacity;       // 알파값으로 사용
+    float    Reflectivity;
+    float    Shininess;     // 스페큘러 거듭제곱 값
+    float    Reserve4;
+};
+
+typedef Material CbMaterial;
 
 struct Mesh
 {
@@ -23,8 +43,15 @@ struct Mesh
     WCHAR Name[MESH_NAME_LENGTH];
     std::vector<Vertex> Vertex;
     std::vector<unsigned int> IndexList;
-    bool HasTexture;
+    Material Material;
+    bool HasTexture;        // 없애야 함. 
+    /*
+     * 현재 구조는 같은 파일을 여러번 로드해서 가지고 있기 때문에
+     * 나중에 TextureManager가 가지고 있어야 할 듯. ( ID-SRV, ID - 이름을 해시로 or  번호)
+     * 셰이더랑 버텍스 구조 변경해야 할 수도.
+     */
     ID3D11ShaderResourceView* Texture;
+    ID3D11ShaderResourceView* TextureNormal;
     uint8 NumTexuture;
 };
 
@@ -33,6 +60,7 @@ enum eShader
     BASIC,
     OUTLINE,
 };
+
 class Model
 {
     struct CbBasic
@@ -49,6 +77,19 @@ class Model
         XMFLOAT3    OutlineColor;
         float       OutlineWidth;
     };
+
+    struct CbLight
+    {
+        XMFLOAT4    LightColor;
+        XMFLOAT4    LightDir;
+    };
+
+    struct CbCamera
+    {
+        XMFLOAT3    Position;
+        float       Reserve1;
+    };
+
 public:
     Model(Renderer* renderer, Camera* camera);
     ~Model();
@@ -101,6 +142,9 @@ private:
 
     ID3D11Buffer* mCbOutlineShader;
     ID3D11Buffer* mCbOutlineProperty;
+    ID3D11Buffer* mCbLight;
+    ID3D11Buffer* mCbMaterial;
+    ID3D11Buffer* mCbCamera;
 
     XMFLOAT3 mCenterPosition;
     XMMATRIX mMatWorld;
