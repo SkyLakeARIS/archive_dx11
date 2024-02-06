@@ -393,12 +393,12 @@ HRESULT UpdateFrame(float deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        gCamera->AddRadiusSphere(speed * deltaTime);
+        gCamera->AddRadiusSphere( deltaTime);
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        gCamera->AddRadiusSphere(-speed * deltaTime);
+        gCamera->AddRadiusSphere(-deltaTime);
     }
 
     // 키보드<-> 마우스 조작 전환
@@ -417,6 +417,16 @@ HRESULT UpdateFrame(float deltaTime)
         gCharacter->SetHighlight(bHightlight);
     }
     bPressHKey = gKeyboard[DIK_H] & 0x80;
+
+    if(gKeyboard[DIK_Z] & 0x80)
+    {
+        gCamera->AddHeight(-deltaTime);
+    }
+
+    if (gKeyboard[DIK_X] & 0x80)
+    {
+        gCamera->AddHeight(deltaTime);
+    }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
     {
