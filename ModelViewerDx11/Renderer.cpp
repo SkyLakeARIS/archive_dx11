@@ -127,7 +127,7 @@ HRESULT Renderer::createRasterState()
     D3D11_RASTERIZER_DESC basicRasterDesc;
     ZeroMemory(&basicRasterDesc, sizeof(D3D11_RASTERIZER_DESC));
 
-    basicRasterDesc.CullMode = D3D11_CULL_BACK;
+    basicRasterDesc.CullMode = D3D11_CULL_NONE;
     basicRasterDesc.FillMode = D3D11_FILL_SOLID;
     basicRasterDesc.FrontCounterClockwise = false;
     result = mDevice->CreateRasterizerState(&basicRasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
