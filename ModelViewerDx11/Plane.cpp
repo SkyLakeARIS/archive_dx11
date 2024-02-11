@@ -5,7 +5,7 @@ using namespace DirectX;
 Plane::Plane()
 {
     
-    mMesh.HasTexture = false;
+    mMesh.bLightMap = false;
     Vertex vertex;
 
     vertex.Position = XMFLOAT3(-0.5f, -0.5f, 0.5f);

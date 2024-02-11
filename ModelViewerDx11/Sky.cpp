@@ -69,7 +69,7 @@ HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines)
         ASSERT(false, "Skybox - fail to create texture");
         return result;
     }
-    mMesh.HasTexture = true;
+    mMesh.bLightMap = false;
     mMesh.NumTexuture = 1;
     wcscpy_s(mMesh.Name, L"skybox");
 

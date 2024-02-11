@@ -252,7 +252,6 @@ void ModelImporter::parseMesh()
                         vertexInfo.TexCoord.y = 0.0f;
                         if (currentMesh->GetElementUVCount() > 0)
                         {
-                            newMesh->HasTexture = true;
                             FbxGeometryElementUV* texture = currentMesh->GetElementUV(0);
                             if (texture->GetMappingMode() == FbxGeometryElement::eByControlPoint
                                 && texture->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
@@ -395,15 +394,18 @@ void ModelImporter::parseTextureInfo()
                         {
                             ASSERT(FALSE, "failed to create texture");
                         }
-                        mFbxObjects[objectIndex].Mesh.HasTexture = true;
 
                         // for normal mapping
                         // face는 normal mapping용 텍스쳐가 존재하지 않음.
                         // sdk에서 normal texture를 뽑아낼 방법..
+                        // TODO 이런 하드코드된 부분 처리할 필요 string 클래스를 만들어야 하나?
                         if(fileNameWithoutExtension.Compare("Unagi_Face_D") == 0)
                         {
+                            mFbxObjects[objectIndex].Mesh.bLightMap = true;
+
                             continue;
                         }
+
                         ZeroMemory(textureFullPath, sizeof(wchar_t)*TEXTURE_NAME_LENGTH);
                         size_t nameLen = fileNameWithoutExtension.GetLen();
                         textureName[nameLen - 1] = NORMAL_TEXTURE_FILE_SUFFIX[1];
@@ -413,6 +415,7 @@ void ModelImporter::parseTextureInfo()
                         {
                             ASSERT(FALSE, "failed to create texture for normal mapping");
                         }
+                        mFbxObjects[objectIndex].Mesh.bLightMap = false;
 
                     }
                     else
@@ -433,7 +436,7 @@ void ModelImporter::parseTextureInfo()
     // TODO ligtmap 테스트 - 별도 셰이더를 제작하는 방법도 고려
     for(auto& mesh : mFbxObjects)
     {
-        if(mesh.Mesh.TextureNormal == nullptr)
+        if(mesh.Mesh.bLightMap)
         {
             wchar_t textureFullPath[MESH_NAME_LENGTH];
             wsprintf(textureFullPath, L"%s%s%s", TEXTURE_FILE_PATH, L"Famale_Face_lightmap", TEXTURE_FILE_EXTENSION);
@@ -448,7 +451,6 @@ void ModelImporter::parseTextureInfo()
                 ASSERT(FALSE, "failed to create texture for lightmapping");
                 return;
             }
-            mesh.Mesh.HasTexture = false;
         }
     }
     OutputDebugStringA("========== Texture Info Extraction end==========\n");

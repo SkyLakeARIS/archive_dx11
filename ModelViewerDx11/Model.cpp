@@ -10,8 +10,15 @@ Model::Model(Renderer* renderer, Camera* camera)
     , mCbBasicShader(nullptr)
     , mCbOutlineShader(nullptr)
     , mCbOutlineProperty(nullptr)
+    , mPixelShader(nullptr)
+    , mPixelShaderOutline(nullptr)
+    , mPixelShaderLightMap(nullptr)
+    , mVertexShader(nullptr)
+    , mVertexShaderOutline(nullptr)
     , mCbMaterial(nullptr)
     , mCbCamera(nullptr)
+    , mbHighlight(false)
+    , mbActiveEmissive(false)
 {
     ASSERT(renderer != nullptr, "do not pass nullptr");
     ASSERT(camera != nullptr, "do not pass nullptr");
@@ -47,6 +54,7 @@ Model::~Model()
 
     SAFETY_RELEASE(mVertexShader);
     SAFETY_RELEASE(mPixelShader);
+    SAFETY_RELEASE(mPixelShaderLightMap);
 
     SAFETY_RELEASE(mVertexShaderOutline);
     SAFETY_RELEASE(mPixelShaderOutline);
@@ -145,24 +153,31 @@ void Model::Draw()
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
     for (size_t index = 0; index < mNumMesh; ++index)
     {
+        // TODO ligtmap 테스트 - 별도 셰이더를 제작하는 방법도 고려
+         // TODO 별도 셰이더 생성 완료 -> 셰이더 매니저 생성 -> 셰이더 기준으로 렌더링
+         // 일단 셰이더 매니저를 생성하기 전까지는 이렇게 둠.
+        if (mMeshes[index].bLightMap)
+        {
+            // for face
+            mDeviceContext->PSSetShader(mPixelShaderLightMap, nullptr, 0);
+
+            mDeviceContext->PSSetSamplers(0, 1, &mSamplerState);
+
+            mDeviceContext->PSSetConstantBuffers(0, 1, &mCbMaterial);
+
+            mDeviceContext->UpdateSubresource(mCbBasicShader, 0, nullptr, &cbMatrices, 0, 0);
+        }
+
         mDeviceContext->PSSetShaderResources(0, 1, &mMeshes[index].Texture);
         mDeviceContext->PSSetShaderResources(1, 1, &mMeshes[index].TextureNormal);
         CbMaterial cbMaterial;
         ZeroMemory(&cbMaterial, sizeof(CbMaterial));
-        cbMaterial.Specular = mMeshes[index].Material.Specular;
-        cbMaterial.Diffuse = mMeshes[index].Material.Diffuse;
-        cbMaterial.Ambient = mMeshes[index].Material.Ambient;
-        cbMaterial.Emissive = mMeshes[index].Material.Emissive;
-        cbMaterial.Opacity = mMeshes[index].Material.Opacity;
-        cbMaterial.Shininess = mMeshes[index].Material.Shininess;
-        cbMaterial.Reflectivity = mMeshes[index].Material.Reflectivity;
 
-        // TODO ligtmap 테스트 - 별도 셰이더를 제작하는 방법도 고려
-        if(mMeshes[index].HasTexture == false)
+        memcpy(&cbMaterial, &mMeshes[index].Material, sizeof(Material));
+        if(!mbActiveEmissive)
         {
-            cbMaterial.Reserve4 = 1.0f;
+            cbMaterial.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
         }
-
         mDeviceContext->UpdateSubresource(mCbMaterial, 0, nullptr, &cbMaterial, 0, 0);
 
         //deviceContext->Draw(mMeshes[index].Vertex.size(), offset);
@@ -170,6 +185,22 @@ void Model::Draw()
 
         vertexOffset += mMeshes[index].Vertex.size();
         indexOffset += mMeshes[index].IndexList.size();
+
+        // TODO 별도 셰이더 생성 완료 -> 셰이더 매니저 생성 -> 셰이더 기준으로 렌더링
+ // 일단 셰이더 매니저를 생성하기 전까지는 이렇게 둠.
+        if (mMeshes[index].bLightMap)
+        {
+            // reset shader
+            mDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
+
+            mDeviceContext->PSSetSamplers(0, 1, &mSamplerState);
+            mDeviceContext->PSSetShaderResources(0, 1, &mMeshes[index].Texture);
+
+            mDeviceContext->PSSetConstantBuffers(0, 1, &mCbMaterial);
+
+            mDeviceContext->UpdateSubresource(mCbBasicShader, 0, nullptr, &cbMatrices, 0, 0);
+        }
+
     }
 }
 
@@ -196,7 +227,7 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
         Mesh newMesh;
         newMesh.Vertex.swap(mesh->Vertex);
         newMesh.IndexList.swap(mesh->IndexList);
-        newMesh.HasTexture = mesh->HasTexture;
+        newMesh.bLightMap = mesh->bLightMap;
         memcpy(newMesh.Name, mesh->Name, sizeof(WCHAR) * MESH_NAME_LENGTH);
         newMesh.Texture = mesh->Texture;
         mesh->Texture = nullptr;
@@ -388,6 +419,13 @@ HRESULT Model::SetupShaderFromRenderer()
     }
 
     result = Renderer::GetInstance()->CreatePixelShader(L"Shaders/PsBasic.hlsl", &mPixelShader);
+    if (FAILED(result))
+    {
+        return result;
+    }
+
+    // for lightmap
+    result = Renderer::GetInstance()->CreatePixelShader(L"Shaders/PsLightMap.hlsl", &mPixelShaderLightMap);
     if (FAILED(result))
     {
         return result;

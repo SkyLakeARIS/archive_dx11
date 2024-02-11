@@ -44,7 +44,7 @@ struct Mesh
     std::vector<Vertex> Vertex;
     std::vector<unsigned int> IndexList;
     Material Material;
-    bool HasTexture;        // 없애야 함. 
+    bool bLightMap;
     /*
      * 현재 구조는 같은 파일을 여러번 로드해서 가지고 있기 때문에
      * 나중에 TextureManager가 가지고 있어야 할 듯. ( ID-SRV, ID - 이름을 해시로 or  번호)
@@ -54,6 +54,12 @@ struct Mesh
     ID3D11ShaderResourceView* TextureNormal;
     uint8 NumTexuture;
 };
+
+// TODO 1. 셰이더 정리 (각 형식대로 파일 네이밍 변경 및 inputlayout등 코드 수정)
+// TODO 2. Shader 매니저, Light 클래스, 텍스쳐 매니저 제작
+// TODO 3. 모델 로드할 수 있는 기능 추가
+// TODO 4. 모델 로드 및 텍스쳐 등 리소스 생성 실패시에도 돌 수 있도록 Default 리소스 준비 및 적용(기본 화면은 스카이박스 + 바닥면만 생성, 둘 중 안되면 단색상으로 초기화)
+
 
 enum eShader
 {
@@ -157,6 +163,8 @@ private:
 
     ID3D11VertexShader* mVertexShaderOutline;
     ID3D11PixelShader*  mPixelShaderOutline;
+
+    ID3D11PixelShader*  mPixelShaderLightMap;
     ID3D11InputLayout*  mInputLayout;
 
     // texture
@@ -164,7 +172,7 @@ private:
 
 
     bool mbHighlight;
-
+    bool mbActiveEmissive;
 };
 
 
