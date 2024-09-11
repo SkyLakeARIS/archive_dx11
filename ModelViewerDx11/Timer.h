@@ -11,6 +11,7 @@ public:
 
     static void     Tick();
     static float    GetDeltaTime();
+    static float    GetNowMS();
 
 private:
     static int64_t  mLastTime;

@@ -21,14 +21,22 @@ void Timer::Initialize()
 // 매 프레임마다 호출되야 합니다.
 void Timer::Tick()
 {
-    uint64_t currentTime = 0;
+    LARGE_INTEGER currentTime;
+
     QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
-    mDeltaTime = (currentTime - mLastTime) * mTimeScale;
-    mLastTime = currentTime;
+    mDeltaTime = (currentTime.QuadPart - mLastTime) * mTimeScale;
+    mLastTime = currentTime.QuadPart;
 }
 
 // Tick()에서 갱신된 DeltaTime을 반환합니다.
 float Timer::GetDeltaTime()
 {
     return mDeltaTime;
+}
+
+float Timer::GetNowMS()
+{
+    LARGE_INTEGER currentTime;
+    QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
+    return ((currentTime.QuadPart * 1000LL) / 10000000.0);
 }

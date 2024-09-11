@@ -4,18 +4,19 @@
 Sky::Sky(Renderer& renderer, Camera& camera)
     : mRenderer(&renderer)
     , mCamera(&camera)
-    , mVs(nullptr)
-    , mPs(nullptr)
-    , mVertexBuffer(nullptr)
-    , mIndexBuffer(nullptr)
     , mDevice(nullptr)
     , mDeviceContext(nullptr)
-    , mInputLayout(nullptr)
+    , mWorld(XMMatrixIdentity())
+    , mVertexBuffer(nullptr)
+    , mIndexBuffer(nullptr)
+    , mCbMatWVP(nullptr)
     , mSampler(nullptr)
+    , mLatLines(0)
+    , mLonLines(0)
 {
     renderer.AddRef();
 
-    mDevice = renderer.GetDevice();
+    mDevice        = renderer.GetDevice();
     mDeviceContext = renderer.GetDeviceContext();
 }
 
@@ -36,12 +37,8 @@ Sky::~Sky()
     SAFETY_RELEASE(mSampler);
     SAFETY_RELEASE(mCbMatWVP);
 
-    SAFETY_RELEASE(mVs);
-    SAFETY_RELEASE(mPs);
-
     SAFETY_RELEASE(mVertexBuffer);
     SAFETY_RELEASE(mIndexBuffer);
-    SAFETY_RELEASE(mInputLayout);
 
     SAFETY_RELEASE(mMesh.Texture);
 
@@ -73,28 +70,6 @@ HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines)
     mMesh.NumTexuture = 1;
     wcscpy_s(mMesh.Name, L"skybox");
 
-
-    // init shaders
-    D3D11_INPUT_ELEMENT_DESC inputLayoutDesc[] =
-    {
-    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-    };
-
-    result = mRenderer->CreateVertexShaderAndInputLayout(L"VsSkybox.hlsl", inputLayoutDesc, ARRAYSIZE(inputLayoutDesc), &mVs, &mInputLayout);
-    if(FAILED(result))
-    {
-        ASSERT(false, "Skybox - fail to create vertex shader and input layout");
-        return result;
-    }
-
-    result = mRenderer->CreatePixelShader(L"PsSkybox.hlsl", &mPs);
-    if (FAILED(result))
-    {
-        ASSERT(false, "Skybox - fail to create pixel shader");
-        return result;
-    }
 
     // init constant buffer
 
@@ -149,14 +124,18 @@ void Sky::Draw()
     // render
     uint32 stride = sizeof(Vertex);
     uint32 offset = 0;
-    mDeviceContext->IASetInputLayout(mInputLayout);
+   // mDeviceContext->IASetInputLayout(mInputLayout);
+    mRenderer->SetInputLayoutTo(Renderer::eInputLayout::PT);
+
     mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffer, &stride, &offset);
     mDeviceContext->IASetIndexBuffer(mIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
     mRenderer->SetRasterState(Renderer::eRasterType::Skybox);
 
-    mDeviceContext->VSSetShader(mVs, nullptr, 0);
-    mDeviceContext->PSSetShader(mPs, nullptr, 0);
+    mRenderer->SetShaderTo(Renderer::eShader::Skybox);
+
+   // mDeviceContext->VSSetShader(mVs, nullptr, 0);
+  //  mDeviceContext->PSSetShader(mPs, nullptr, 0);
 
     mDeviceContext->PSSetSamplers(0, 1, &mSampler);
 
@@ -169,7 +148,7 @@ void Sky::Draw()
 
     mDeviceContext->PSSetShaderResources(0, 1, &mMesh.Texture);
 
-    mDeviceContext->DrawIndexed(mMesh.IndexList.size(), 0, 0);
+    mDeviceContext->DrawIndexed(static_cast<uint32_t>(mMesh.IndexList.size()), 0, 0);
 
     mRenderer->SetDepthStencilState(false);
 }
@@ -184,8 +163,6 @@ HRESULT Sky::createSphere(uint32 latLines, uint32 lonLines)
     const uint32 numVertex = ((latLines - 2) * lonLines) + 2;
     const uint32 numFace = ((latLines - 3) * (lonLines) * 2) + (lonLines * 2);
 
-    float sphereYaw = 0.0f;
-    float spherePitch = 0.0f;
 
     std::vector<Vertex> vertices(numVertex);
 
@@ -195,26 +172,29 @@ HRESULT Sky::createSphere(uint32 latLines, uint32 lonLines)
 
     XMMATRIX matRotationX;
     XMMATRIX matRotationY;
+    float sphereYaw = 0.0f;
+    float spherePitch = 0.0f;
     XMVECTOR currVertPos = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-    for (uint32 i = 0; i < latLines - 2; ++i)
+    for (uint32 i = 0; i < latLines - 2U; ++i)
     {
-        spherePitch = (i + 1) * (3.14 / (latLines - 1));
+        spherePitch = (float)(i + 1U) * (3.14f / (float)(latLines - 1U));
         matRotationX = XMMatrixRotationX(spherePitch);
-        for (uint32 j = 0; j < lonLines; ++j)
+        for (uint32 j = 0U; j < lonLines; ++j)
         {
-            sphereYaw = j * (6.28 / (lonLines));
+            sphereYaw = (float)j * (6.28f / (float)lonLines);
             matRotationY = XMMatrixRotationZ(sphereYaw);
             currVertPos = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), (matRotationX * matRotationY));
             currVertPos = XMVector3Normalize(currVertPos);
-            vertices[i * lonLines + j + 1].Position.x = XMVectorGetX(currVertPos);
-            vertices[i * lonLines + j + 1].Position.y = XMVectorGetY(currVertPos);
-            vertices[i * lonLines + j + 1].Position.z = XMVectorGetZ(currVertPos);
+            uint32 index = i * lonLines + j + 1U;
+            vertices[index].Position.x = XMVectorGetX(currVertPos);
+            vertices[index].Position.y = XMVectorGetY(currVertPos);
+            vertices[index].Position.z = XMVectorGetZ(currVertPos);
         }
     }
 
-    vertices[numVertex - 1].Position.x = 0.0f;
-    vertices[numVertex - 1].Position.y = 0.0f;
-    vertices[numVertex - 1].Position.z = -1.0f;
+    vertices[numVertex - 1U].Position.x = 0.0f;
+    vertices[numVertex - 1U].Position.y = 0.0f;
+    vertices[numVertex - 1U].Position.z = -1.0f;
 
 
     D3D11_BUFFER_DESC vertexBufferDesc;
@@ -223,8 +203,8 @@ HRESULT Sky::createSphere(uint32 latLines, uint32 lonLines)
     vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
     vertexBufferDesc.ByteWidth = sizeof(Vertex) * numVertex;
     vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    vertexBufferDesc.CPUAccessFlags = 0;
-    vertexBufferDesc.MiscFlags = 0;
+    vertexBufferDesc.CPUAccessFlags = 0U;
+    vertexBufferDesc.MiscFlags = 0U;
 
     D3D11_SUBRESOURCE_DATA bufferData;
     ZeroMemory(&bufferData, sizeof(bufferData));
@@ -238,64 +218,64 @@ HRESULT Sky::createSphere(uint32 latLines, uint32 lonLines)
         return result;
     }
 
-    std::vector<uint32> indices(numFace * 3);
+    std::vector<uint32> indices(numFace * 3U);
     
     int k = 0;
-    for (uint32 l = 0; l < lonLines - 1; ++l)
+    for (uint32 l = 0U; l < lonLines - 1U; ++l)
     {
-        indices[k] = 0;
-        indices[k + 1] = l + 1;
-        indices[k + 2] = l + 2;
+        indices[k] = 0U;
+        indices[k + 1] = l + 1U;
+        indices[k + 2] = l + 2U;
         k += 3;
     }
 
-    indices[k] = 0;
+    indices[k] = 0U;
     indices[k + 1] = lonLines;
-    indices[k + 2] = 1;
+    indices[k + 2] = 1U;
     k += 3;
 
-    for (uint32 i = 0; i < latLines - 3; ++i)
+    for (uint32 i = 0U; i < latLines - 3U; ++i)
     {
-        for (uint32 j = 0; j < lonLines - 1; ++j)
+        for (uint32 j = 0U; j < lonLines - 1U; ++j)
         {
-            indices[k] = i * lonLines + j + 1;
-            indices[k + 1] = i * lonLines + j + 2;
-            indices[k + 2] = (i + 1) * lonLines + j + 1;
+            indices[k] = i * lonLines + j + 1U;
+            indices[k + 1] = i * lonLines + j + 2U;
+            indices[k + 2] = (i + 1U) * lonLines + j + 1U;
 
-            indices[k + 3] = (i + 1) * lonLines + j + 1;
-            indices[k + 4] = i * lonLines + j + 2;
-            indices[k + 5] = (i + 1) * lonLines + j + 2;
+            indices[k + 3] = (i + 1U) * lonLines + j + 1U;
+            indices[k + 4] = i * lonLines + j + 2U;
+            indices[k + 5] = (i + 1U) * lonLines + j + 2U;
 
             k += 6; // next quad
         }
 
         indices[k] = (i * lonLines) + lonLines;
-        indices[k + 1] = (i * lonLines) + 1;
-        indices[k + 2] = ((i + 1) * lonLines) + lonLines;
+        indices[k + 1] = (i * lonLines) + 1U;
+        indices[k + 2] = ((i + 1U) * lonLines) + lonLines;
 
-        indices[k + 3] = ((i + 1) * lonLines) + lonLines;
-        indices[k + 4] = (i * lonLines) + 1;
-        indices[k + 5] = ((i + 1) * lonLines) + 1;
+        indices[k + 3] = ((i + 1U) * lonLines) + lonLines;
+        indices[k + 4] = (i * lonLines) + 1U;
+        indices[k + 5] = ((i + 1U) * lonLines) + 1U;
 
         k += 6;
     }
 
-    for (uint32 l = 0; l < lonLines - 1; ++l)
+    for (uint32 l = 0U; l < lonLines - 1U; ++l)
     {
-        indices[k] = numVertex - 1;
-        indices[k + 1] = (numVertex - 1) - (l + 1);
-        indices[k + 2] = (numVertex - 1) - (l + 2);
+        indices[k] = numVertex - 1U;
+        indices[k + 1] = (numVertex - 1U) - (l + 1U);
+        indices[k + 2] = (numVertex - 1U) - (l + 2U);
         k += 3;
     }
 
-    indices[k] = numVertex - 1;
-    indices[k + 1] = (numVertex - 1) - lonLines;
-    indices[k + 2] = numVertex - 2;
+    indices[k] = numVertex - 1U;
+    indices[k + 1] = (numVertex - 1U) - lonLines;
+    indices[k + 2] = numVertex - 2U;
 
-    vertexBufferDesc.ByteWidth = sizeof(uint32) * indices.size();
+    vertexBufferDesc.ByteWidth = sizeof(uint32) * static_cast<uint32_t>(indices.size());
     vertexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    vertexBufferDesc.CPUAccessFlags = 0;
-    vertexBufferDesc.MiscFlags = 0;
+    vertexBufferDesc.CPUAccessFlags = 0U;
+    vertexBufferDesc.MiscFlags = 0U;
 
     ZeroMemory(&bufferData, sizeof(bufferData));
     bufferData.pSysMem = indices.data();

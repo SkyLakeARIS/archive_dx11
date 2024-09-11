@@ -6,9 +6,13 @@ const wchar_t* ModelImporter::TEXTURE_FILE_PATH = L"./textures/";
 const wchar_t* ModelImporter::TEXTURE_FILE_EXTENSION = L".png";
 
 ModelImporter::ModelImporter(ID3D11Device* device)
-    : mFbxScene(nullptr)
+    : mDevice(device)
     , mFbxManager(nullptr)
-    , mDevice(device)
+    , mImporter(nullptr)
+    , mFbxScene(nullptr)
+    , mSetting(nullptr)
+    , mSumVertexCount(0)
+    , mSumIndexCount(0)
     , mModelCenter(0.0f, 0.0f, 0.0f)
 {
     mFbxObjects.reserve(64);

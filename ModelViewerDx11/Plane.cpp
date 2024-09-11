@@ -37,11 +37,6 @@ Plane::Plane()
     }
 }
 
-Plane::~Plane()
-{
-    
-}
-
 void Plane::GetVertices(std::vector<Vertex>* const outVertices) const
 {
     outVertices->clear();
@@ -65,8 +60,8 @@ void Plane::GetIndices(std::vector<unsigned int>* const outIndices) const
 
 void Plane::Draw(ID3D11DeviceContext* const deviceContext, ID3D11ShaderResourceView* const srv)
 {
-    deviceContext->PSSetShaderResources(0, 1, &srv);
+    deviceContext->PSSetShaderResources(0U, 1U, &srv);
 
-    deviceContext->DrawIndexed(mMesh.IndexList.size(), 0, 0);
+    deviceContext->DrawIndexed((uint32_t)mMesh.IndexList.size(), 0U, 0U);
 }
 

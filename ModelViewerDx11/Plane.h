@@ -7,7 +7,7 @@ class Plane final
 public:
 
     Plane();
-    ~Plane();
+    ~Plane() = default;
 
     void Draw(ID3D11DeviceContext* const deviceContext, ID3D11ShaderResourceView* const srv);
 

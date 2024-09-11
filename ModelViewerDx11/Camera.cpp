@@ -4,10 +4,10 @@
 #include "cmath"
 
 Camera::Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp)
-    : mvEye(vEye)
+    : mRadiusOfSphere(2.0f)
+    , mvEye(vEye)
     , mvLookAtCenter(vLookAt)
     , mvUp(vUp)
-    , mRadiusOfSphere(2.0f)
 {
     Renderer::GetInstance()->GetWindowSize(mScreenWidth, mScreenHeight);
 
@@ -42,7 +42,7 @@ void Camera::RotateAxis(float yawRad, float pitchRad)
 
     // pitch만 클램프, yaw는 순환
     // pitch limit는 -85.0~85.0
-    constexpr float PITCH_LIMIT = 0.261799; // 15 degrees
+    constexpr float PITCH_LIMIT = 0.261799f; // 15 degrees
     if(mAnglesRad.x >= XM_2PI)
     {
         mAnglesRad.x -= XM_2PI;
@@ -96,6 +96,7 @@ void Camera::AddHeight(float height)
     XMStoreFloat3(&eye, mvEye);
     XMStoreFloat3(&lookAt, mvLookAtCenter);
 
+    // TODO 현재 타겟으로 하는 물체의 최대/최소 높이를 구해서 제한 걸어야 함.
     eye.y += height;
     lookAt.y += height;
 
@@ -151,6 +152,6 @@ void Camera::makeViewMatrix()
 
 void Camera::makeProjectionMatrix()
 {
-    mMatProjection = XMMatrixPerspectiveFovLH(XM_PIDIV4, mScreenWidth / (float)mScreenHeight, 0.001f, 1000.0f);
+    mMatProjection = XMMatrixPerspectiveFovLH(XM_PIDIV4, static_cast<float>(mScreenWidth) / static_cast<float>(mScreenHeight), 0.001f, 1000.0f);
     mMatViewProjection = mMatView * mMatProjection;
 }
