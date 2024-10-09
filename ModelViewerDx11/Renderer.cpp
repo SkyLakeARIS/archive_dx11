@@ -50,11 +50,20 @@ HWND Renderer::GetWindowHandle() const
 
 ID3D11ShaderResourceView* Renderer::GetShadowTexture()
 {
+    // MEMO D3D 개체들은 Getter에서 AddRef를 해야하지 않을까.
     return mShadowSrv;
 }
 
+ID3D11ShaderResourceView* Renderer::GetDefaultTexture() const
+{
+    ASSERT(mDefaultTexture != nullptr, "The DefaultTexture not initialized.");
+
+    mDefaultTexture->AddRef();
+    return mDefaultTexture;
+}
+
 Renderer::Renderer()
-    : DefaultTexture(nullptr)
+    : mDefaultTexture(nullptr)
     , mRefCount(1)
     , mDevice(nullptr)
     , mDeviceContext(nullptr)
@@ -81,6 +90,10 @@ Renderer::Renderer()
 
 Renderer::~Renderer()
 {
+    for (uint32 i = 0; i < static_cast<uint32>(eCbType::NumConstantBuffer); ++i)
+    {
+        SAFETY_RELEASE(mCbList[i]);
+    }
 
     for(uint32 i = 0; i < static_cast<uint32>(eRasterType::NumRaster); ++i)
     {
@@ -109,7 +122,7 @@ Renderer::~Renderer()
     }
 
 
-    SAFETY_RELEASE(DefaultTexture);
+    SAFETY_RELEASE(mDefaultTexture);
     SAFETY_RELEASE(mTexShadow);
     SAFETY_RELEASE(mTexColor);
     SAFETY_RELEASE(mShadowSrv);
@@ -374,11 +387,47 @@ HRESULT Renderer::PrepareRender()
 {
     HRESULT result = S_OK;
 
+    // set default resources
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc;
+    texDefaultDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    texDefaultDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    texDefaultDesc.Texture2D.MipLevels = 1;
+    texDefaultDesc.Texture2D.MostDetailedMip = 0;
+
+    CreateTextureResource(L"textures/default.png", WIC_FLAGS_NONE, texDefaultDesc, &mDefaultTexture);
+    SET_PRIVATE_DATA(mDefaultTexture, "DefaultTexture");
+
+    // 
     result = CreateShadowRenderTarget();
     ASSERT(SUCCEEDED(result), "FAIL : CreateShadowRenderTarget");
 
     result = setupShaders();
     ASSERT(SUCCEEDED(result), "FAIL : setupShaders");
+
+
+    // initialize constant buffer
+    constexpr ConstantBufferMap cbMapTable[static_cast<uint8_t>(eCbType::NumConstantBuffer)] =
+    {
+        {eCbType::CbWorld, sizeof(CbWorld)},
+        {eCbType::CbViewProj, sizeof(CbViewProj)},
+        {eCbType::CbLightViewProjMatrix, sizeof(CbLightViewProjMatrix) },
+        {eCbType::CbCameraPosition, sizeof(CbCameraPosition) },
+        {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty) },
+        {eCbType::CbLightProperty, sizeof(CbLightProperty)},
+        {eCbType::CbMaterial, sizeof(CbMaterial)},
+    };
+
+    D3D11_BUFFER_DESC desc={};
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    desc.CPUAccessFlags = 0;
+    for(uint8_t index = 0; index < static_cast<uint8_t>(eCbType::NumConstantBuffer); ++index)
+    {
+        desc.ByteWidth = cbMapTable[index].ByteWidth;
+        ASSERT(S_OK == CreateConstantBuffer(desc, &mCbList[index]), "Fail To Create CB");
+    }
+
 
     // TODO main 함수와 다른 Create함수에 껴있는 초기화 함수들 여기로 옮겨놓기.
     return result;
@@ -504,11 +553,11 @@ HRESULT Renderer::CreatePixelShader(
 HRESULT Renderer::CreateTextureResource(
     const WCHAR* fileName,
     WIC_FLAGS flag,
-    const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
+    D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
     ID3D11ShaderResourceView** outShaderResourceView)
 {
     ScratchImage image;
-    ID3D11Resource* textureResource = nullptr;
+    ID3D11Texture2D* textureResource = nullptr;
     
     HRESULT result = LoadFromWICFile(fileName, flag, nullptr, image);
     if (FAILED(result))
@@ -517,14 +566,17 @@ HRESULT Renderer::CreateTextureResource(
         goto FAILED;
     }
 
-    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), &textureResource);
+    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)(&textureResource));
     if (FAILED(result))
     {
         ASSERT(false, "failed to create TextureResource : gTextureResource 생성 실패");
         goto FAILED;
     }
-
-    result = mDevice->CreateShaderResourceView(textureResource, &srvDesc, &(*outShaderResourceView));
+    D3D11_TEXTURE2D_DESC desc;
+    textureResource->GetDesc(&desc);
+    srvDesc.Format = desc.Format;
+    srvDesc.Texture2D.MipLevels = desc.MipLevels;
+    result = mDevice->CreateShaderResourceView((ID3D11Resource*)textureResource, &srvDesc, &(*outShaderResourceView));
     if (FAILED(result))
     {
         ASSERT(false, "failed to create outShaderResourceView : outShaderResourceView 생성 실패");
@@ -554,7 +606,7 @@ HRESULT Renderer::CreateDdsTextureResource(const WCHAR* fileName, DDS_FLAGS flag
         goto FAILED;
     }
     
-    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**) & textureResource);
+    result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)&textureResource);
     if (FAILED(result))
     {
         ASSERT(false, "failed to create TextureResource : gTextureResource 생성 실패");
@@ -617,6 +669,16 @@ HRESULT Renderer::CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_D
     return result;
 }
 
+HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb)
+{
+    ASSERT(desc.BindFlags == D3D11_BIND_CONSTANT_BUFFER, "desc.BindFlags not bind as Constant-buffer");
+    ASSERT(desc.ByteWidth != 0, "desc.ByteWidth is zero");
+
+    HRESULT result = mDevice->CreateBuffer(&desc, nullptr, outCb);
+
+    return result;
+}
+
 void Renderer::SetRenderTargetTo(eRenderTarget type)
 {
     RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
@@ -653,13 +715,11 @@ HRESULT Renderer::CreateShadowRenderTarget()
     /*
      * 렌더 타겟의 사이즈와 거기에 붙인 텍스쳐들의 사이즈는 동일해야 한다.
      * 따라서 텍스쳐만 갈아끼우며 사용하려면 지정한 사이즈와 동일한 사이즈의 텍스쳐로 사용해야 한다.
-     *    TODO 코드 정리가 필요함. 굳이 필요없는 코드는 제거(상태변경, 리소스 생성 등)
-
      * 
      */
     D3D11_TEXTURE2D_DESC depthDesc = {};
-    depthDesc.Width = 1024U;
-    depthDesc.Height = 1024U;
+    depthDesc.Width = 2048U;
+    depthDesc.Height = 2048U;
     depthDesc.MipLevels = 1;
     depthDesc.ArraySize = 1;
     depthDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -685,8 +745,8 @@ HRESULT Renderer::CreateShadowRenderTarget()
     SET_PRIVATE_DATA(mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)], "eRenderTarget::Shadow");
     SAFETY_RELEASE(mTexColor);
 
-    mViewportTex.Width = 1024.0f;
-    mViewportTex.Height = 1024.0f;
+    mViewportTex.Width = 2048.0f;
+    mViewportTex.Height = 2048.0f;
     mViewportTex.MinDepth = 0.0f;
     mViewportTex.MaxDepth = 1.0f;
     mViewportTex.TopLeftX = 0;
@@ -716,11 +776,6 @@ HRESULT Renderer::CreateShadowRenderTarget()
     mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Shadow)].DepthStencilIndex = 1U;
     mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Shadow)].NumViews = 1U;
 
-    // TODO 이런 코드가 반드시 필요한가? 체크 필요
-    RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Shadow)];
-    mDeviceContext->OMSetRenderTargets(rtvDs.NumViews,
-        &mRenderTargetViewList[rtvDs.RenderTargetIndex],
-        mDepthStencilViewList[rtvDs.DepthStencilIndex]);
 
     D3D11_SHADER_RESOURCE_VIEW_DESC desc;
     ZeroMemory(&desc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
@@ -800,34 +855,34 @@ void Renderer::Present() const
 
 HRESULT Renderer::setupShaders()
 {
-    D3D11_INPUT_ELEMENT_DESC basicDesc[] =
+
+    D3D11_INPUT_ELEMENT_DESC layoutPTNDesc[] =
     {
         { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-        { "NORMAL", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U},
-        { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 24U, D3D11_INPUT_PER_VERTEX_DATA, 0U }
+        { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
+        { "NORMAL", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 20U, D3D11_INPUT_PER_VERTEX_DATA, 0U}
     };
 
-    D3D11_INPUT_ELEMENT_DESC ptLayoutDesc[] =
-    {
-        { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-        { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U }
-    };
+    //D3D11_INPUT_ELEMENT_DESC layoutPTDesc[] =
+    //{
+    //    { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
+    //    { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U }
+    //};
 
-    D3D11_INPUT_ELEMENT_DESC simpleDesc[] =
-    {
-        { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U }
-    };
+    //D3D11_INPUT_ELEMENT_DESC layoutPDesc[] =
+    //{
+    //    { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U }
+    //};
 
     const wchar_t* InputLayoutSourceList[] =
     {
-        L"Shaders/VsBasicLayout.hlsl",
-        L"Shaders/VsPTLayout.hlsl",
-        L"Shaders/VsSimpleLayout.hlsl",
+        L"Shaders/LayoutPTN.hlsl",
+        L"Shaders/LayoutPT.hlsl",
+        L"Shaders/LayoutP.hlsl",
     };
 
     const wchar_t* VertexShaderSourceList[] =
     {
-        L"Shaders/VsBasic.hlsl",
         L"Shaders/VsOutline.hlsl",
         L"Shaders/VsBasicWithShadow.hlsl",
         L"Shaders/VsSimple.hlsl",
@@ -836,8 +891,6 @@ HRESULT Renderer::setupShaders()
     };
     const wchar_t* PixelShaderSourceList[] =
     {
-        L"Shaders/PsBasic.hlsl",
-        L"Shaders/PsLightMap.hlsl",
         L"Shaders/PsOutline.hlsl",
         L"Shaders/PsBasicWithShadow.hlsl",
         L"Shaders/PsShadow.hlsl",
@@ -866,43 +919,38 @@ HRESULT Renderer::setupShaders()
 
     constexpr InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eInputLayout::NumInputlayout)] =
     {
-        { eInputLayout::Basic, 0U, basicDesc, ARRAYSIZE(basicDesc)},
-        { eInputLayout::PT, 1U, ptLayoutDesc, ARRAYSIZE(ptLayoutDesc)},
-        {eInputLayout::Simple, 2U, simpleDesc, ARRAYSIZE(simpleDesc)},
+        { eInputLayout::PTN, 0U, layoutPTNDesc, 3},
+        { eInputLayout::PT, 1U, layoutPTNDesc, 2},
+        {eInputLayout::P, 2U, layoutPTNDesc, 1},
     };
 
     constexpr VertexShaderContainer VertexShaderListMapTable[static_cast<uint32_t>(eVertexShader::NumVertexShader)] =
     {
-        { eVertexShader::VsBasic, 0U},
-        {eVertexShader::VsBasicWithShadow, 2U},
-        { eVertexShader::VsOutline, 1U},
-        {eVertexShader::VsSimple, 3U},
-        {eVertexShader::VsRenderToTexture, 5U}, // ?
-        {eVertexShader::VsSkybox, 4U},
+        {eVertexShader::VsBasicWithShadow, 1U},
+        { eVertexShader::VsOutline, 0U},
+        {eVertexShader::VsSimple, 2U},
+        {eVertexShader::VsRenderToTexture, 4U}, // ?
+        {eVertexShader::VsSkybox, 3U},
     };
 
     constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::NumPixelShader)] =
     {
-        {ePixelShader::PsBasic , 0U},
-        {ePixelShader::PsBasicWithShadow, 3U},
-        { ePixelShader::PsLightMap, 1U},
-        {ePixelShader::PsOutline, 2U},
-        {ePixelShader::PsRenderToTexture, 5U},
-        {ePixelShader::PsShadow, 4U},
-        {ePixelShader::PsSkybox, 6U},
+        {ePixelShader::PsBasicWithShadow, 1U},
+        {ePixelShader::PsOutline, 0U},
+        {ePixelShader::PsRenderToTexture, 3U},
+        {ePixelShader::PsShadow, 2U},
+        {ePixelShader::PsSkybox, 4U},
     };
 
 
     // construct shader mapping table
-    constexpr ShaderMap ShaderMapTable[static_cast<uint32_t>(eShader::NumShader)] =
+    constexpr ShaderMap ShaderMapTable[] =
     {
-        {eShader::Basic, eVertexShader::VsBasic , ePixelShader::PsBasic},
-        {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline},
-        {eShader::LightMap, eVertexShader::VsBasic, ePixelShader::PsLightMap}, // ?
-        {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox},
-        { eShader::Shadow, eVertexShader::VsSimple, ePixelShader::PsShadow},
+        {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline}, 
+        {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox}, 
+        { eShader::Shadow, eVertexShader::VsSimple, ePixelShader::PsShadow}, // TODO : 개선 예정(셰이더 최적화) - VSSimple을 다른걸로 변경하기.(inputlayout관점 최적화)
         {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-        {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture},
+        {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
     };
 
     static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -997,7 +1045,7 @@ void Renderer::Cleanup()
 
     SAFETY_RELEASE(mDevice);
     SAFETY_RELEASE(mDevice);
-    SAFETY_RELEASE(DefaultTexture);
+    SAFETY_RELEASE(mDefaultTexture);
     SAFETY_RELEASE(mDepthStencilTexture);
     SAFETY_RELEASE(mSwapChain);
     SAFETY_RELEASE(mDeviceContext);

@@ -55,11 +55,8 @@ HRESULT DirectInput::Initialize()
         return E_FAIL;
     }
 
-    result = mKeyboardInput->Acquire();
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
+    mKeyboardInput->Acquire();
+ 
 
     ZeroMemory(mKeyboardState, sizeof(mKeyboardState));
 
@@ -86,11 +83,11 @@ HRESULT DirectInput::Initialize()
         return E_FAIL;
     }
 
-    result = mMouseInput->Acquire();
-    if (FAILED(result))
-    {
-        return E_FAIL;
-    }
+    mMouseInput->Acquire();
+    //if (FAILED(result))
+    //{
+    //    return E_FAIL;
+    //}
 
     return result;
 }
@@ -142,6 +139,8 @@ HRESULT DirectInput::UpdateInput()
 
     if(mMouseInputFlag != flag)
     {
+        mMouseInput->Unacquire();
+
         mMouseInputFlag = flag;
         mMouseInput->SetCooperativeLevel(mhWnd, mMouseInputFlag);
         if (FAILED(result))
@@ -149,17 +148,13 @@ HRESULT DirectInput::UpdateInput()
             return E_FAIL;
         }
 
-        result = mMouseInput->Acquire();
-        if (FAILED(result))
-        {
-            return E_FAIL;
-        }
+        mMouseInput->Acquire();
     }
 
     //
     // mouse
     //
-    result = mMouseInput->GetDeviceState(sizeof(mMouseState), &mMouseState);
+ /*   result = mMouseInput->GetDeviceState(sizeof(mMouseState), &mMouseState);
     if (FAILED(result))
     {
         if(result | (DIERR_INPUTLOST | DIERR_NOTACQUIRED))
@@ -171,43 +166,43 @@ HRESULT DirectInput::UpdateInput()
         {
             return E_FAIL;
         }
-    }
+    }*/
 
-    if(mKeyboardState[DIK_LALT])
-    {
-        mOriginalMouseX = 0;
-        mOriginalMouseY = 0;
-        // ALT key is cursor control mode
-        return S_OK;
-    }
+    //if(mKeyboardState[DIK_LALT])
+    //{
+    //    mOriginalMouseX = 0;
+    //    mOriginalMouseY = 0;
+    //    // ALT key is cursor control mode
+    //    return S_OK;
+    //}
 
-    mMouseX = mScreenWidth / 2;
-    mMouseY = mScreenHeight / 2;
+    //mMouseX = mScreenWidth / 2;
+    //mMouseY = mScreenHeight / 2;
 
-    mMouseX += mMouseState.lX;
-    mMouseY += mMouseState.lY;
+    //mMouseX += mMouseState.lX;
+    //mMouseY += mMouseState.lY;
 
-    mOriginalMouseX = mMouseState.lX;
-    mOriginalMouseY = mMouseState.lY;
+    //mOriginalMouseX = mMouseState.lX;
+    //mOriginalMouseY = mMouseState.lY;
 
-    // clamp
-    if(mMouseX < 0)
-    {
-        mMouseX = 0;
-    }
-    if (mMouseY < 0)
-    {
-        mMouseY = 0;
-    }
+    //// clamp
+    //if(mMouseX < 0)
+    //{
+    //    mMouseX = 0;
+    //}
+    //if (mMouseY < 0)
+    //{
+    //    mMouseY = 0;
+    //}
 
-    if (mMouseX > mScreenWidth)
-    {
-        mMouseX = mScreenWidth;
-    }
-    if (mMouseY > mScreenHeight)
-    {
-        mMouseY = mScreenHeight;
-    }
+    //if (mMouseX > mScreenWidth)
+    //{
+    //    mMouseX = mScreenWidth;
+    //}
+    //if (mMouseY > mScreenHeight)
+    //{
+    //    mMouseY = mScreenHeight;
+    //}
 
     return result;
 }
@@ -225,8 +220,28 @@ void DirectInput::GetMousePosition(int& mouseX, int& mouseY) const
 
 void DirectInput::GetMouseDeltaPosition(int& deltaX, int& deltaY) const
 {
-    deltaX = mOriginalMouseX;
-    deltaY = mOriginalMouseY;
+    if (mKeyboardState[DIK_LALT])
+    {
+        deltaX = 0;
+        deltaY = 0;
+        return;
+    }
+
+    HRESULT result = mMouseInput->GetDeviceState(sizeof(mMouseState), (LPVOID)&mMouseState);
+    if (FAILED(result))
+    {
+        if (result | (DIERR_INPUTLOST | DIERR_NOTACQUIRED))
+        {
+            mMouseInput->Acquire();
+
+        }
+        else
+        {
+            return;
+        }
+    }
+    deltaX = mMouseState.lX;
+    deltaY = mMouseState.lY;
 }
 
 unsigned char* DirectInput::GetKeyboardPress()

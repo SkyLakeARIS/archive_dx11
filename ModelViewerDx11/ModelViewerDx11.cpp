@@ -26,14 +26,8 @@ Camera* gCamera = nullptr;
 Sky* gSkybox = nullptr;
 Light* gLight = nullptr;
 Plane* gPlane = nullptr;
-#ifdef USING_MYINPUT 
-MyInput*                gMyInput = nullptr;
 
-#else
 DirectInput*            gDirectInput = nullptr;
-
-#endif
-
 
 
 
@@ -114,16 +108,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 
     //
-    // DirectInput/MyInput initialize
+    // DirectInput initialize
     //
-#ifdef USING_MYINPUT
-    gMyInput = new MyInput;
-    result = gMyInput->Initialize(&gWnd, gWidth, gHeight);
-    if (FAILED(result))
-    {
-        goto EXIT_PROGRAM;
-    }
-#else
     gDirectInput = new DirectInput(hInstance, hWnd, WINDOW_WIDTH, WINDOW_HEIGHT);
     result = gDirectInput->Initialize();
     if (FAILED(result))
@@ -131,7 +117,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         ASSERT(false, "모델데이터 초기화 실패 SetupGeometry");
         goto EXIT_PROGRAM;
     }
-#endif
 
     gCamera = new Camera(
         XMVectorSet(0.0f, 10.0f, -15.0f, 0.0f)
@@ -156,18 +141,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         goto EXIT_PROGRAM;
     }
 
-    result = gCharacter->SetupShaderFromRenderer();
-    //gCharacter->SetupShader(eShader::BASIC, gVertexShader, gPixelShaderTextureAndLighting, gVertexLayout);
-    if (FAILED(result))
-    {
-        ASSERT(false, "gCharacter::SetupShaderFromRenderer 초기화 실패 -failed to create shader");
-        goto EXIT_PROGRAM;
-    }
 
     Renderer::GetInstance()->SetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     LightManager::GetInstance();
     gCamera->ChangeFocus(gCharacter->GetCenterPoint());
+    // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
     gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f));
+    gLight->Initialize();
     gCharacter->SetLight(gLight);
 
     // debug quad
@@ -197,16 +177,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE | PM_NOYIELD))
             {
                 bool fHandled = false;
-#ifdef USING_MYINPUT
-                if (!(gMyInput->GetControlMode() & (uint32)eControlFlags::KEYBOARD_MOVEMENT_MODE) && (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST))
-                {
-                    fHandled = gMyInput->UpdateMouseInput(msg);
-                }
-                else if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)
-                {
-                    fHandled = gMyInput->UpdateKeyboardInput(msg);
-                }
-#endif
+
                 if (WM_QUIT == msg.message)
                 {
                     break;
@@ -220,38 +191,39 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
             else
             {
-                while(sumUpdate > nextUpdateTime)
+                gDirectInput->UpdateInput();
+
+                while(sumUpdate >= nextUpdateTime)
                 {
+                    // MEMO 위의 키입력을 토대로
+                    // MEMO 아래에서 반영하여 물체에 갱신
+                    // 일단 키 인풋에 대한 처리 필요 : 카메라, 캐릭터(지금은 아니지만)
+                    // 그외, 앱에서 처리하는 키 입력은 게임의 업데이트와는 무관. 즉시처리해도 됨.
+                    // 그렇다면 UpdateInput은 업데이트만하고, UpdateFrame에서 다시 read한다면?
+                    // MEMO : 일단, 현 상황에서 필요한 마우스 인풋관련은 처리 완료.
+                    sumUpdate -= UpdateInterval;
+                    Timer::Tick();
 
-                   // if (GetTickCount() >= nextUpdateTime)
-                    {
-                        nextUpdateTime = sumUpdate + UpdateInterval;
-                     //   previous += 1.0;
-#ifndef USING_MYINPUT
-                        gDirectInput->UpdateInput();
-#endif
-                        //TODO 위의 키입력을 토대로
-                        //TODO 아래에서 반영하여 물체에 갱신
-                        // TODO 그리고 아래 렌더에서 그 방향으로 delta 곱해서 이동
-                        ++updateFPS;
-                    }
+                    UpdateFrame(Timer::GetDeltaTime());
 
-                  //  preprocess(Timer::GetDeltaTime());
-              //      Render(Timer::GetDeltaTime());
+                    ++updateFPS;
                 }
-                // TODO 어쩌면 Update는 진짜 다음 위치만 정해주고, Render에서 보간하여 움직이도록 짜야 할 듯 하다.
-                // 현재 구조는 Update에서 보간하는 구조, Render에서는 이미 결정된 위치에서의 결과물일 뿐
-                while(sumRender > nextUpdateTimeRender)
+
+               if(sumRender >= nextUpdateTimeRender)
                 {
+
                     nextUpdateTimeRender = sumRender + RenderInterval;
-                    const float interpDelta = (RenderInterval + nextUpdateTimeRender - sumRender) / RenderInterval;
-                    UpdateFrame(interpDelta);
-                    preprocess(interpDelta);
-                    Render(interpDelta);
+
+                    preprocess(sumUpdate/ nextUpdateTime);
+                    Render(sumUpdate / nextUpdateTime);
                     ++renderFPS;
                 }
+               else
+               {
+                   YieldProcessor();
+               }
 
-                if(sumUpdate >= nextUpdateFPS)
+                if(Timer::GetNowMS() >= nextUpdateFPS)
                 {
                     OutputDebugString(L"Render FPS : ");
                     OutputDebugString(std::to_wstring(renderFPS).c_str());
@@ -261,17 +233,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                     OutputDebugString(std::to_wstring(updateFPS).c_str());
                     OutputDebugString(L"\n");
 
-                    nextUpdateFPS = sumUpdate + 1000.0f;
+                    nextUpdateFPS = Timer::GetNowMS() + 1000.0f;
 
                     updateFPS = 0;
                     renderFPS = 0;
                 }
+
             }
-            sumRender += Timer::GetNowMS() - start;
-
-            sumUpdate += Timer::GetNowMS() - start;
-            Timer::Tick();
-
+            sumRender += (Timer::GetNowMS() - start);
+            sumUpdate += (Timer::GetNowMS() - start);
         }
     }
 
@@ -346,90 +316,8 @@ HRESULT SetupGeometry()
 HRESULT UpdateFrame(float deltaTime)
 {
 
-    float speed = 1.0f;
+    float speed = 10.0f;
 
-#ifdef USING_MYINPUT
-    /*
-     *  myinput ver
-     */
-    int keyboardArrSize = 0;
-    bool gKeyboard[256];
-    gMyInput->GetKeyboardPressed(gKeyboard, &keyboardArrSize);
-    if(gMyInput->GetControlMode() & (uint32)eControlFlags::KEYBOARD_MOVEMENT_MODE)
-    {
-        if (gKeyboard['W'] || gKeyboard['w'])
-        {
-            gCamera.RotateAxis(0.0f, XMConvertToRadians(-speed * deltaTime));
-        }
-        if (gKeyboard['S'] || gKeyboard['s'])
-        {
-            gCamera.RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime));
-        }
-        if (gKeyboard['A'] || gKeyboard['a'])
-        {
-            gCamera.RotateAxis(XMConvertToRadians(-speed * deltaTime), 0.0f);
-        }
-        if (gKeyboard['D'] || gKeyboard['d'])
-        {
-            gCamera.RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f);
-        }
-    }
-
-    if (gKeyboard['Q'] || gKeyboard['q'])
-    {
-        gCamera.AddRadiusSphere(speed * deltaTime);
-    }
-    if (gKeyboard['E'] || gKeyboard['e'])
-    {
-        gCamera.AddRadiusSphere(-speed * deltaTime);
-    }
-
-    // 물체 스케일링
-    if (gKeyboard['R'] || gKeyboard['r'])
-    {
-        gScaleFactor += 0.1f;
-        if (gScaleFactor > 15.0f)
-        {
-            gScaleFactor = 15.0f;
-        }
-    }
-
-    if (gKeyboard['F'] || gKeyboard['f'])
-    {
-        gScaleFactor -= 0.1f;
-        if (gScaleFactor < 0.1f)
-        {
-            gScaleFactor = 0.1f;
-        }
-    }
-
-    if (gKeyboard['C'] || gKeyboard['c'])
-    {
-        gMyInput->SetControlMode((uint32)eControlFlags::KEYBOARD_MOVEMENT_MODE);
-    }
-
-    if (gKeyboard[VK_ESCAPE])
-    {
-        SendMessage(gWnd, WM_DESTROY, 0, 0);
-    }
-
-    /*
-     *  카메라 거리 메서드랑 input 클래스 한번 점검해서 라디안 모드로 변경 그리고 그에맞게 시그니처 변경
-     *  그리고 키 컨트롤 모드 테스트하기
-     *  메인 로직 점검 후, 불필요 코드 과감히 삭제
-     */
-
-    ///*
-    // *  마우스 움직임은 매끄럽게 처리안되고 있음.
-    // */
-    int mouseX = 0;
-    int mouseY = 0;
-    gMyInput->GetMouseDeltaPosition(mouseX, mouseY);
-
-    gCamera.RotateAxis(XMConvertToRadians(mouseX * deltaTime), XMConvertToRadians(mouseY * deltaTime));
-
-
-#else
     /*
      *  direct input ver
      */
@@ -474,12 +362,17 @@ HRESULT UpdateFrame(float deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        gCamera->AddRadiusSphere( deltaTime);
+       // gCamera->AddRadiusSphere( deltaTime);
+        gLight->Move(0.001f, -1.0f);
+        gLight->SetDirection(gCharacter->GetCenterPoint());
+
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        gCamera->AddRadiusSphere(-deltaTime);
+        //gCamera->AddRadiusSphere(-deltaTime);
+        gLight->Move(-0.001f, 1.0f);
+        gLight->SetDirection(gCharacter->GetCenterPoint());
     }
 
     // 키보드<-> 마우스 조작 전환
@@ -515,7 +408,12 @@ HRESULT UpdateFrame(float deltaTime)
     }
 
 
-#endif
+    Renderer::CbViewProj cbViewProj;
+    cbViewProj.Matrix = XMMatrixTranspose(gCamera->GetViewProjectionMatrix());
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbViewProj, &cbViewProj);
+
+    
+    gLight->Update(gCamera);
 
     return S_OK;
 }
@@ -530,6 +428,8 @@ HRESULT Render(float deltaTime)
     gSkybox->Draw();
     gCharacter->Draw();
 
+    gLight->Draw(deltaTime);
+
     Renderer::GetInstance()->Present();
 
     return S_OK;
@@ -537,24 +437,19 @@ HRESULT Render(float deltaTime)
 
 void Cleanup()
 {
-#ifdef USING_MYINPUT
-    gMyInput->Release();
-    delete gMyInput;
-    gMyInput = nullptr;
-#else
     gDirectInput->Release();
     delete gDirectInput;
     gDirectInput = nullptr;
-#endif
+
     delete gPlane;
  //   gImporter->Release();
     delete gSkybox;
     delete gImporter;
-
+    delete gLight;
     delete gCharacter;
     delete gCamera;
  
-    // device가 가장 마지막에 해제되도록.
+    // MEMO device가 가장 마지막에 해제되도록.
     Renderer::GetInstance()->Release();
 }
 
@@ -565,6 +460,4 @@ void preprocess(float deltaTime)
     Renderer::GetInstance()->ClearScreenAndDepth(Renderer::eRenderTarget::Shadow);
     
     gCharacter->DrawShadow();
- //   Renderer::GetInstance()->SetRenderTargetTo(true);
-
 }

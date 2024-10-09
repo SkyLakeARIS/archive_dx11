@@ -116,25 +116,16 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\PsBasic.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\PsOutline.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\PsRenderToTexture.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\VsBasic.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\VsOutline.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\VsRenderToTexture.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\PsLightMap.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\PsSkybox.hlsl">
@@ -155,13 +146,13 @@
     <FxCompile Include="Shaders\VsSimple.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\VsBasicLayout.hlsl">
+    <FxCompile Include="Shaders\LayoutPTN.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\VsPTLayout.hlsl">
+    <FxCompile Include="Shaders\LayoutPT.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\VsSimpleLayout.hlsl">
+    <FxCompile Include="Shaders\LayoutP.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

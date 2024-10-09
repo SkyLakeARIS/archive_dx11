@@ -9,7 +9,7 @@ Sky::Sky(Renderer& renderer, Camera& camera)
     , mWorld(XMMatrixIdentity())
     , mVertexBuffer(nullptr)
     , mIndexBuffer(nullptr)
-    , mCbMatWVP(nullptr)
+    , mCbMatWorld(nullptr)
     , mSampler(nullptr)
     , mLatLines(0)
     , mLonLines(0)
@@ -18,6 +18,14 @@ Sky::Sky(Renderer& renderer, Camera& camera)
 
     mDevice        = renderer.GetDevice();
     mDeviceContext = renderer.GetDeviceContext();
+
+    D3D11_BUFFER_DESC desc = {};
+    desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.ByteWidth = sizeof(Renderer::CbWorld);
+    HRESULT result = Renderer::GetInstance()->CreateConstantBuffer(desc, &mCbMatWorld);
+    ASSERT(result == S_OK, "mCbMatWorld 생성 실패.");
+
 }
 
 Sky::~Sky()
@@ -35,7 +43,7 @@ Sky::~Sky()
 
 
     SAFETY_RELEASE(mSampler);
-    SAFETY_RELEASE(mCbMatWVP);
+    SAFETY_RELEASE(mCbMatWorld);
 
     SAFETY_RELEASE(mVertexBuffer);
     SAFETY_RELEASE(mIndexBuffer);
@@ -59,8 +67,8 @@ HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines)
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
     srvDesc.TextureCube.MipLevels = 1;
     srvDesc.TextureCube.MostDetailedMip = 0;
-
-    result = mRenderer->CreateDdsTextureResource(L"textures/skymap.dds", DDS_FLAGS_NONE, srvDesc, &mMesh.Texture);
+    
+    result = mRenderer->CreateDdsTextureResource(L"textures/skybox.dds", DDS_FLAGS_NONE, srvDesc, &mMesh.Texture);
     if (FAILED(result))
     {
         ASSERT(false, "Skybox - fail to create texture");
@@ -70,24 +78,6 @@ HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines)
     mMesh.NumTexuture = 1;
     wcscpy_s(mMesh.Name, L"skybox");
 
-
-    // init constant buffer
-
-    D3D11_BUFFER_DESC cbBufferDesc;
-    ZeroMemory(&cbBufferDesc, sizeof(cbBufferDesc));
-
-    cbBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    cbBufferDesc.ByteWidth = sizeof(XMMATRIX);
-    cbBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    cbBufferDesc.CPUAccessFlags = 0;
-    cbBufferDesc.MiscFlags = 0;
-
-    result = mDevice->CreateBuffer(&cbBufferDesc, nullptr, &mCbMatWVP);
-    if (FAILED(result))
-    {
-        ASSERT(false, "skybox - fail to create constant buffer");
-        return result;
-    }
 
     // sampler
     D3D11_SAMPLER_DESC samplerDesc = {};
@@ -121,12 +111,15 @@ void Sky::Draw()
 
     mWorld = matScale * matTranslate;
 
+    Renderer::CbWorld cbWVP;
+    cbWVP.Matrix = XMMatrixTranspose(mWorld);
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWVP);
+
     // render
-    uint32 stride = sizeof(Vertex);
-    uint32 offset = 0;
-   // mDeviceContext->IASetInputLayout(mInputLayout);
     mRenderer->SetInputLayoutTo(Renderer::eInputLayout::PT);
 
+    uint32 stride = sizeof(Vertex);
+    uint32 offset = 0;
     mDeviceContext->IASetVertexBuffers(0, 1, &mVertexBuffer, &stride, &offset);
     mDeviceContext->IASetIndexBuffer(mIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
@@ -134,15 +127,12 @@ void Sky::Draw()
 
     mRenderer->SetShaderTo(Renderer::eShader::Skybox);
 
-   // mDeviceContext->VSSetShader(mVs, nullptr, 0);
-  //  mDeviceContext->PSSetShader(mPs, nullptr, 0);
-
     mDeviceContext->PSSetSamplers(0, 1, &mSampler);
 
-    CbWVP cbWVP;
-    cbWVP.WVP = XMMatrixTranspose(mWorld * mCamera->GetViewProjectionMatrix());
-    mDeviceContext->VSSetConstantBuffers(0, 1, &mCbMatWVP);
-    mDeviceContext->UpdateSubresource(mCbMatWVP, 0, nullptr, &cbWVP, 0, 0);
+   
+
+    Renderer::GetInstance()->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
+    Renderer::GetInstance()->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbViewProj);
 
     mRenderer->SetDepthStencilState(true);
 
@@ -151,6 +141,7 @@ void Sky::Draw()
     mDeviceContext->DrawIndexed(static_cast<uint32_t>(mMesh.IndexList.size()), 0, 0);
 
     mRenderer->SetDepthStencilState(false);
+
 }
 
 /*

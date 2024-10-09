@@ -1,9 +1,66 @@
 ﻿#pragma once
 #include "framework.h"
 
+
+// TODO 1. Draw함수에 뭉쳐진 Update코드들 Update 함수로 분리
+// TODO 2. 재설계한 CB들 업데이트 주기에 맞춰서 UpdateSubResource/ Bind 정리.
+
 class Renderer final : IUnknown
 {
 public:
+
+
+    typedef struct CbMatrix
+    {
+        XMMATRIX Matrix;
+    }CbWorld, CbViewProj, CbLightViewProjMatrix;
+
+    typedef struct CbFloat3
+    {
+        XMFLOAT3    Float3;
+        float       Reserve;
+    } CbCameraPosition, CbOutlineProperty;
+
+    typedef struct CbTwoVec4
+    {
+        XMFLOAT4    First;
+        XMFLOAT4    Second;
+    }CbLightProperty;
+
+    typedef struct CbMaterial
+    {
+        XMFLOAT3 Diffuse;
+        float Reserve0;
+        XMFLOAT3 Ambient;
+        float Reserve1;
+        XMFLOAT3 Specular;
+        float Reserve2;
+        XMFLOAT3 Emissive;
+        float Reserve3;
+        float Opacity; // 알파값으로 사용
+        float Reflectivity;
+        float Shininess; // 스페큘러 거듭제곱 값
+        float Reserve4;
+    };
+
+    //typedef struct CbOneMatrix
+    //{
+    //    XMMATRIX WVP;
+    //}CbOutline, CbLightMatrix, CbWVP;
+
+
+    enum class eCbType : uint8_t
+    {
+        CbWorld, // TODO WorldMat용 buffer는 각 개체가 들고 있으므로 제거.(해도 되겠지)
+        CbViewProj,
+        CbLightViewProjMatrix,
+        CbCameraPosition,
+        CbOutlineProperty,
+        CbLightProperty,
+        CbMaterial,
+        NumConstantBuffer
+    };
+
     enum class eRasterType
     {
         Basic,
@@ -15,17 +72,15 @@ public:
 
     enum class eInputLayout : uint8_t
     {
-        Basic,  // pos, normal, tex
-        PT,  // pos, tex
-        Simple, // pos
+        PTN,    // pos, normal, tex
+        PT,     // pos, tex
+        P,      // pos
         NumInputlayout
     };
 
     enum class eShader : uint32_t
     {
-        Basic,
         Outline,
-        LightMap,
         Skybox,
         Shadow,
         BasicWithShadow,
@@ -42,9 +97,9 @@ public:
     };
 
 private:
+
     enum class eVertexShader : uint32_t
     {
-        VsBasic,
         VsBasicWithShadow,
         VsOutline,
         VsRenderToTexture,
@@ -55,13 +110,11 @@ private:
 
     enum class ePixelShader : uint32_t
     {
-        PsBasic,
         PsBasicWithShadow,
         PsOutline,
         PsShadow,
         PsSkybox,
         PsRenderToTexture,
-        PsLightMap,
         NumPixelShader
     };
 
@@ -81,6 +134,13 @@ private:
     };
     typedef RenderTargetDepthStencilMap RtvDsMap;
 
+    struct ConstantBufferMap
+    {
+        eCbType Index; // added for easy to see.
+        uint32_t ByteWidth;
+    };
+
+
 public:
 
     static Renderer* GetInstance();
@@ -92,10 +152,13 @@ public:
 
     HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO");
 
-    // 그림자 매핑을 위한 설계
-    void SetViewport(bool bFullScreen);
+    // 일단 Renderer에 CB 개체 가지도록
+    HRESULT CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb);
+
 
     // TODO : 정리필요. 
+    // 그림자 매핑을 위한 설계
+    void SetViewport(bool bFullScreen);
     HRESULT CreateShadowRenderTarget();
 
 
@@ -133,9 +196,10 @@ public:
     HRESULT CreateTextureResource(
         const WCHAR* fileName
         , WIC_FLAGS flag
-        , const D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc
+        , D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc
         , ID3D11ShaderResourceView** outShaderResourceView);
 
+    // for skybox
     HRESULT CreateDdsTextureResource(
         const WCHAR* fileName
         , DDS_FLAGS flag
@@ -161,6 +225,32 @@ public:
 
 
     //  D3D state
+
+    void UpdateCB(eCbType type, void* data) const
+    {
+        mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)], 0U, nullptr, data, 0U, 0U);
+    }
+
+    void UpdateCbTo(ID3D11Buffer* buffer, void* data) const
+    {
+        mDeviceContext->UpdateSubresource(buffer, 0U, nullptr, data, 0U, 0U);
+    }
+
+    void BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const
+    {
+        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+    }
+
+    void BindCbToVsByObj(uint32_t slot, uint32_t numBuffer, ID3D11Buffer** buffer) const
+    {
+        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, buffer);
+    }
+
+    void BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const
+    {
+        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+    }
+
     void SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY topology) const;
 
     void SetRenderTargetTo(eRenderTarget type);
@@ -177,7 +267,11 @@ public:
     void                    GetWindowSize(uint32& outWidth, uint32& outHeight) const;
     HWND                    GetWindowHandle() const;
 
+
+    // tex resource
     ID3D11ShaderResourceView*        GetShadowTexture();
+
+    ID3D11ShaderResourceView*        GetDefaultTexture() const;
 private:
     Renderer();
     ~Renderer();
@@ -188,9 +282,9 @@ private:
 
     HRESULT setupShaders();
 
-public:
-
-    ID3D11ShaderResourceView*   DefaultTexture;
+private:
+    // TODO texture resource manager 생기면 이동 시키기.
+    ID3D11ShaderResourceView*   mDefaultTexture;
 private:
 
     static Renderer*            mInstance;
@@ -200,6 +294,7 @@ private:
     // D3D Device
     ID3D11Device*               mDevice;
     ID3D11DeviceContext*        mDeviceContext;
+
 
     // shader
     ShaderMap           mShaderMapTable[static_cast<uint32_t>(eShader::NumShader)]; // combine vs-ps pairs
@@ -229,7 +324,8 @@ private:
     // raster state
     ID3D11RasterizerState*      mRasterStates[static_cast<uint32>(eRasterType::NumRaster)]; // 0: back cull, 1: front cull
 
-    //
+    // CB
+    ID3D11Buffer* mCbList[static_cast<uint8_t>(eCbType::NumConstantBuffer)];
     
     // window
     HWND        mhWindow;

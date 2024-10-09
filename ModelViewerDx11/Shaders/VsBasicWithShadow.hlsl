@@ -1,16 +1,15 @@
 
 cbuffer cbMatrices : register(b0)
 {
-    matrix World;
-    matrix WVP;
+    matrix MatWorld;
 }
 
 cbuffer cbLightMatrix : register(b1)
 {
-    matrix WVPLight;
+    matrix MatLightViewProj;
 }
 
-cbuffer cbLight : register(b2)
+cbuffer cbLightProperty : register(b2)
 {
     float4 vLightColor;
     float4 vLightDir;
@@ -22,11 +21,16 @@ cbuffer CbCamera : register(b3)
     float Reserve;
 }
 
+cbuffer cbViewProj : register(b4)
+{
+    matrix MatViewProj;
+}
+
 struct VS_INPUT
 {
     float4 Pos : POSITION;
-    float3 Norm : NORMAL;
     float2 Tex : TEXCOORD0;
+    float3 Norm : NORMAL;
 };
 
 struct PS_INPUT
@@ -46,10 +50,16 @@ PS_INPUT main(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT) 0;
 
-    float3 worldPosition = mul(input.Pos, World).xyz;
+    matrix matWVP = MatWorld * MatViewProj;
 
-    output.Pos = mul(input.Pos, WVP);
-    output.ClipPosition = mul(input.Pos, WVPLight);
+    //float3 worldPosition = mul(input.Pos, World).xyz;
+    float3 worldPosition = mul(input.Pos, MatWorld).xyz;
+
+   // output.Pos = mul(input.Pos, WVP);
+    output.Pos = mul(input.Pos, MatWorld);
+    output.Pos = mul(output.Pos, MatViewProj);
+    output.ClipPosition = mul(input.Pos, MatWorld);
+    output.ClipPosition = mul(output.ClipPosition, MatLightViewProj);
 
     output.LightDir = normalize(worldPosition - vLightDir);
 

@@ -3,11 +3,6 @@
 
 class Sky
 {
-private:
-    struct CbWVP
-    {
-        XMMATRIX WVP;
-    };
 public:
 
     Sky(Renderer& renderer, Camera& camera);
@@ -32,7 +27,7 @@ private:
     ID3D11Buffer* mVertexBuffer;
     ID3D11Buffer* mIndexBuffer;
 
-    ID3D11Buffer* mCbMatWVP;
+    ID3D11Buffer* mCbMatWorld;
 
     Mesh mMesh; // sphere model
     ID3D11SamplerState* mSampler;

@@ -58,6 +58,7 @@ private:
 
 
 /*
+ * TODO 1차적으로 코드들 정리해서 이것도 지워야 하긴하지만, 잠깐 놔둠.
  * 직접 만든 keyboard/mouse Input 클래스
  *
  * 현재는 DirectInput과 다른점이 안보이나, 프로그램이 커지기 시작해야

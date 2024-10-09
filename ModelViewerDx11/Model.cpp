@@ -12,13 +12,7 @@ Model::Model(Renderer* renderer, Camera* camera)
     , mIndices(nullptr)
     , mVertexBuffers(nullptr)
     , mIndexBuffers(nullptr)
-    , mCbBasicShader(nullptr)
-    , mCbOutlineShader(nullptr)
-    , mCbOutlineProperty(nullptr)
-    , mCbLight(nullptr)
-    , mCbMaterial(nullptr)
-    , mCbCamera(nullptr)
-    , mCbLightMatrix(nullptr)
+    , mCbMatWorld(nullptr)
     , mCenterPosition(0.0f, 0.0f, 0.0f)
     , mMatRotation(XMMatrixIdentity())
     , mMatScale(XMMatrixIdentity())
@@ -52,14 +46,7 @@ Model::~Model()
 
     SAFETY_RELEASE(mVertexBuffers);
     SAFETY_RELEASE(mIndexBuffers);
-
-    SAFETY_RELEASE(mCbOutlineShader);
-    SAFETY_RELEASE(mCbOutlineProperty);
-    SAFETY_RELEASE(mCbBasicShader);
-    SAFETY_RELEASE(mCbLight);
-    SAFETY_RELEASE(mCbMaterial);
-    SAFETY_RELEASE(mCbCamera);
-    SAFETY_RELEASE(mCbLightMatrix);
+    SAFETY_RELEASE(mCbMatWorld);
 
 
     SAFETY_RELEASE(mSamplerState);
@@ -80,9 +67,7 @@ Model::~Model()
 
 void Model::Draw()
 {
-    mRenderer->SetInputLayoutTo(Renderer::eInputLayout::Basic);
-
-    // mDeviceContext->IASetInputLayout(mInputLayout);
+    mRenderer->SetInputLayoutTo(Renderer::eInputLayout::PTN);
 
     constexpr uint32 stride = sizeof(Vertex);
     constexpr uint32 offset = 0U;
@@ -92,20 +77,23 @@ void Model::Draw()
     // outline
     int32_t vertexOffset = 0;
     uint32_t indexOffset = 0U;
+
+
+    Renderer::CbWorld cbWorld;
+    cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
+
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWorld);
+
     if(mbHighlight)
     {
 
         Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::CullBack);
 
         mRenderer->SetShaderTo(Renderer::eShader::Outline);
-        //mDeviceContext->VSSetShader(mVertexShaderOutline, nullptr, 0U);
-        //mDeviceContext->PSSetShader(mPixelShaderOutline, nullptr, 0U);
+        Renderer::GetInstance()->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
+        Renderer::GetInstance()->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbOutlineProperty);
+        Renderer::GetInstance()->BindCbToVsByType(2U, 1U, Renderer::eCbType::CbViewProj);
 
-        mDeviceContext->VSSetConstantBuffers(0U, 1U, &mCbOutlineShader);
-        CbOutline cbOutline;
-        cbOutline.WVP = XMMatrixTranspose(mMatWorld * mCamera->GetViewProjectionMatrix());
-
-        mDeviceContext->UpdateSubresource(mCbOutlineShader, 0, nullptr, &cbOutline, 0U, 0U);
 
         for (uint32_t index = 0U; index < mNumMesh; ++index)
         {
@@ -123,43 +111,33 @@ void Model::Draw()
 
     mRenderer->SetShaderTo(Renderer::eShader::BasicWithShadow);
 
-  //  mDeviceContext->VSSetShader(mVsBasicWithShadow, nullptr, 0U);
-    mDeviceContext->VSSetConstantBuffers(0U, 1U, &mCbBasicShader);
-    mDeviceContext->VSSetConstantBuffers(1U, 1U, &mCbLightMatrix);
-    mDeviceContext->VSSetConstantBuffers(2U, 1U, &mCbLight);
-    mDeviceContext->VSSetConstantBuffers(3U, 1U, &mCbCamera);
+    Renderer::GetInstance()->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
+    Renderer::GetInstance()->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbLightViewProjMatrix);
+    Renderer::GetInstance()->BindCbToVsByType(2U, 1U, Renderer::eCbType::CbLightProperty);
+    Renderer::GetInstance()->BindCbToVsByType(3U, 1U, Renderer::eCbType::CbCameraPosition);
+    Renderer::GetInstance()->BindCbToVsByType(4U, 1U, Renderer::eCbType::CbViewProj);
 
-  //  mDeviceContext->PSSetShader(mPsBasicWithShadow, nullptr, 0U);
     mDeviceContext->PSSetSamplers(0U, 1U, &mSamplerState);
 
-    mDeviceContext->PSSetConstantBuffers(0U, 1U, &mCbMaterial);
-
-    //texShadow->Release();
+    Renderer::GetInstance()->BindCbToPs(0U, 1U, Renderer::eCbType::CbMaterial);
 
     auto* texShadow = Renderer::GetInstance()->GetShadowTexture();
     mDeviceContext->PSSetShaderResources(2U, 1U, &texShadow);
 
 
-    CbBasic cbMatrices;
-    cbMatrices.World = XMMatrixTranspose(mMatWorld);
-    cbMatrices.WVP = XMMatrixTranspose(mMatWorld * mCamera->GetViewProjectionMatrix());
+    // TODO Light 클래스에서 한번 버퍼 업데이트
+    Renderer::CbLightProperty cbLightProperty;
+    cbLightProperty.First = mLight->GetColor();
+    cbLightProperty.Second = mLight->GetPosition();
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightProperty, &cbLightProperty);
 
-    mDeviceContext->UpdateSubresource(mCbBasicShader, 0U, nullptr, &cbMatrices, 0U, 0U);
+    Renderer::CbCameraPosition cbCameraPos={};
+    cbCameraPos.Float3 = mCamera->GetCameraPositionFloat();
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbCameraPosition, &cbCameraPos);
 
-    CbLight cbLight;
-
-    // TODO : light manager 클래스 제작필요
-    cbLight.LightColor = mLight->GetColor();
-    cbLight.LightDir = mLight->GetPosition();
-    mDeviceContext->UpdateSubresource(mCbLight, 0U, nullptr, &cbLight, 0U, 0U);
-
-    CbCamera cbCamera;
-    cbCamera.Position = mCamera->GetCameraPositionFloat();
-    mDeviceContext->UpdateSubresource(mCbCamera, 0U, nullptr, &cbCamera, 0U, 0U);
-
-    CbLightMatrix cbLightMatrix;
-    cbLightMatrix.WVP = XMMatrixTranspose(mMatWorld * (*mLight->GetViewProjMatrix()));
-    mDeviceContext->UpdateSubresource(mCbLightMatrix, 0U, nullptr, &cbLightMatrix, 0U, 0U);
+    Renderer::CbLightViewProjMatrix cbLightVpMatrix;
+    cbLightVpMatrix.Matrix = XMMatrixTranspose(*mLight->GetViewProjMatrix());
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMatrix);
 
     // Draw
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
@@ -167,21 +145,6 @@ void Model::Draw()
     indexOffset = 0U;
     for (size_t index = 0U; index < mNumMesh; ++index)
     {
-        // TODO ligtmap 테스트 - 별도 셰이더를 제작하는 방법도 고려
-         // TODO 별도 셰이더 생성 완료 -> 셰이더 매니저 생성 -> 셰이더 기준으로 렌더링
-         // 일단 셰이더 매니저를 생성하기 전까지는 이렇게 둠.
-        //if (mMeshes[index].bLightMap)
-        //{
-        //    // for face
-        //    mDeviceContext->PSSetShader(mPixelShaderLightMap, nullptr, 0U);
-
-        //    mDeviceContext->PSSetSamplers(0U, 1U, &mSamplerState);
-
-        //    mDeviceContext->PSSetConstantBuffers(0U, 1U, &mCbMaterial);
-        //    mDeviceContext->PSSetShaderResources(2U, 1U, &texShadow);
-        //    mDeviceContext->UpdateSubresource(mCbBasicShader, 0U, nullptr, &cbMatrices, 0U, 0U);
-        //}
-
         mDeviceContext->PSSetShaderResources(0U, 1U, &mMeshes[index].Texture);
         mDeviceContext->PSSetShaderResources(1U, 1U, &mMeshes[index].TextureNormal);
         CbMaterial cbMaterial;
@@ -192,28 +155,13 @@ void Model::Draw()
         {
             cbMaterial.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
         }
-        mDeviceContext->UpdateSubresource(mCbMaterial, 0U, nullptr, &cbMaterial, 0U, 0U);
+        Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbMaterial, &cbMaterial);
 
-        //deviceContext->Draw(mMeshes[index].Vertex.size(), offset);
         mDeviceContext->DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexList.size()), indexOffset, vertexOffset);
 
         vertexOffset += static_cast<int32_t>(mMeshes[index].Vertex.size());
         indexOffset += static_cast<uint32_t>(mMeshes[index].IndexList.size());
 
-        //// TODO 별도 셰이더 생성 완료 -> 셰이더 매니저 생성 -> 셰이더 기준으로 렌더링
-        //// 일단 셰이더 매니저를 생성하기 전까지는 이렇게 둠.
-        //if (mMeshes[index].bLightMap)
-        //{
-        //    // reset shader
-        //    mDeviceContext->PSSetShader(mPixelShader, nullptr, 0U);
-
-        //    mDeviceContext->PSSetSamplers(0U, 1U, &mSamplerState);
-        //    mDeviceContext->PSSetShaderResources(0U, 1U, &mMeshes[index].Texture);
-
-        //    mDeviceContext->PSSetConstantBuffers(0U, 1U, &mCbMaterial);
-
-        //    mDeviceContext->UpdateSubresource(mCbBasicShader, 0U, nullptr, &cbMatrices, 0U, 0U);
-        //}
     }
 
     ID3D11ShaderResourceView* unbind = nullptr;
@@ -223,9 +171,7 @@ void Model::Draw()
 // shadow 렌더링이 목적이므로 최대한 단순하게
 void Model::DrawShadow()
 {
-
-    //mDeviceContext->IASetInputLayout(mSimpleInputLayout);
-    mRenderer->SetInputLayoutTo(Renderer::eInputLayout::Simple);
+    mRenderer->SetInputLayoutTo(Renderer::eInputLayout::P);
 
     const uint32 stride = sizeof(Vertex);
     const uint32 offset = 0U;
@@ -235,15 +181,17 @@ void Model::DrawShadow()
     Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Outline);
     mRenderer->SetShaderTo(Renderer::eShader::Shadow);
 
-   // mDeviceContext->VSSetShader(mVsShadow, nullptr, 0U);
-    mDeviceContext->VSSetConstantBuffers(0U, 1U, &mCbLightMatrix);
+    Renderer::CbWorld cbWorld;
+    cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWorld);
 
+    Renderer::CbLightViewProjMatrix cbLightMatrix; // TODO mMatWorld는 이미 다른 Cb에서 업데이트 했으니, Light 행렬만 넘기도록 해서 셰이더 내부에서 계산하는 것으로
+    cbLightMatrix.Matrix = XMMatrixTranspose(*mLight->GetViewProjMatrix());
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightViewProjMatrix, &cbLightMatrix);
 
-  //  mDeviceContext->PSSetShader(mPsShadow, nullptr, 0U);
+    mRenderer->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
+    mRenderer->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbLightViewProjMatrix);
 
-    CbLightMatrix cbLightMatrix;
-    cbLightMatrix.WVP = XMMatrixTranspose(mMatWorld * (*mLight->GetViewProjMatrix()));
-    mDeviceContext->UpdateSubresource(mCbLightMatrix, 0U, nullptr, &cbLightMatrix, 0U, 0U);
 
     // Draw
     int32_t vertexOffset = 0;
@@ -369,63 +317,14 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
 
     // constant buffers
     desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.ByteWidth = sizeof(CbBasic);
+    desc.ByteWidth = sizeof(Renderer::CbWorld);
     desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     desc.CPUAccessFlags = 0;
 
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbBasicShader);
+    result = Renderer::GetInstance()->CreateConstantBuffer(desc, &mCbMatWorld);
     if (FAILED(result))
     {
-        ASSERT(false, "CbBasic상수 버퍼 생성 실패 failed to create CbBasic");
-        return E_FAIL;
-    }
-
-    desc.ByteWidth = sizeof(CbOutline);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineShader);
-    if (FAILED(result))
-    {
-        ASSERT(false, "CbOutline상수 버퍼 생성 실패  failed to create CbOutline");
-        return E_FAIL;
-    }
-
-    desc.ByteWidth = sizeof(CbOutlineProperty);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbOutlineProperty);
-    if (FAILED(result))
-    {
-        ASSERT(false, "CbOutlineWidth상수 버퍼 생성 실패  failed to create CbOutlineWidth");
-        return E_FAIL;
-    }
-
-    desc.ByteWidth = sizeof(CbLight);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbLight);
-    if (FAILED(result))
-    {
-        ASSERT(false, "CbLight상수 버퍼 생성 실패  failed to create CbLight");
-        return E_FAIL;
-    }
-
-    desc.ByteWidth = sizeof(CbMaterial);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbMaterial);
-    if (FAILED(result))
-    {
-        ASSERT(false, "mCbMaterial상수 버퍼 생성 실패  failed to create mCbMaterial");
-        return E_FAIL;
-    }
-
-    desc.ByteWidth = sizeof(CbCamera);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbCamera);
-    if (FAILED(result))
-    {
-        ASSERT(false, "mCbCamera상수 버퍼 생성 실패  failed to create mCbCamera");
-        return E_FAIL;
-    }
-
-
-    desc.ByteWidth = sizeof(CbLightMatrix);
-    result = mDevice->CreateBuffer(&desc, nullptr, &mCbLightMatrix);
-    if (FAILED(result))
-    {
-        ASSERT(false, "mCbLightMatrix상수 버퍼 생성 실패  failed to create mCbLightMatrix");
+        ASSERT(false, "mCbMatWorld상수 버퍼 생성 실패 failed to create CbBasic");
         return E_FAIL;
     }
 
@@ -450,10 +349,6 @@ HRESULT Model::SetupMesh(ModelImporter& importer)
     return result;
 }
 
-HRESULT Model::SetupShaderFromRenderer()
-{
-    return S_OK;
-}
 
 void Model::SetHighlight(bool bSelection)
 {

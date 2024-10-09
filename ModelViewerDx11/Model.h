@@ -9,8 +9,8 @@ constexpr size_t MESH_NAME_LENGTH = 128;
 struct Vertex // 4bytes align
 {
     XMFLOAT3 Position;
-    XMFLOAT3 Normal;
     XMFLOAT2 TexCoord;
+    XMFLOAT3 Normal;
     float    Reserve1;
 };
 
@@ -36,7 +36,7 @@ typedef Material CbMaterial;
 struct Mesh
 {
     /*
-     * vertex/index list는 하나로 관리하고 mesh는 각 vertex, index에 대해서 offset만 가지도록 변경 (하면 또 대규모 공사인데)
+     * MEMO vertex/index list는 하나로 관리하고 mesh는 각 vertex, index에 대해서 offset만 가지도록 변경 (하면 또 대규모 공사인데)
      * -> draw 로직에 큰 변화는 없음. 하지만 모델에서 임포터에서 받은 메시데이터를 다시 하나로 뭉치는 작업을 임포터로 옮길 수 있음.
      * -> 근데 그 뿐이기 때문에 좀 더 고민
      */
@@ -46,7 +46,7 @@ struct Mesh
     Material Material;
     bool bLightMap;
     /*
-     * 현재 구조는 같은 파일을 여러번 로드해서 가지고 있기 때문에
+     *  MEMO 현재 구조는 같은 파일을 여러번 로드해서 가지고 있기 때문에
      * 나중에 TextureManager가 가지고 있어야 할 듯. ( ID-SRV, ID - 이름을 해시로 or  번호)
      * 셰이더랑 버텍스 구조 변경해야 할 수도.
      */
@@ -55,53 +55,13 @@ struct Mesh
     uint8 NumTexuture;
 };
 
-// TODO 1. 셰이더 정리 (각 형식대로 파일 네이밍 변경 및 inputlayout등 코드 수정) v
-// TODO 2. Shader 매니저, Light 클래스, 텍스쳐 매니저 제작 
+// 1. 셰이더 정리 (각 형식대로 파일 네이밍 변경 및 inputlayout등 코드 수정) - 완료
+// 2. Shader 매니저, Light 클래스, 텍스쳐 매니저 제작 - 완료(임시로 Renderer에)
 // TODO 3. 모델 로드할 수 있는 기능 추가
 // TODO 4. 모델 로드 및 텍스쳐 등 리소스 생성 실패시에도 돌 수 있도록 Default 리소스 준비 및 적용(기본 화면은 스카이박스 + 바닥면만 생성, 둘 중 안되면 단색상으로 초기화)
 
-
-
-
 class Model
 {
-    struct CbBasic
-    {
-        XMMATRIX World;
-        XMMATRIX WVP;
-    };
-
-    typedef struct
-    {
-        XMMATRIX WVP;
-    }CbOutline, CbLightMatrix;
-
-    struct CbOutlineProperty
-    {
-        XMFLOAT3    OutlineColor;
-        float       OutlineWidth;
-    };
-
-    struct CbLight
-    {
-        XMFLOAT4    LightColor;
-        XMFLOAT4    LightDir;
-    };
-
-    struct CbCamera
-    {
-        XMFLOAT3    Position;
-        float       Reserve1;
-    };
-
-
-
-    //enum class eInputLayout : uint32_t
-    //{
-    //    PsBasic,
-    //    PsBasicWithShadow,
-    //    NumPixelShader
-    //};
 public:
     Model(Renderer* renderer, Camera* camera);
     ~Model();
@@ -114,14 +74,8 @@ public:
 
     HRESULT             SetupMesh(ModelImporter& importer);
 
-    // 일단 여기에 때려 박는다.
-    // 하다보면 다른 곳으로 빼야할 부분이 보이겠지...
-    HRESULT             SetupShaderFromRenderer(); // 셰이더 관리하는 무언가가 나오기 전까지
-
     void                SetHighlight(bool bSelection);
-    //void                UpdateVertexBuffer(Vertex* buffer, size_t bufferSize, size_t startIndex);
-    //void                UpdateIndexBuffer(unsigned int* buffer, size_t bufferSize, size_t startIndex);
-
+ 
     size_t              GetMeshCount() const;
     const WCHAR*        GetMeshName(size_t meshIndex) const;
 
@@ -152,16 +106,7 @@ private:
     ID3D11Buffer* mVertexBuffers;
     ID3D11Buffer* mIndexBuffers;
 
-    // CB를 어떻게 만드는게 좋을지 고민 or 더 경험이 필요
-    ID3D11Buffer* mCbBasicShader;
-
-    ID3D11Buffer* mCbOutlineShader;
-    ID3D11Buffer* mCbOutlineProperty;
-    ID3D11Buffer* mCbLight;
-    ID3D11Buffer* mCbMaterial;
-    ID3D11Buffer* mCbCamera;
-    // for shadow
-    ID3D11Buffer* mCbLightMatrix;
+    ID3D11Buffer* mCbMatWorld;
 
     XMFLOAT3 mCenterPosition;
     XMMATRIX mMatWorld;

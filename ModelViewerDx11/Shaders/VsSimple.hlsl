@@ -1,6 +1,11 @@
-cbuffer CbLightMatrix : register(b0)
+cbuffer CbWorld : register(b0)
 {
-    matrix MVP;
+    matrix MatWorld;
+}
+
+cbuffer CbViewProj : register(b1)
+{
+    matrix MatViewProj;
 }
 
 struct VsInput
@@ -16,6 +21,7 @@ struct PsInput
 PsInput main(VsInput input)
 {
     PsInput output;
-    output.Pos = mul(input.Pos, MVP);
+    output.Pos = mul(input.Pos, MatWorld);
+    output.Pos = mul(output.Pos, MatViewProj);
     return output;
 }
