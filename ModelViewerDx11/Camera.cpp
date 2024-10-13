@@ -1,5 +1,4 @@
 ﻿#include "Camera.h"
-
 #include "Renderer.h"
 #include "cmath"
 
@@ -142,6 +141,11 @@ void Camera::calcCameraPosition()
     // 가상의 구체를 통해 얻은 좌표로 실제 위치인 mvLookAtCenter를 중심으로 하는 궤도로 이동
     mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
 
+    XMFLOAT3 position;
+    XMStoreFloat3(&position, mvEye);
+    Renderer::CbCameraPosition cbCameraPos = {};
+    cbCameraPos.Float3 = position;
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbCameraPosition, &cbCameraPos);
 }
 
 void Camera::makeViewMatrix()

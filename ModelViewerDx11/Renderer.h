@@ -2,9 +2,6 @@
 #include "framework.h"
 
 
-// TODO 1. Draw함수에 뭉쳐진 Update코드들 Update 함수로 분리
-// TODO 2. 재설계한 CB들 업데이트 주기에 맞춰서 UpdateSubResource/ Bind 정리.
-
 class Renderer final : IUnknown
 {
 public:

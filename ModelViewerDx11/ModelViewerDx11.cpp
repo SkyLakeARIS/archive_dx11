@@ -414,7 +414,8 @@ HRESULT UpdateFrame(float deltaTime)
 
     
     gLight->Update(gCamera);
-
+    gSkybox->Update();
+    gCharacter->Update();
     return S_OK;
 }
 

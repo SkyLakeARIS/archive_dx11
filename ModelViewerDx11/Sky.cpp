@@ -102,19 +102,6 @@ HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines)
 
 void Sky::Draw()
 {
-    // update
-    XMFLOAT3 cameraPosition = mCamera->GetCameraPositionFloat();
-    XMMATRIX matTranslate = XMMatrixIdentity();
-    XMMATRIX matScale = XMMatrixScaling(100.0f, 100.0f, 100.0f);
-
-    matTranslate = XMMatrixTranslation(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-
-    mWorld = matScale * matTranslate;
-
-    Renderer::CbWorld cbWVP;
-    cbWVP.Matrix = XMMatrixTranspose(mWorld);
-    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWVP);
-
     // render
     mRenderer->SetInputLayoutTo(Renderer::eInputLayout::PT);
 
@@ -142,6 +129,22 @@ void Sky::Draw()
 
     mRenderer->SetDepthStencilState(false);
 
+}
+
+void Sky::Update()
+{
+    // update
+    XMFLOAT3 cameraPosition = mCamera->GetCameraPositionFloat();
+    XMMATRIX matTranslate = XMMatrixIdentity();
+    XMMATRIX matScale = XMMatrixScaling(100.0f, 100.0f, 100.0f);
+
+    matTranslate = XMMatrixTranslation(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+
+    mWorld = matScale * matTranslate;
+
+    Renderer::CbWorld cbWVP;
+    cbWVP.Matrix = XMMatrixTranspose(mWorld);
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWVP);
 }
 
 /*

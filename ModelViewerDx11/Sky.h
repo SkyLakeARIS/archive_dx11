@@ -9,8 +9,9 @@ public:
     ~Sky();
 
     HRESULT Initialize(uint32 latLines, uint32 lonLines);
-    void Draw();
 
+    void Draw();
+    void Update();
 private:
 
     HRESULT createSphere(uint32 latLines, uint32 lonLines);

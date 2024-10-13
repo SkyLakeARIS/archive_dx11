@@ -22,6 +22,7 @@ Light::Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color)
     HRESULT result = Renderer::GetInstance()->CreateConstantBuffer(desc, &mCbMatWorld);
     ASSERT(result == S_OK, "mCbMatWorld 생성 실패.");
 
+    updateLightPropertyCB();
     updateMatrices();
 }
 
@@ -76,6 +77,11 @@ void Light::Update(Camera* camera)
 {
     mMesh->Update();
     mMesh->GetWorldMatrix(mMatWorld);
+
+
+    Renderer::CbWorld cbMatWorld;
+    cbMatWorld.Matrix = XMMatrixTranspose(mMatWorld);
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbMatWorld);
 }
 
 void Light::Draw(double deltaTime)
@@ -89,9 +95,6 @@ void Light::Draw(double deltaTime)
 
     deviceContext->Release();
 
-    Renderer::CbWorld cbMatWorld;
-    cbMatWorld.Matrix = XMMatrixTranspose(mMatWorld);
-    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbMatWorld);
 
     Renderer::GetInstance()->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
     Renderer::GetInstance()->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbViewProj);
@@ -111,6 +114,7 @@ void Light::Move(double deltaTime, float direction)
     mMesh->SetPosition(mPosition);
 
     updateMatrices();
+    updateLightPropertyCB();
 }
 
 void Light::SetDirection(XMFLOAT3 dir)
@@ -129,6 +133,8 @@ void Light::SetDirection(XMFLOAT3 dir)
 void Light::SetColor(XMFLOAT3 color)
 {
     mColor = color;
+
+    updateLightPropertyCB();
 }
 
 XMFLOAT4 Light::GetDirection() const
@@ -163,4 +169,12 @@ void Light::updateMatrices()
     //deviceContext->UpdateSubresource(mCB, 0, nullptr, &cbWvp, 0U, 0U);
     Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
 
+}
+
+void Light::updateLightPropertyCB()
+{
+    Renderer::CbLightProperty cbLightProperty;
+    cbLightProperty.First = XMFLOAT4(mColor.x, mColor.y, mColor.z, 0.0f);
+    cbLightProperty.Second = XMFLOAT4(mPosition.x, mPosition.y, mPosition.z, 0.0f);
+    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightProperty, &cbLightProperty);
 }

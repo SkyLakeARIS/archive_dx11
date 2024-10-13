@@ -917,7 +917,7 @@ HRESULT Renderer::setupShaders()
         uint32_t numDescElements;
     };
 
-    constexpr InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eInputLayout::NumInputlayout)] =
+    InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eInputLayout::NumInputlayout)] =
     {
         { eInputLayout::PTN, 0U, layoutPTNDesc, 3},
         { eInputLayout::PT, 1U, layoutPTNDesc, 2},

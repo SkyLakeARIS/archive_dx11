@@ -69,6 +69,8 @@ public:
     void                Draw();
     void                DrawShadow();
 
+    void Update();
+
     // TODO: LightManager 만들면 제거.
     void SetLight(class Light* light);
 

@@ -1,5 +1,4 @@
 ﻿#include "Model.h"
-
 #include "Light.h"
 #include "ModelImporter.h"
 
@@ -79,11 +78,6 @@ void Model::Draw()
     uint32_t indexOffset = 0U;
 
 
-    Renderer::CbWorld cbWorld;
-    cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
-
-    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWorld);
-
     if(mbHighlight)
     {
 
@@ -123,21 +117,6 @@ void Model::Draw()
 
     auto* texShadow = Renderer::GetInstance()->GetShadowTexture();
     mDeviceContext->PSSetShaderResources(2U, 1U, &texShadow);
-
-
-    // TODO Light 클래스에서 한번 버퍼 업데이트
-    Renderer::CbLightProperty cbLightProperty;
-    cbLightProperty.First = mLight->GetColor();
-    cbLightProperty.Second = mLight->GetPosition();
-    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightProperty, &cbLightProperty);
-
-    Renderer::CbCameraPosition cbCameraPos={};
-    cbCameraPos.Float3 = mCamera->GetCameraPositionFloat();
-    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbCameraPosition, &cbCameraPos);
-
-    Renderer::CbLightViewProjMatrix cbLightVpMatrix;
-    cbLightVpMatrix.Matrix = XMMatrixTranspose(*mLight->GetViewProjMatrix());
-    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMatrix);
 
     // Draw
     // 위에 따라서 변경 필요. 아니면 원래 방법대로 VertexBuffer를 하나로 뭉쳐야 함.
@@ -181,14 +160,6 @@ void Model::DrawShadow()
     Renderer::GetInstance()->SetRasterState(Renderer::eRasterType::Outline);
     mRenderer->SetShaderTo(Renderer::eShader::Shadow);
 
-    Renderer::CbWorld cbWorld;
-    cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
-    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWorld);
-
-    Renderer::CbLightViewProjMatrix cbLightMatrix; // TODO mMatWorld는 이미 다른 Cb에서 업데이트 했으니, Light 행렬만 넘기도록 해서 셰이더 내부에서 계산하는 것으로
-    cbLightMatrix.Matrix = XMMatrixTranspose(*mLight->GetViewProjMatrix());
-    Renderer::GetInstance()->UpdateCB(Renderer::eCbType::CbLightViewProjMatrix, &cbLightMatrix);
-
     mRenderer->BindCbToVsByObj(0U, 1U, &mCbMatWorld);
     mRenderer->BindCbToVsByType(1U, 1U, Renderer::eCbType::CbLightViewProjMatrix);
 
@@ -203,6 +174,15 @@ void Model::DrawShadow()
         vertexOffset += static_cast<int32_t>(mMeshes[index].Vertex.size());
         indexOffset += static_cast<uint32_t>(mMeshes[index].IndexList.size());
     }
+}
+
+void Model::Update()
+{
+    Renderer::CbWorld cbWorld;
+    cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
+
+    Renderer::GetInstance()->UpdateCbTo(mCbMatWorld, &cbWorld);
+
 }
 
 void Model::SetLight(Light* light)

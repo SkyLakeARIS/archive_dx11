@@ -27,6 +27,7 @@ public:
 private:
 
     void updateMatrices();
+    void updateLightPropertyCB();
 
 private:
 
