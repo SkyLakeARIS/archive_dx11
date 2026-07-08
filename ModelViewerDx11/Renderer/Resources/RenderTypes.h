@@ -3,13 +3,12 @@
 
 namespace renderer
 {
-    // TODO: eVertexFormat 으로 바꾸는게 더 명확한 네임이 될 것 같다.
-    enum class eInputLayout : uint8_t
+    enum class eVertexFormat : uint8_t
     {
         PTN,    // pos, normal, tex
         PT,     // pos, tex
         P,      // pos
-        InputlayoutCount
+        FormatCount
     };
 
     struct VertexPTN // 4bytes align
@@ -31,9 +30,9 @@ namespace renderer
         XMFLOAT3 Position;
     };
 
-    inline constexpr int16_t GetVertexStrideSize(eInputLayout vertexAttrib)
+    inline constexpr int16_t GetVertexStrideSize(eVertexFormat vertexAttrib)
     {
-        constexpr int16_t VertexStrideMap[static_cast<int8_t>(eInputLayout::InputlayoutCount)] =
+        constexpr int16_t VertexStrideMap[static_cast<int8_t>(eVertexFormat::FormatCount)] =
         {
             sizeof(VertexPTN),
             sizeof(VertexPT),

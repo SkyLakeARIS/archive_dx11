@@ -22,7 +22,7 @@ namespace scene
     void Floor::Draw(renderer::Renderer& renderer)
     {
         renderer.BindRasterStateByType(renderer::eRasterType::Basic);
-        renderer.BindInputLayoutTo(renderer::eInputLayout::P);
+        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
         renderer.BindShaderTo(renderer::eShader::Color);
 
         renderer::CbWorld cbWorld;

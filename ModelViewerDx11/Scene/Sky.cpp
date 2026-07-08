@@ -31,7 +31,7 @@ namespace scene
     void Sky::Draw(renderer::Renderer& renderer)
     {
         // render
-        renderer.BindInputLayoutTo(renderer::eInputLayout::P);
+        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
 
         const int16_t strideVertex = renderer::GetVertexStrideSize(mMesh.VertexLayoutType);
 

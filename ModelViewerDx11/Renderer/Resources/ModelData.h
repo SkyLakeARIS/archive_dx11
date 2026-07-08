@@ -8,7 +8,7 @@ namespace renderer
 {
     struct Mesh
     {
-        eInputLayout VertexLayoutType;
+        eVertexFormat VertexLayoutType;
         HashID MeshHash;
         BufferRange VertexRange;
         BufferRange IndexRange;

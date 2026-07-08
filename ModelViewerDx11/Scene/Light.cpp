@@ -36,7 +36,7 @@ namespace scene
 
     void Light::DrawDebug(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(renderer::eInputLayout::P);
+        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
         renderer.BindShaderTo(renderer::eShader::Color);
 
         renderer::CbColor cbColor = {  };
@@ -307,7 +307,7 @@ namespace scene
             (void)memcpy(mMeshDebug.MeshName, virtualFilePath, wroteCount + 1);
 
             mMeshDebug.MeshHash = util::GetDjb2Hash(virtualFilePath);
-            mMeshDebug.VertexLayoutType = renderer::eInputLayout::P;
+            mMeshDebug.VertexLayoutType = renderer::eVertexFormat::P;
         }
 
         const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexLayoutType);

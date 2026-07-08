@@ -45,7 +45,7 @@ namespace renderer
         auto meshIt = meshes.begin();
         for(auto& mesh : modelContainer.Meshes)
         {
-            meshIt->VertexLayoutType = eInputLayout::PTN;
+            meshIt->VertexLayoutType = eVertexFormat::PTN;
             const int16_t strideVertex = GetVertexStrideSize(meshIt->VertexLayoutType);
             const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
             meshIt->MeshHash = util::GetDjb2Hash(mesh.MeshName);

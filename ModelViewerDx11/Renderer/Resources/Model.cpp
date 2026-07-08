@@ -34,7 +34,7 @@ namespace renderer
 
     void Model::Draw(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(eInputLayout::PTN);
+        renderer.BindInputLayoutTo(eVertexFormat::PTN);
 
         const uint32 stride = sizeof(VertexPTN);
 
@@ -101,7 +101,7 @@ namespace renderer
 
     void Model::DrawShadow(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(eInputLayout::P);
+        renderer.BindInputLayoutTo(eVertexFormat::P);
 
         const uint32 stride = sizeof(VertexPTN);
 

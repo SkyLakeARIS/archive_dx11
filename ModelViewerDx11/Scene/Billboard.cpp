@@ -42,7 +42,7 @@ namespace scene
         renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
 
 
-        renderer.BindInputLayoutTo(renderer::eInputLayout::PT);
+        renderer.BindInputLayoutTo(renderer::eVertexFormat::PT);
         renderer.BindShaderTo(renderer::eShader::RenderToTexture);
 
         renderer.BindRasterStateByType(renderer::eRasterType::Basic);

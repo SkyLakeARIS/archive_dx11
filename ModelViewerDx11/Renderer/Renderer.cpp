@@ -466,7 +466,7 @@ namespace renderer
     }
 
     HRESULT Renderer::CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-        uint32 numDescElements, eInputLayout type, ID3D11InputLayout** const outInputLayout)
+        uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
     {
 
         ASSERT(outInputLayout != nullptr, "do not pass nullptr");
@@ -665,7 +665,7 @@ namespace renderer
         mDeviceContext->OMSetRenderTargets(rtvDs.NumViews, &mRenderTargetViewList[rtvDs.RenderTargetIndex], mDepthStencilViewList[rtvDs.DepthStencilIndex]);
     }
 
-    void Renderer::BindInputLayoutTo(eInputLayout type) const
+    void Renderer::BindInputLayoutTo(eVertexFormat type) const
     {
         mDeviceContext->IASetInputLayout(mInputLayoutList[static_cast<uint32>(type)]);
     }
@@ -971,17 +971,17 @@ namespace renderer
 
         struct InputLayoutContainer
         {
-            eInputLayout ListIndex;
+            eVertexFormat ListIndex;
             uint32_t      SourceIndex;
             D3D11_INPUT_ELEMENT_DESC* Desc;
             uint32_t numDescElements;
         };
 
-        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eInputLayout::InputlayoutCount)] =
+        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
         {
-            { eInputLayout::PTN, 0U, layoutPTNDesc, 3},
-            { eInputLayout::PT, 1U, layoutPTNDesc, 2},
-            {eInputLayout::P, 2U, layoutPTNDesc, 1},
+            { eVertexFormat::PTN, 0U, layoutPTNDesc, 3},
+            { eVertexFormat::PT, 1U, layoutPTNDesc, 2},
+            {eVertexFormat::P, 2U, layoutPTNDesc, 1},
         };
 
         constexpr VertexShaderContainer VertexShaderListMapTable[static_cast<uint32_t>(eVertexShader::VertexShaderCount)] =
@@ -1125,7 +1125,7 @@ namespace renderer
             SAFETY_RELEASE(mPixelShaderList[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eInputLayout::InputlayoutCount); ++i)
+        for (uint32 i = 0; i < static_cast<uint32>(eVertexFormat::FormatCount); ++i)
         {
             SAFETY_RELEASE(mInputLayoutList[i]);
         }

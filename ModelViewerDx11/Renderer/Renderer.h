@@ -76,7 +76,7 @@ namespace renderer
         bool initialize(HWND handleWindow, int16_t width, int16_t height, int16_t frameRate);
 
         // Cate : shader
-        HRESULT CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc, uint32 numDescElements, eInputLayout type, ID3D11InputLayout** const outInputLayout);
+        HRESULT CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc, uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
         HRESULT CreateVertexShader(const WCHAR* const path, ID3D11VertexShader** const outVertexShader);
         HRESULT CreatePixelShader(const WCHAR* const path, ID3D11PixelShader** const outPixelShader);
         // TODO: API 의존성을 완전히 분리하려면 desc 조차도 분리하는 게 좋을 것 같다. 일단은 이대로 사용
@@ -125,7 +125,7 @@ namespace renderer
 
         void BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const;
         void BindRenderTargetTo(eRenderTarget type);
-        void BindInputLayoutTo(eInputLayout type) const;
+        void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type);
 
         // Draw
@@ -164,7 +164,7 @@ namespace renderer
         ShaderMap           mShaderMapTable[static_cast<uint32_t>(eShader::ShaderCount)]; // combine vs-ps pairs
         ID3D11VertexShader* mVertexShadersList[static_cast<uint32_t>(eVertexShader::VertexShaderCount)];
         ID3D11PixelShader*  mPixelShaderList[static_cast<uint32_t>(ePixelShader::PixelShaderCount)];
-        ID3D11InputLayout*  mInputLayoutList[static_cast<uint32_t>(eInputLayout::InputlayoutCount)];
+        ID3D11InputLayout*  mInputLayoutList[static_cast<uint32_t>(eVertexFormat::FormatCount)];
 
         // 
         IDXGISwapChain*             mSwapChain;

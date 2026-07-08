@@ -116,7 +116,7 @@ namespace renderer
         indices[k + 2] = numVertex - 1U;
 
 
-        outMesh.VertexLayoutType = eInputLayout::P;
+        outMesh.VertexLayoutType = eVertexFormat::P;
 
         int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
         const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_Sphere_%d_%d.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH), latLines, lonLines);
@@ -167,7 +167,7 @@ namespace renderer
             }
         }
 
-        outMesh.VertexLayoutType = eInputLayout::P;
+        outMesh.VertexLayoutType = eVertexFormat::P;
 
         int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
         const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_Grid_%d_%d.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH), verticalLines, horizontalLines);
@@ -203,7 +203,7 @@ namespace renderer
             3,
         };
 
-        outMesh.VertexLayoutType = eInputLayout::PT;
+        outMesh.VertexLayoutType = eVertexFormat::PT;
 
         int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
         const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_Plane.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH));
@@ -246,7 +246,7 @@ namespace renderer
             3,
         };
 
-        outMesh.VertexLayoutType = eInputLayout::PT;
+        outMesh.VertexLayoutType = eVertexFormat::PT;
 
         int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
         const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_ScreenPlane_%d_%d_%d_%d.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH), originX, originY, width, height);

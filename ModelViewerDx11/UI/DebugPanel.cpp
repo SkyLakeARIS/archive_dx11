@@ -16,7 +16,7 @@ namespace ui
 
     void DebugPanel::Draw(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(renderer::eInputLayout::PT);
+        renderer.BindInputLayoutTo(renderer::eVertexFormat::PT);
         renderer.BindShaderTo(renderer::eShader::RenderToTexture);
 
         const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexLayoutType);
