@@ -1,5 +1,14 @@
 #pragma once
+#include "TextureData.h"
 #include "../../framework.h"
+
+namespace renderer
+{
+    enum class eSamplerType;
+    enum class eRasterType;
+    enum class eShader : uint32_t;
+    enum class eTextureType;
+}
 
 namespace renderer
 {
@@ -42,7 +51,7 @@ namespace renderer
     }
 
     // 모델링 프로그램에서 미리 계산된 값으로 사용
-    struct Material // 16 bytes align
+    struct MaterialParameter // 16 bytes align
     {
         XMFLOAT3 Diffuse;
         float    Reserve0;
@@ -57,7 +66,24 @@ namespace renderer
         float    Shininess;     // 스페큘러 거듭제곱 값
         float    Reserve4;
     };
-    typedef Material CbMaterial;
+    typedef MaterialParameter CbMaterial;
+
+    // MEMO: Material을 질감 데이터+셰이더+텍스처+렌더 상태의 집합으로 구조를 잡음.
+    // 렌더 상태까지 한곳에 있어 상태 관리가 편해질 것
+    inline constexpr int8_t CONSTANT_BUFFER_MAX_SLOT_COUNT = 8;
+    struct Material
+    {
+        // MEMO: 재질
+        MaterialParameter MaterialParam;
+
+        HashID TextureHashes[eTextureType::TextureTypeCount];
+        // MEMO: 렌더 상태
+        eShader ShaderType;
+        uint32_t ConstantBuffers[CONSTANT_BUFFER_MAX_SLOT_COUNT];
+        eRasterType RasterType;
+        eSamplerType SamplerHash;
+        HashID BlendHash;
+    };
 
     struct BufferRange
     {

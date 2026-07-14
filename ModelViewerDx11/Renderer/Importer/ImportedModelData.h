@@ -22,7 +22,7 @@ namespace renderer
         uint32_t VertexCount;
         std::unique_ptr<uint32_t[]> IndexBuffer;
         uint32_t IndexCount;
-        Material Material;
+        MaterialParameter MaterialParam;
         ImportedTextureData Textures[static_cast<int32_t>(eTextureType::TextureTypeCount)];
     };
 
@@ -30,6 +30,6 @@ namespace renderer
     {
         HashID ModelHash;
         XMFLOAT4 CenterPoint;
-        std::vector<ImportedMeshData> Meshes;
+        std::vector<ImportedMeshData> SubMeshes;
     };
 }

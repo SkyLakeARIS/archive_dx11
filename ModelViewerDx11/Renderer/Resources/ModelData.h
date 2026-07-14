@@ -6,14 +6,29 @@
 
 namespace renderer
 {
-    struct Mesh
+    // MEMO: SubMesh가 Mesh의 부분집합
+    // MEMO: SubMesh가 Material을 가지고, Mesh가 SubMesh들을 가지는 구조로 정리.
+    // 캐릭터 모델이 SubMesh별로 다른 Material을 가지므로 이 구조가 대응이 가능한 구조
+    struct SubMesh
     {
-        eVertexFormat VertexLayoutType;
-        HashID MeshHash;
+        Material Material;
+        // range in Mesh, in ElementCount.
         BufferRange VertexRange;
         BufferRange IndexRange;
-        Material Material;
-        HashID TextureHashes[static_cast<int8_t>(eTextureType::TextureTypeCount)];
+        HashID SubMeshHash;
+
+        // for debugging
+        int8_t SubMeshName[util::MAX_NAME_LENGTH];
+    };
+
+    struct Mesh
+    {
+        eVertexFormat VertexFormat;
+        HashID MeshHash;
+        // Range in Buffer, in ElementCount.
+        BufferRange VertexRange;
+        BufferRange IndexRange;
+        std::vector<SubMesh> SubMeshes;
         // for debugging
         int8_t MeshName[util::MAX_NAME_LENGTH];
     };
