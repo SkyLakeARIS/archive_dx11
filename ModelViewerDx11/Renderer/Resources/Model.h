@@ -23,7 +23,7 @@ namespace renderer
 
         void Update(renderer::Renderer& renderer);
 
-        void SetMeshes(std::vector<Mesh>& meshes);
+        void SetMesh(const Mesh& mesh);
         void SetCenterPoint(XMFLOAT4& centerPoint);
 
         void SetHighlight(bool bSelection);
@@ -33,7 +33,7 @@ namespace renderer
     private:
         BufferManager* mBufferManager;
 
-        std::vector<Mesh> mMeshes;
+        Mesh mMesh;
 
         XMFLOAT3 mCenterPosition;
         XMMATRIX mMatWorld;

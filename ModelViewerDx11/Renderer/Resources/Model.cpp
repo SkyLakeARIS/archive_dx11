@@ -21,12 +21,12 @@ namespace renderer
 
     Model::~Model()
     {
-        for(auto& mesh : mMeshes)
+        const int16_t stride = GetVertexStrideSize(mMesh.VertexFormat);
+        for(auto& subMesh : mMesh.SubMeshes)
         {
-            const int16_t stride = GetVertexStrideSize(mesh.VertexLayoutType);
             const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
-            mBufferManager->RemoveVertexData(stride, mesh.MeshHash);
-            mBufferManager->RemoveIndexData(strideIndex, mesh.MeshHash);
+            mBufferManager->RemoveVertexData(stride, subMesh.SubMeshHash);
+            mBufferManager->RemoveIndexData(strideIndex, subMesh.SubMeshHash);
         }
         // TODO: BufferManager를 받지 않고, BufferData 처리할 수 있는 로직이 필요함.
         mBufferManager = nullptr;
@@ -51,9 +51,9 @@ namespace renderer
             renderer.BindCbToVsByType(1U, 1U, eCbType::CbOutlineProperty);
             renderer.BindCbToVsByType(2U, 1U, eCbType::CbViewProj);
 
-            for (uint32_t index = 0U; index < mMeshes.size(); ++index)
+            for (const auto& subMesh :mMesh.SubMeshes)
             {
-                renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+                renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
             }
             // reset for basic draw
             renderer.ClearDepthBuffer();
@@ -76,24 +76,24 @@ namespace renderer
         renderer.BindShadowTextureToPs(2);
 
         // Draw
-        for (size_t index = 0U; index < mMeshes.size(); ++index)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindTextureToPs(0, mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Diffuse)]);
-            if(mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Normal)])
+            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Diffuse)]);
+            if(subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Normal)])
             {
-                renderer.BindTextureToPs(1, mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Normal)]);
+                renderer.BindTextureToPs(1, subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Normal)]);
             }
             CbMaterial cbMaterial;
             ZeroMemory(&cbMaterial, sizeof(CbMaterial));
 
-            memcpy(&cbMaterial, &mMeshes[index].Material, sizeof(Material));
+            memcpy(&cbMaterial, &subMesh.Material.MaterialParam, sizeof(MaterialParameter));
             if (!mbActiveEmissive)
             {
                 cbMaterial.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
             renderer.UpdateCB(eCbType::CbMaterial, &cbMaterial);
 
-            renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+            renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
         }
 
         renderer.UnbindTexturePs(2);
@@ -115,9 +115,9 @@ namespace renderer
         renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
 
         // Draw
-        for (size_t index = 0U; index < mMeshes.size(); ++index)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+            renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
         }
     }
 
@@ -129,10 +129,9 @@ namespace renderer
         renderer.UpdateCB(eCbType::CbWorld, &cbWorld);
     }
 
-    void Model::SetMeshes(std::vector<Mesh>& meshes)
+    void Model::SetMesh(const Mesh& mesh)
     {
-        ASSERT(mMeshes.empty(), "mMeshes is not empty.");
-        mMeshes.swap(meshes);
+        mMesh = std::move(mesh);
     }
 
     void Model::SetCenterPoint(XMFLOAT4& centerPoint)

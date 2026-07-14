@@ -24,7 +24,7 @@ namespace scene
         renderer::MeshGenerator::CreateSphere(latLines, lonLines, mMesh);
 
         const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/skybox.dds");
-        texManager->AddDTextureDDS(filePath, mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+        texManager->AddDTextureDDS(filePath, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
         return S_OK;
     }
 
@@ -33,7 +33,7 @@ namespace scene
         // render
         renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
 
-        const int16_t strideVertex = renderer::GetVertexStrideSize(mMesh.VertexLayoutType);
+        const int16_t strideVertex = renderer::GetVertexStrideSize(mMesh.VertexFormat);
 
         renderer.BindVertexBuffer(strideVertex);
         renderer.BindIndexBuffer();
@@ -50,7 +50,7 @@ namespace scene
 
         renderer.BindDepthStencilState(true);
 
-        renderer.BindTextureToPs(0, mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+        renderer.BindTextureToPs(0, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
 
         renderer.DrawIndexed(mMesh.IndexRange.Count, mMesh.IndexRange.StartIndex, mMesh.VertexRange.StartIndex);
 

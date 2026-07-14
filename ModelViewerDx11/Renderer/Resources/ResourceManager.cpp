@@ -40,35 +40,52 @@ namespace renderer
         // TODO: IndexList가 비어있을 수 있지 않을까 생각하면 Importer에서 좀 더 로직을 엄격하게 체크해야 할 것으로 보임.
         mModelImporter->LoadFbxModel(filePath, modelHash, modelContainer);
 
-        std::vector<Mesh> meshes(modelContainer.Meshes.size());
+        Mesh newMesh = {};
+        newMesh.SubMeshes.reserve(modelContainer.SubMeshes.size());
+        newMesh.VertexFormat = eVertexFormat::PTN;
+        const int16_t strideVertex = GetVertexStrideSize(newMesh.VertexFormat);
+        const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
 
-        auto meshIt = meshes.begin();
-        for(auto& mesh : modelContainer.Meshes)
+        int32_t totalVertexCount = 0;
+        int32_t totalIndexCount = 0;
+        for(auto& subMesh : modelContainer.SubMeshes)
         {
-            meshIt->VertexLayoutType = eVertexFormat::PTN;
-            const int16_t strideVertex = GetVertexStrideSize(meshIt->VertexLayoutType);
-            const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
-            meshIt->MeshHash = util::GetDjb2Hash(mesh.MeshName);
-            mBufferManager->AddVertex(reinterpret_cast<int8_t*>(mesh.VertexBuffer.get()), strideVertex * mesh.VertexCount, meshIt->MeshHash, strideVertex, meshIt->VertexRange);
+            SubMesh newSubMesh = {};
 
-            mBufferManager->AddIndex(reinterpret_cast<int8_t*>(mesh.IndexBuffer.get()), strideIndex * mesh.IndexCount, meshIt->MeshHash, strideIndex, meshIt->IndexRange);
+            newSubMesh.SubMeshHash = util::GetDjb2Hash(subMesh.MeshName);
+            mBufferManager->AddVertex(reinterpret_cast<int8_t*>(subMesh.VertexBuffer.get()), strideVertex * subMesh.VertexCount, newSubMesh.SubMeshHash, strideVertex, newSubMesh.VertexRange);
 
-            memcpy(meshIt->MeshName, mesh.MeshName, util::MAX_NAME_LENGTH);
+            mBufferManager->AddIndex(reinterpret_cast<int8_t*>(subMesh.IndexBuffer.get()), strideIndex * subMesh.IndexCount, newSubMesh.SubMeshHash, strideIndex, newSubMesh.IndexRange);
 
-            meshIt->Material = std::move(mesh.Material);
+            totalVertexCount += newSubMesh.VertexRange.Count;
+            totalIndexCount += newSubMesh.IndexRange.Count;
+            (void)memcpy(newSubMesh.SubMeshName, subMesh.MeshName, util::MAX_NAME_LENGTH);
+
+            newSubMesh.Material.MaterialParam = std::move(subMesh.MaterialParam);
+
+            newSubMesh.Material.ShaderType = eShader::BasicWithShadow;
+            newSubMesh.Material.RasterType = eRasterType::Basic;
+            newSubMesh.Material.SamplerHash = eSamplerType::AnisotropicWrap;
+            newSubMesh.Material.BlendHash = 0;
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)
             {
-                if(mesh.Textures[tex].TextureHash)
+                if(subMesh.Textures[tex].TextureHash)
                 {
-                    mTextureManager->AddTexture(mesh.Textures[tex].FilePath, mesh.Textures[tex].TextureHash);
-                    meshIt->TextureHashes[tex] = mesh.Textures[tex].TextureHash;
+                    mTextureManager->AddTexture(subMesh.Textures[tex].FilePath, subMesh.Textures[tex].TextureHash);
+                    newSubMesh.Material.TextureHashes[tex] = subMesh.Textures[tex].TextureHash;
                 }
             }
-            ++meshIt;
+            newMesh.SubMeshes.push_back(std::move(newSubMesh));
         }
 
-        outModel->SetMeshes(meshes);
+        newMesh.VertexRange.StartIndex = newMesh.SubMeshes.front().VertexRange.StartIndex;
+        newMesh.VertexRange.Count = totalVertexCount;
+
+        newMesh.IndexRange.StartIndex = newMesh.SubMeshes.front().IndexRange.StartIndex;
+        newMesh.IndexRange.Count = totalIndexCount;
+
+        outModel->SetMesh(newMesh);
         outModel->SetCenterPoint(modelContainer.CenterPoint);
     }
 

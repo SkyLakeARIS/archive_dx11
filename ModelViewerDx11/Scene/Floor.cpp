@@ -37,7 +37,7 @@ namespace scene
         cbColor.Float3 = XMFLOAT3(0.0, 1.0, 0.0);
         renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
 
-        const int16_t stride = renderer::GetVertexStrideSize(mMesh.VertexLayoutType);
+        const int16_t stride = renderer::GetVertexStrideSize(mMesh.VertexFormat);
         renderer.BindVertexBuffer(stride);
 
         D3D11_PRIMITIVE_TOPOLOGY orgTopology;

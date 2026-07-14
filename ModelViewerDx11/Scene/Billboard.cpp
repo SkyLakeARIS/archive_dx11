@@ -52,11 +52,11 @@ namespace scene
         renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
 
 
-        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexLayoutType);
+        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
         renderer.BindVertexBuffer(strideVertex);
         renderer.BindIndexBuffer();
 
-        renderer.BindTextureToPs(0, mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+        renderer.BindTextureToPs(0, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
         
         renderer.BindSamplerToPsByType(0, renderer::eSamplerType::AnisotropicWrap);
 
@@ -77,7 +77,7 @@ namespace scene
 
     void Billboard::SetTexture(HashID texHash)
     {
-        mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)] = texHash;
+        mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)] = texHash;
     }
 
     void Billboard::SetPosition(const XMFLOAT3& position)

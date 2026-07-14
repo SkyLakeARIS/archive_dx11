@@ -52,7 +52,7 @@ namespace scene
         renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
         renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
 
-        const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexLayoutType);
+        const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
         renderer.BindVertexBufferDynamic(strideVertex);
 
         D3D11_PRIMITIVE_TOPOLOGY origTopology;
@@ -307,10 +307,10 @@ namespace scene
             (void)memcpy(mMeshDebug.MeshName, virtualFilePath, wroteCount + 1);
 
             mMeshDebug.MeshHash = util::GetDjb2Hash(virtualFilePath);
-            mMeshDebug.VertexLayoutType = renderer::eVertexFormat::P;
+            mMeshDebug.VertexFormat = renderer::eVertexFormat::P;
         }
 
-        const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexLayoutType);
+        const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
         renderer::BufferManager* const bufferManager = renderer.GetBufferManager();
         bufferManager->AddVertexDynamic(reinterpret_cast<int8_t*>(mLines.data()), strideVertex * mLines.size(), mMeshDebug.MeshHash, strideVertex, mMeshDebug.VertexRange);
     }

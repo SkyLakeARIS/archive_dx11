@@ -19,7 +19,7 @@ namespace ui
         renderer.BindInputLayoutTo(renderer::eVertexFormat::PT);
         renderer.BindShaderTo(renderer::eShader::RenderToTexture);
 
-        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexLayoutType);
+        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
         renderer.BindVertexBuffer(strideVertex);
         renderer.BindIndexBuffer();
 
