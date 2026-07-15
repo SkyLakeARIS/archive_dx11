@@ -65,7 +65,7 @@ namespace renderer
 
             newSubMesh.Material.ShaderType = eShader::BasicWithShadow;
             newSubMesh.Material.RasterType = eRasterType::Basic;
-            newSubMesh.Material.SamplerHash = eSamplerType::AnisotropicWrap;
+            newSubMesh.Material.SamplerType = eSamplerType::AnisotropicWrap;
             newSubMesh.Material.BlendHash = 0;
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)

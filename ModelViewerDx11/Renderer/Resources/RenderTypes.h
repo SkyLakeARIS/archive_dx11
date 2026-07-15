@@ -81,7 +81,7 @@ namespace renderer
         eShader ShaderType;
         uint32_t ConstantBuffers[CONSTANT_BUFFER_MAX_SLOT_COUNT];
         eRasterType RasterType;
-        eSamplerType SamplerHash;
+        eSamplerType SamplerType;
         HashID BlendHash;
     };
 
