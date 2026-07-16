@@ -12,6 +12,14 @@ namespace renderer
 
 namespace renderer
 {
+    enum class ePrimitiveTopology
+    {
+        Triangles,
+        TriangleStrip,
+        Lines,
+        TopologyCount
+    };
+
     enum class eVertexFormat : uint8_t
     {
         PTN,    // pos, normal, tex
@@ -50,7 +58,9 @@ namespace renderer
         return VertexStrideMap[static_cast<int8_t>(vertexAttrib)];
     }
 
+    // TODO: cleanup - Material은 별도 헤더 파일로 분리하기.
     // 모델링 프로그램에서 미리 계산된 값으로 사용
+    // MEMO: Shader에 바로 넘길 수 있도록 별도로 데이터 구조 분리.
     struct MaterialParameter // 16 bytes align
     {
         XMFLOAT3 Diffuse;
@@ -74,15 +84,21 @@ namespace renderer
     struct Material
     {
         // MEMO: 재질
+        // TODO: improve - 좀 더 깔끔한 네이밍이 있을지.?
         MaterialParameter MaterialParam;
-
+        // MEMO: 텍스처
         HashID TextureHashes[eTextureType::TextureTypeCount];
-        // MEMO: 렌더 상태
+        // MEMO: 셰이더
+        // TODO: Shader도 각 Shader마다 CB 슬롯과 상태별 Bind Slot들을 매핑해줄 무언가가 필요함.
         eShader ShaderType;
         uint32_t ConstantBuffers[CONSTANT_BUFFER_MAX_SLOT_COUNT];
+        // MEMO: 렌더 상태
         eRasterType RasterType;
         eSamplerType SamplerType;
         HashID BlendHash;
+        ePrimitiveTopology TopologyType;
+        // TODO: improve - 현재 옵션이 Skybox 전용으로만 존재하므로 확장이 필요함.
+        bool bUseDepthStencil;
     };
 
     struct BufferRange
