@@ -3,7 +3,7 @@
 
 namespace renderer
 {
-    enum class eTextureType
+    enum class eTextureType : uint8_t
     {
         Diffuse,
         Normal,

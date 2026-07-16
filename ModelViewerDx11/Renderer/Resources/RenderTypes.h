@@ -4,15 +4,14 @@
 
 namespace renderer
 {
-    enum class eSamplerType;
-    enum class eRasterType;
-    enum class eShader : uint32_t;
-    enum class eTextureType;
+    enum class eSamplerType : uint8_t;
+    enum class eRasterType : uint8_t;
+    enum class eShader : uint8_t;
 }
 
 namespace renderer
 {
-    enum class ePrimitiveTopology
+    enum class ePrimitiveTopology : uint8_t
     {
         Triangles,
         TriangleStrip,
@@ -138,7 +137,7 @@ namespace renderer
         ConstantBufferCount
     };
 
-    enum class eRasterType
+    enum class eRasterType : uint8_t
     {
         Basic,
         Outline,
@@ -147,14 +146,14 @@ namespace renderer
         RasterCount,
     };
 
-    enum class eSamplerType
+    enum class eSamplerType : uint8_t
     {
         AnisotropicWrap,
         SamplerCount
     };
 
 
-    enum class eShader : uint32_t
+    enum class eShader : uint8_t
     {
         Outline,
         Skybox,
