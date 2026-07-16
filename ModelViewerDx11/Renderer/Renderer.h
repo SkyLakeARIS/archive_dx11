@@ -53,6 +53,11 @@ namespace renderer
             uint32_t ByteWidth;
         };
 
+        struct PrimitiveTopologyMap
+        {
+            ePrimitiveTopology UserType;
+            D3D11_PRIMITIVE_TOPOLOGY ApiType;
+        };
     public:
         Renderer();
         ~Renderer();
@@ -124,6 +129,7 @@ namespace renderer
         void UnbindTexturePs(uint32_t slot) const;
 
         void BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const;
+        void BindPrimitiveTopologyByType(ePrimitiveTopology topology) const;
         void BindRenderTargetTo(eRenderTarget type);
         void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type);
@@ -196,7 +202,8 @@ namespace renderer
         std::unordered_map<HashID, ID3D11BlendState*> mBlendStateMap;
         // CB
         ID3D11Buffer* mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
-
+        // topology
+        PrimitiveTopologyMap mPrimitiveTopologies[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)];
         // Managers
         BufferManager* mBufferManager;
         TextureManager* mTextureManager;

@@ -10,7 +10,6 @@ namespace scene
         , mPosition()
         , mMatWorld(XMMatrixIdentity())
     {
-        renderer::MeshGenerator::CreatePlane(mMesh);
     }
 
     Billboard::~Billboard()
@@ -31,6 +30,19 @@ namespace scene
         blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
         blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
         renderer.CreateBlendState(blendDesc, mBlendHash);
+
+        renderer::MeshGenerator::CreatePlane(mMesh);
+
+        // TODO: improve - Generator로 생성하는 경우에는 Material 을 어디서 설정해 줄지? 이런 동적 생성 Mesh는 Material을 뭘로 설정할지?
+        // Topology, VertexFormat은 Generator가 알지만 그 외에는 애매함. - 아니면 그냥 현재 코드 상태를 기반으로 세팅
+        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
+        subMeshMaterial.ShaderType = renderer::eShader::RenderToTexture;
+        subMeshMaterial.RasterType = renderer::eRasterType::Basic;
+        subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        subMeshMaterial.BlendHash = mBlendHash;
+        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        subMeshMaterial.bUseDepthStencil = false;
+        subMeshMaterial.MaterialParam = {};
     }
 
     void Billboard::Draw(renderer::Renderer& renderer)
@@ -41,26 +53,28 @@ namespace scene
         cbWorld.Matrix = XMMatrixTranspose(matWorld);
         renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
 
-
-        renderer.BindInputLayoutTo(renderer::eVertexFormat::PT);
-        renderer.BindShaderTo(renderer::eShader::RenderToTexture);
-
-        renderer.BindRasterStateByType(renderer::eRasterType::Basic);
-        renderer.BindBlendStateByHash(mBlendHash, nullptr, 0xffffffff);
-
-        renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
-
-
         const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
         renderer.BindVertexBuffer(strideVertex);
         renderer.BindIndexBuffer();
 
-        renderer.BindTextureToPs(0, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
-        
-        renderer.BindSamplerToPsByType(0, renderer::eSamplerType::AnisotropicWrap);
+        renderer.BindInputLayoutTo(mMesh.VertexFormat);
 
-        renderer.DrawIndexed(mMesh.IndexRange.Count, mMesh.IndexRange.StartIndex, mMesh.VertexRange.StartIndex);
+        for (const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
+
+            renderer.BindRasterStateByType(subMesh.Material.RasterType);
+            renderer.BindBlendStateByHash(mBlendHash, nullptr, 0xffffffff);
+
+            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
+            renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
+
+            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+
+            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
+
+            renderer.DrawIndexed(subMesh.IndexRange.Count, subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
+        }
     }
 
     void Billboard::UpdateScaleMatrix(Camera& camera)

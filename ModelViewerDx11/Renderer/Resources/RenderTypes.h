@@ -86,7 +86,7 @@ namespace renderer
         // TODO: improve - 좀 더 깔끔한 네이밍이 있을지.?
         MaterialParameter MaterialParam;
         // MEMO: 텍스처
-        HashID TextureHashes[eTextureType::TextureTypeCount];
+        HashID TextureHashes[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
         // MEMO: 셰이더
         // TODO: Shader도 각 Shader마다 CB 슬롯과 상태별 Bind Slot들을 매핑해줄 무언가가 필요함.
         eShader ShaderType;

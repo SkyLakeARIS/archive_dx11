@@ -34,9 +34,8 @@ namespace renderer
 
     void Model::Draw(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(eVertexFormat::PTN);
-
-        const uint32 stride = sizeof(VertexPTN);
+        // Draw
+        const uint32 stride = GetVertexStrideSize(mMesh.VertexFormat);
 
         renderer.BindVertexBuffer(stride);
         renderer.BindIndexBuffer();
@@ -51,7 +50,7 @@ namespace renderer
             renderer.BindCbToVsByType(1U, 1U, eCbType::CbOutlineProperty);
             renderer.BindCbToVsByType(2U, 1U, eCbType::CbViewProj);
 
-            for (const auto& subMesh :mMesh.SubMeshes)
+            for (const auto& subMesh : mMesh.SubMeshes)
             {
                 renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
             }
@@ -59,25 +58,25 @@ namespace renderer
             renderer.ClearDepthBuffer();
         }
 
-        renderer.BindRasterStateByType(eRasterType::Basic);
-
-        renderer.BindShaderTo(eShader::BasicWithShadow);
-
-        renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
-        renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightProperty);
-        renderer.BindCbToVsByType(3U, 1U, eCbType::CbCameraPosition);
-        renderer.BindCbToVsByType(4U, 1U, eCbType::CbViewProj);
-
-        renderer.BindSamplerToPsByType(0, eSamplerType::AnisotropicWrap);
-
-        renderer.BindCbToPs(0U, 1U, eCbType::CbMaterial);
-
-        renderer.BindShadowTextureToPs(2);
-
-        // Draw
+        renderer.BindInputLayoutTo(mMesh.VertexFormat);
         for (const auto& subMesh : mMesh.SubMeshes)
         {
+            // TODO: 상태 중복 바인드 방지는 렌더큐에서 구현하자.
+            renderer.BindRasterStateByType(subMesh.Material.RasterType);
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
+
+            renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
+            renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
+            renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightProperty);
+            renderer.BindCbToVsByType(3U, 1U, eCbType::CbCameraPosition);
+            renderer.BindCbToVsByType(4U, 1U, eCbType::CbViewProj);
+
+            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
+
+            renderer.BindCbToPs(0U, 1U, eCbType::CbMaterial);
+
+            renderer.BindShadowTextureToPs(2);
+
             renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Diffuse)]);
             if(subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Normal)])
             {
@@ -103,11 +102,12 @@ namespace renderer
     {
         renderer.BindInputLayoutTo(eVertexFormat::P);
 
-        const uint32 stride = sizeof(VertexPTN);
+        const uint32 stride = GetVertexStrideSize(mMesh.VertexFormat);
 
         renderer.BindVertexBuffer(stride);
         renderer.BindIndexBuffer();
-
+        // TODO: 이런 부분들을 보면 SubMesh나 Material로 처리하기 보다 RenderPacket에서 이런 부분들을 처리해야 할 것 같다.
+        // 같은 메시를 다르게 처리해야 하는 경우들.
         renderer.BindRasterStateByType(eRasterType::Outline);
         renderer.BindShaderTo(eShader::Shadow);
 

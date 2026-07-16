@@ -36,32 +36,37 @@ namespace scene
 
     void Light::DrawDebug(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
-        renderer.BindShaderTo(renderer::eShader::Color);
+        renderer.BindInputLayoutTo(mMeshDebug.VertexFormat);
 
-        renderer::CbColor cbColor = {  };
-        cbColor.Float3 = XMFLOAT3(1.0f, 1.0f, 0.0f);
+        for(const auto& subMesh : mMeshDebug.SubMeshes)
+        {
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
 
-        renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
-        renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
+            // TODO: improve - 일단 이렇게 하되, 이런 Color 값들은 Material의 Diffuse 속성을 이용하도록 변경하기.
+            renderer::CbColor cbColor = {  };
+            cbColor.Float3 = XMFLOAT3(1.0f, 1.0f, 0.0f);
 
-        renderer::CbWorld cbWorld;
-        cbWorld.Matrix = XMMatrixTranspose(XMMatrixIdentity());
-        renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
+            renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
+            renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
 
-        renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
+            renderer::CbWorld cbWorld;
+            cbWorld.Matrix = XMMatrixTranspose(XMMatrixIdentity());
+            renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
 
-        const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
-        renderer.BindVertexBufferDynamic(strideVertex);
+            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
+            renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
 
-        D3D11_PRIMITIVE_TOPOLOGY origTopology;
-        renderer.GetCurrentPrimitiveTopology(origTopology);
-        renderer.BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+            const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
+            renderer.BindVertexBufferDynamic(strideVertex);
 
-        renderer.Draw(mMeshDebug.VertexRange.Count, mMeshDebug.VertexRange.StartIndex);
+            D3D11_PRIMITIVE_TOPOLOGY origTopology;
+            renderer.GetCurrentPrimitiveTopology(origTopology);
+            renderer.BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-        renderer.BindPrimitiveTopologyTo(origTopology);
+            renderer.Draw(subMesh.VertexRange.Count, subMesh.VertexRange.StartIndex);
+
+            renderer.BindPrimitiveTopologyTo(origTopology);
+        }
     }
 
     void Light::SetupCascade(renderer::Renderer& renderer)
@@ -310,8 +315,32 @@ namespace scene
             mMeshDebug.VertexFormat = renderer::eVertexFormat::P;
         }
 
+        // TODO: Dynamic Mesh는 SubMesh와 Material을 어떻게 처리하는 게 좋을지? - 우선은 바로 확장하지 않고 현재 구조 기준으로 수작업.
+        if (mMeshDebug.SubMeshes.empty())
+        {
+            // no Sampler, Blend
+            renderer::SubMesh newSubMesh = {};
+
+            // TODO: 단일 메시의 경우 서브메시와 해시를 같게하는게 맞을지? .subMesh로 구분을 하는게 나을지? - 어떻게 처리하는 게 더 나을지 자료 조사하기
+            (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
+            newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
+
+            newSubMesh.Material.ShaderType = renderer::eShader::Color;
+            newSubMesh.Material.RasterType = renderer::eRasterType::Basic;
+            newSubMesh.Material.BlendHash = 0;
+            newSubMesh.Material.TopologyType = renderer::ePrimitiveTopology::Lines;
+            newSubMesh.Material.bUseDepthStencil = false;
+            newSubMesh.Material.MaterialParam = {};
+
+            mMeshDebug.SubMeshes.push_back(std::move(newSubMesh));
+        }
+
+        renderer::SubMesh& subMesh= mMeshDebug.SubMeshes.front();
+
         const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
         renderer::BufferManager* const bufferManager = renderer.GetBufferManager();
-        bufferManager->AddVertexDynamic(reinterpret_cast<int8_t*>(mLines.data()), strideVertex * mLines.size(), mMeshDebug.MeshHash, strideVertex, mMeshDebug.VertexRange);
+        bufferManager->AddVertexDynamic(reinterpret_cast<int8_t*>(mLines.data()), strideVertex * mLines.size(), subMesh.SubMeshHash, strideVertex, subMesh.VertexRange);
+
+        mMeshDebug.VertexRange = subMesh.VertexRange;
     }
 }

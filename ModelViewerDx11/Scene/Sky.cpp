@@ -23,6 +23,16 @@ namespace scene
     {
         renderer::MeshGenerator::CreateSphere(latLines, lonLines, mMesh);
 
+        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
+
+        subMeshMaterial.ShaderType = renderer::eShader::Skybox;
+        subMeshMaterial.RasterType = renderer::eRasterType::Skybox;
+        subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        subMeshMaterial.BlendHash = 0;
+        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::Triangles;
+        subMeshMaterial.bUseDepthStencil = true;
+        subMeshMaterial.MaterialParam = {};
+
         const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/skybox.dds");
         texManager->AddDTextureDDS(filePath, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
         return S_OK;
@@ -31,30 +41,33 @@ namespace scene
     void Sky::Draw(renderer::Renderer& renderer)
     {
         // render
-        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
-
         const int16_t strideVertex = renderer::GetVertexStrideSize(mMesh.VertexFormat);
 
         renderer.BindVertexBuffer(strideVertex);
         renderer.BindIndexBuffer();
 
-        renderer.BindRasterStateByType(renderer::eRasterType::Skybox);
+        renderer.BindInputLayoutTo(mMesh.VertexFormat);
 
-        renderer.BindShaderTo(renderer::eShader::Skybox);
+        for(const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer.BindRasterStateByType(subMesh.Material.RasterType);
 
-        renderer.BindSamplerToPsByType(0, renderer::eSamplerType::AnisotropicWrap);
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
+
+            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
 
 
-        renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
+            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
+            renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
 
-        renderer.BindDepthStencilState(true);
+            renderer.BindDepthStencilState(subMesh.Material.bUseDepthStencil);
 
-        renderer.BindTextureToPs(0, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
 
-        renderer.DrawIndexed(mMesh.IndexRange.Count, mMesh.IndexRange.StartIndex, mMesh.VertexRange.StartIndex);
+            renderer.DrawIndexed(subMesh.IndexRange.Count, subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
 
-        renderer.BindDepthStencilState(false);
+            renderer.BindDepthStencilState(false);
+        }
     }
 
     void Sky::Update(renderer::Renderer& renderer)

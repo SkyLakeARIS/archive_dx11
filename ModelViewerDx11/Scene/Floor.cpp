@@ -12,6 +12,15 @@ namespace scene
         ASSERT(gapEachLine >= 1, "gapEachLine must be 1 or greater");
 
         renderer::MeshGenerator::CreateGrid(startPoint, numLineX, numLineY, gapEachLine, mMesh);
+
+        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
+        subMeshMaterial.ShaderType = renderer::eShader::Color;
+        subMeshMaterial.RasterType = renderer::eRasterType::Basic;
+        // no sampler, blend
+        subMeshMaterial.BlendHash = 0;
+        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        subMeshMaterial.bUseDepthStencil = false;
+        subMeshMaterial.MaterialParam = {};
     }
 
     Floor::~Floor()
@@ -21,32 +30,35 @@ namespace scene
 
     void Floor::Draw(renderer::Renderer& renderer)
     {
-        renderer.BindRasterStateByType(renderer::eRasterType::Basic);
-        renderer.BindInputLayoutTo(renderer::eVertexFormat::P);
-        renderer.BindShaderTo(renderer::eShader::Color);
 
-        renderer::CbWorld cbWorld;
-        cbWorld.Matrix = XMMatrixIdentity();
-        renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
-
-        renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
-        renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
-
-        renderer::CbColor cbColor = {};
-        cbColor.Float3 = XMFLOAT3(0.0, 1.0, 0.0);
-        renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
-
+        renderer.BindInputLayoutTo(mMesh.VertexFormat);
         const int16_t stride = renderer::GetVertexStrideSize(mMesh.VertexFormat);
         renderer.BindVertexBuffer(stride);
+        for(const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer.BindRasterStateByType(subMesh.Material.RasterType);
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
 
-        D3D11_PRIMITIVE_TOPOLOGY orgTopology;
-        renderer.GetCurrentPrimitiveTopology(orgTopology);
+            renderer::CbWorld cbWorld;
+            cbWorld.Matrix = XMMatrixIdentity();
+            renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
 
-        renderer.BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
+            renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
+            renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
 
-        renderer.Draw(mMesh.VertexRange.Count, mMesh.VertexRange.StartIndex);
+            renderer::CbColor cbColor = {};
+            cbColor.Float3 = XMFLOAT3(0.0, 1.0, 0.0);
+            renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
 
-        renderer.BindPrimitiveTopologyTo(orgTopology);
+            D3D11_PRIMITIVE_TOPOLOGY orgTopology;
+            renderer.GetCurrentPrimitiveTopology(orgTopology);
+
+            renderer.BindPrimitiveTopologyByType(subMesh.Material.TopologyType);
+
+            renderer.Draw(subMesh.VertexRange.Count, subMesh.VertexRange.StartIndex);
+
+            renderer.BindPrimitiveTopologyTo(orgTopology);
+        }
     }
 }

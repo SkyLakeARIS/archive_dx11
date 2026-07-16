@@ -7,6 +7,15 @@ namespace ui
     DebugPanel::DebugPanel(int16_t originX, int16_t originY, int16_t width, int16_t height)
     {
         renderer::MeshGenerator::CreateScreenPlane(originX, originY, width, height, mMesh);
+
+        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
+        subMeshMaterial.ShaderType = renderer::eShader::RenderToTexture;
+        subMeshMaterial.RasterType = renderer::eRasterType::Basic;
+        subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        subMeshMaterial.BlendHash = 0;
+        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        subMeshMaterial.bUseDepthStencil = false;
+        subMeshMaterial.MaterialParam = {};
     }
 
     DebugPanel::~DebugPanel()
@@ -16,30 +25,33 @@ namespace ui
 
     void DebugPanel::Draw(renderer::Renderer& renderer)
     {
-        renderer.BindInputLayoutTo(renderer::eVertexFormat::PT);
-        renderer.BindShaderTo(renderer::eShader::RenderToTexture);
-
-        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
-        renderer.BindVertexBuffer(strideVertex);
-        renderer.BindIndexBuffer();
-
         renderer::CbWorld cbWorldMat;
         cbWorldMat.Matrix = XMMatrixTranspose(XMMatrixIdentity());
         renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorldMat);
         renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
         renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbScreenSpaceMatrix);
 
-        renderer.BindSamplerToPsByType(0, renderer::eSamplerType::AnisotropicWrap);
+        renderer.BindInputLayoutTo(mMesh.VertexFormat);
 
-        if(mType == renderer::eRenderTarget::Shadow)
+        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
+        renderer.BindVertexBuffer(strideVertex);
+        renderer.BindIndexBuffer();
+
+        for(const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindShadowTextureToPs(0);
+            renderer.BindShaderTo(subMesh.Material.ShaderType);
+            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
+
+            if (mType == renderer::eRenderTarget::Shadow)
+            {
+                renderer.BindShadowTextureToPs(0);
+            }
+            else
+            {
+                renderer.BindDefaultTextureToPs(0);
+            }
+            renderer.DrawIndexed(subMesh.IndexRange.Count, subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
         }
-        else
-        {
-            renderer.BindDefaultTextureToPs(0);
-        }
-        renderer.DrawIndexed(mMesh.IndexRange.Count, mMesh.IndexRange.StartIndex, mMesh.VertexRange.StartIndex);
 
         renderer.UnbindTexturePs(0);
     }

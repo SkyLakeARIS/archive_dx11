@@ -462,6 +462,21 @@ namespace renderer
             return false;
         }
 
+        constexpr PrimitiveTopologyMap TopologyMap[] =
+        {
+            {ePrimitiveTopology::Triangles, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST},
+            {ePrimitiveTopology::TriangleStrip, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP},
+            {ePrimitiveTopology::Lines, D3D11_PRIMITIVE_TOPOLOGY_LINELIST},
+        };
+        static_assert((sizeof(TopologyMap) / sizeof(PrimitiveTopologyMap)) == static_cast<uint8_t>(ePrimitiveTopology::TopologyCount));
+#if defined(_DEBUG)
+        for (int32_t topology = 0; topology < static_cast<uint8_t>(ePrimitiveTopology::TopologyCount); ++topology)
+        {
+            ASSERT(TopologyMap[topology].UserType == static_cast<ePrimitiveTopology>(topology), "열거값과 Map 순서가 일치하지 않음. indexInMap(%d): Map.UserType(%d) != enum(%d))", topology, static_cast<uint8_t>(TopologyMap[topology].UserType), static_cast<uint8_t>(topology));
+        }
+#endif
+        (void)memcpy(mPrimitiveTopologies, TopologyMap, sizeof(TopologyMap));
+
         return true;
     }
 
@@ -885,6 +900,12 @@ namespace renderer
     void Renderer::BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const
     {
         mDeviceContext->IASetPrimitiveTopology(topology);
+    }
+
+    void Renderer::BindPrimitiveTopologyByType(ePrimitiveTopology topology) const
+    {
+        const PrimitiveTopologyMap topologyElement = mPrimitiveTopologies[static_cast<uint8_t>(topology)];
+        mDeviceContext->IASetPrimitiveTopology(topologyElement.ApiType);
     }
 
     void Renderer::BindRasterStateByType(eRasterType type)
