@@ -63,14 +63,18 @@ namespace renderer
         , mDepthStencilTexture(nullptr)
         , mSkyboxDepthStencil(nullptr)
         , mRenderTargetViewList{nullptr}
-        , mDepthStencilViewList{ nullptr }
-        , mRtvDsMapTable{0}
+        , mDepthStencilViewList{nullptr}
+        , mRtvDsMapTable{}
         , mTexShadow(nullptr)
         , mTexColor(nullptr)
         , mShadowSrv(nullptr)
+        , mCascadeShadowSrvList(nullptr)
         , mViewportFull()
         , mViewportTex()
-        , mRasterStates{ nullptr }
+        , mRasterStates{nullptr}
+        , mSamplerState{}
+        , mCbList{}
+        , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
     {}
@@ -119,9 +123,8 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::createRasterState()
+    bool Renderer::createRasterState()
     {
-        HRESULT result = S_OK;
         // 기본 래스터 스테이트
         D3D11_RASTERIZER_DESC rasterDesc;
         ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
@@ -130,10 +133,11 @@ namespace renderer
         rasterDesc.FillMode = D3D11_FILL_SOLID;
         // MEMO: CW winding으로 통일 
         rasterDesc.FrontCounterClockwise = false;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for basic");
+            return false;
         }
         // 아웃라인용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_FRONT;
@@ -144,6 +148,7 @@ namespace renderer
         if(FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for outline");
+            return false;
         }
 
         // 스카이박스용 래스터 스테이트
@@ -151,7 +156,8 @@ namespace renderer
         result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Skybox)]);
         if (FAILED(result))
         {
-            ASSERT(false, "Failed to create RasterState for outline");
+            ASSERT(false, "Failed to create RasterState for Skybox");
+            return false;
         }
 
         // back-culling 래스터 스테이트
@@ -160,9 +166,10 @@ namespace renderer
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for back face culling");
+            return false;
         }
 
-        return result;
+        return true;
     }
 
     HRESULT Renderer::createSamplerState()
@@ -274,7 +281,7 @@ namespace renderer
 
         // 왠만하면 D3D_DRIVER_TYPE_HARDWARE로 정해질 것임.
         D3D_FEATURE_LEVEL featureLevel;
-        HRESULT result;
+        HRESULT result = S_OK;
         for (UINT32 driverTypeIndex = 0; driverTypeIndex < numDriverTypes; ++driverTypeIndex)
         {
             result = D3D11CreateDeviceAndSwapChain(nullptr, driverTypes[driverTypeIndex], nullptr, createDeviceFlag, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swapChainDesc, &mSwapChain, &mDevice, &featureLevel, &mDeviceContext);
@@ -382,8 +389,7 @@ namespace renderer
             return E_FAIL;
         }
 
-        result = createRasterState();
-        if(FAILED(result))
+        if(!createRasterState())
         {
             return E_FAIL;
         }
@@ -419,7 +425,7 @@ namespace renderer
 
         // set default resources
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc;
+        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc = {};
         texDefaultDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         texDefaultDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         texDefaultDesc.Texture2D.MipLevels = 1;
@@ -588,7 +594,7 @@ namespace renderer
         const WCHAR* fileName,
         WIC_FLAGS flag,
         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
-        ID3D11ShaderResourceView** outShaderResourceView)
+        ID3D11ShaderResourceView** outShaderResourceView) const
     {
         ScratchImage image;
         ID3D11Texture2D* textureResource = nullptr;
@@ -628,14 +634,13 @@ namespace renderer
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
-        ID3D11RenderTargetView** outRtv, const char* const debugTag)
+        ID3D11RenderTargetView** outRtv, const char* const debugTag) const
     {
-        HRESULT result = S_OK;
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outRtv != nullptr, "outRtv) do not pass nullptr.");
         ASSERT((*outRtv) == nullptr, "outRtv)pRtv is already initialized.");
 
-        result = mDevice->CreateRenderTargetView(texture, desc, outRtv);
+        const HRESULT result = mDevice->CreateRenderTargetView(texture, desc, outRtv);
         if(FAILED(result))
         {
             ASSERT(false, "failed to create RenderTargetView: RenderTargetView 생성 실패");
@@ -646,14 +651,13 @@ namespace renderer
     }
 
     HRESULT Renderer::CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc,
-        ID3D11DepthStencilView** outDs, const char* const debugTag)
+        ID3D11DepthStencilView** outDs, const char* const debugTag) const
     {
-        HRESULT result = S_OK;
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outDs != nullptr, "outDs) do not pass nullptr.");
         ASSERT((*outDs) == nullptr, "outDs)pOutDs is already initialized.");
 
-        result = mDevice->CreateDepthStencilView(texture, desc, outDs);
+        const HRESULT result = mDevice->CreateDepthStencilView(texture, desc, outDs);
         if (FAILED(result))
         {
             ASSERT(false, "failed to create DepthStencilView: DepthStencilView 생성 실패");
@@ -663,9 +667,9 @@ namespace renderer
         return result;
     }
 
-    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb)
+    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const
     {
-        ASSERT(desc.BindFlags == D3D11_BIND_CONSTANT_BUFFER, "desc.BindFlags not bind as Constant-buffer");
+        ASSERT(desc.BindFlags & static_cast<uint32_t>(D3D11_BIND_CONSTANT_BUFFER), "desc.BindFlags not bind as Constant-buffer");
         ASSERT(desc.ByteWidth != 0, "desc.ByteWidth is zero");
 
         HRESULT result = mDevice->CreateBuffer(&desc, nullptr, outCb);
@@ -685,7 +689,7 @@ namespace renderer
         mDeviceContext->IASetInputLayout(mInputLayoutList[static_cast<uint32>(type)]);
     }
 
-    void Renderer::BindShaderTo(eShader type)
+    void Renderer::BindShaderTo(eShader type) const
     {
         const ShaderMap& shaderMap = mShaderMapTable[static_cast<uint32_t>(type)];
         mDeviceContext->VSSetShader(mVertexShadersList[static_cast<uint32_t>(shaderMap.VsIndex)], nullptr, 0U);
@@ -702,7 +706,7 @@ namespace renderer
         mDeviceContext->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
     }
 
-    void Renderer::SetViewport(bool bFullScreen)
+    void Renderer::SetViewport(bool bFullScreen) const
     {
         if (bFullScreen)
         {
@@ -803,7 +807,7 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag)
+    HRESULT Renderer::CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const
     {
         ASSERT(*outTex == nullptr, "pass nullptr before create texture.");
         if(!tag)
@@ -823,8 +827,8 @@ namespace renderer
 
     void Renderer::BindVertexBuffer(uint32_t stride) const
     {
-        uint32_t offset = 0;
-        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBuffer(stride);
+        constexpr uint32_t offset = 0;
+        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBuffer(static_cast<int16_t>(stride));
         mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
     }
 
@@ -840,7 +844,7 @@ namespace renderer
     void Renderer::BindVertexBufferDynamic(uint32_t stride) const
     {
         uint32_t offset = 0;
-        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBufferDynamic(stride);
+        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBufferDynamic(static_cast<int16_t>(stride));
         mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
     }
 
@@ -908,12 +912,12 @@ namespace renderer
         mDeviceContext->IASetPrimitiveTopology(topologyElement.ApiType);
     }
 
-    void Renderer::BindRasterStateByType(eRasterType type)
+    void Renderer::BindRasterStateByType(eRasterType type) const
     {
         mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
     }
 
-    void Renderer::BindDepthStencilState(bool bSkybox)
+    void Renderer::BindDepthStencilState(bool bSkybox) const
     {
         if(bSkybox)
         {
@@ -925,7 +929,7 @@ namespace renderer
         }
     }
 
-    void Renderer::ClearScreenAndDepth(eRenderTarget type)
+    void Renderer::ClearScreenAndDepth(eRenderTarget type) const
     {
         constexpr float CLEAR_COLOR[] = { 0.4f, 0.6f, 1.0f, 1.0f };
         RtvDsMap rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
@@ -934,7 +938,7 @@ namespace renderer
         mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[rtvDs.DepthStencilIndex], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     }
 
-    void Renderer::ClearDepthBuffer()
+    void Renderer::ClearDepthBuffer() const
     {
         mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], D3D11_CLEAR_DEPTH, 1.0f, 0);
     }
@@ -1170,18 +1174,17 @@ namespace renderer
 
     ULONG Renderer::AddRef()
     {
-        ++mRefCount;
-        return mRefCount;
+        return InterlockedIncrement(&mRefCount);
     }
 
     ULONG Renderer::Release()
     {
-        --mRefCount;
-        if(mRefCount <= 0)
+        const uint32_t ref = InterlockedDecrement(&mRefCount);
+        if(ref <= 0)
         {
             delete this;
         }
-        return mRefCount;
+        return ref;
     }
 
     HRESULT Renderer::QueryInterface(const IID& riid, void** ppvObject)

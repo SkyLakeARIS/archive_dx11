@@ -69,12 +69,12 @@ namespace renderer
 
         // D3D
         HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32 width, uint32 height, bool bDebugMode);
-        HRESULT CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc, ID3D11RenderTargetView** outRtv, const char* const debugTag = "NO_INFO");
-        HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO");
-        HRESULT CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb);
+        HRESULT CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc, ID3D11RenderTargetView** outRtv, const char* const debugTag = "NO_INFO") const;
+        HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO") const;
+        HRESULT CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const;
 
         // 그림자 매핑을 위한 설계
-        void SetViewport(bool bFullScreen);
+        void    SetViewport(bool bFullScreen) const;
         HRESULT CreateShadowRenderTarget();
 
         // init - program
@@ -87,12 +87,12 @@ namespace renderer
         // TODO: API 의존성을 완전히 분리하려면 desc 조차도 분리하는 게 좋을 것 같다. 일단은 이대로 사용
         HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
-        HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag);
-        HRESULT CreateTextureResource(const WCHAR* fileName, WIC_FLAGS flag, D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView);
+        HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
+        HRESULT CreateTextureResource(const WCHAR* fileName, WIC_FLAGS flag, D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView) const;
 
         // Renderer 
-        void ClearScreenAndDepth(eRenderTarget type);
-        void ClearDepthBuffer();
+        void ClearScreenAndDepth(eRenderTarget type) const;
+        void ClearDepthBuffer() const;
         void Present() const;
 
         void    Cleanup();
@@ -123,8 +123,8 @@ namespace renderer
         // TODO: improve - eTextureType과 충돌이 없으면서 preset을 쓸 방법을 나중에 고민해 보자(default/shadow). 우선은 texture분리를 위해 이렇게
         void BindShadowTextureToPs(uint32_t slot) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
-        void BindRasterStateByType(eRasterType type);
-        void BindDepthStencilState(bool bSkybox); // 현재는 스카이박스만 사용하므로
+        void BindRasterStateByType(eRasterType type) const;
+        void BindDepthStencilState(bool bSkybox) const; // 현재는 스카이박스만 사용하므로
 
         void UnbindTexturePs(uint32_t slot) const;
 
@@ -132,7 +132,7 @@ namespace renderer
         void BindPrimitiveTopologyByType(ePrimitiveTopology topology) const;
         void BindRenderTargetTo(eRenderTarget type);
         void BindInputLayoutTo(eVertexFormat type) const;
-        void BindShaderTo(eShader type);
+        void BindShaderTo(eShader type) const;
 
         // Draw
         void Draw(uint32_t vertexCount, uint32_t startVertexLocation) const;
@@ -149,7 +149,7 @@ namespace renderer
 
         HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
-        HRESULT createRasterState();
+        bool    createRasterState();
         HRESULT createSamplerState();
         HRESULT createPresetConstantBuffers();
         HRESULT setupShaders();
