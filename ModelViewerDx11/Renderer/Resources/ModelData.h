@@ -1,6 +1,5 @@
 #pragma once
-#include "RenderTypes.h"
-#include "TextureData.h"
+#include "Material.h"
 #include "../../Util/Define.h"
 #include "../../Util/Type.h"
 

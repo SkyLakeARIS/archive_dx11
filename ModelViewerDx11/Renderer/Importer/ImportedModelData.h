@@ -1,8 +1,7 @@
 #pragma once
 #include "../../framework.h"
 #include "../../Util/Define.h"
-#include "../Resources/RenderTypes.h"
-#include "../Resources/TextureData.h"
+#include "../Resources/Material.h"
 
 namespace renderer
 {

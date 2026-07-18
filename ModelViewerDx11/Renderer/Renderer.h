@@ -1,6 +1,6 @@
 #pragma once
 #include "../framework.h"
-#include "./Resources/RenderTypes.h"
+#include "./Resources/Material.h"
 
 namespace renderer
 {
