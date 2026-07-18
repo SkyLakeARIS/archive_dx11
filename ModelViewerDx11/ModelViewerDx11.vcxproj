@@ -176,6 +176,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Renderer\Resources\Material.h" />
     <ClInclude Include="Scene\Billboard.h" />
     <ClInclude Include="UI\DebugPanel.h" />
     <ClInclude Include="Renderer\Importer\ImportedModelData.h" />
