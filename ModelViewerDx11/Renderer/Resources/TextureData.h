@@ -7,6 +7,7 @@ namespace renderer
     {
         Diffuse,
         Normal,
+        Shadow,
         TextureTypeCount,
     };
 

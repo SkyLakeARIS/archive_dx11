@@ -340,7 +340,7 @@ void Application::updateScene(double deltaTime)
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
     renderer::CbScreenSpaceMatrix cbScreenSpaceMatrix = {};
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
-    mRenderer->UpdateCB(renderer::eCbType::CbScreenSpaceMatrix, &cbScreenSpaceMatrix);
+    mRenderer->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
     mLightIcon->SetPosition(mLight->GetPosition());
     mLightIcon->UpdateScaleMatrix(*mCamera);

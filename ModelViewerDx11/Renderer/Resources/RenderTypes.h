@@ -89,7 +89,7 @@ namespace renderer
         CbLightProperty,
         CbMaterial,
         CbColor,
-        CbScreenSpaceMatrix,
+        CbOrthoMatrix,
         ConstantBufferCount
     };
 
@@ -117,6 +117,7 @@ namespace renderer
         BasicWithShadow,
         RenderToTexture,
         Color,
+        DebugHUD,
         ShaderCount
     };
 

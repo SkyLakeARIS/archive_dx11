@@ -18,6 +18,7 @@ namespace renderer
             VsRenderToTexture,
             VsSimple,
             VsSkybox,
+            VsScreen,
             VertexShaderCount
         };
 

@@ -9,7 +9,7 @@ namespace ui
         renderer::MeshGenerator::CreateScreenPlane(originX, originY, width, height, mMesh);
 
         renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
-        subMeshMaterial.ShaderType = renderer::eShader::RenderToTexture;
+        subMeshMaterial.ShaderType = renderer::eShader::DebugHUD;
         subMeshMaterial.RasterType = renderer::eRasterType::Basic;
         subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
         subMeshMaterial.BlendHash = 0;
@@ -29,7 +29,7 @@ namespace ui
         cbWorldMat.Matrix = XMMatrixTranspose(XMMatrixIdentity());
         renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorldMat);
         renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbScreenSpaceMatrix);
+        renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbOrthoMatrix);
 
         renderer.BindInputLayoutTo(mMesh.VertexFormat);
 

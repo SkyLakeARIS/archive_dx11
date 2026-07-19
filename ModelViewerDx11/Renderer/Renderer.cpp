@@ -203,7 +203,7 @@ namespace renderer
                 {eCbType::CbLightProperty, sizeof(CbLightProperty)},
                 {eCbType::CbMaterial, sizeof(CbMaterial)},
                 {eCbType::CbColor, sizeof(CbMaterial)},
-                {eCbType::CbScreenSpaceMatrix, sizeof(CbScreenSpaceMatrix)},
+                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
             };
         static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
         D3D11_BUFFER_DESC desc = {};
@@ -972,6 +972,7 @@ namespace renderer
             L"Renderer/Shaders/VsSimple.hlsl",
             L"Renderer/Shaders/VsSkybox.hlsl",
             L"Renderer/Shaders/VsRenderToTexture.hlsl",
+            L"Renderer/Shaders/VsScreen.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
@@ -1016,6 +1017,7 @@ namespace renderer
             {eVertexShader::VsSimple, 2U},
             {eVertexShader::VsRenderToTexture, 4U}, // ?
             {eVertexShader::VsSkybox, 3U},
+            {eVertexShader::VsScreen, 5U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -1038,6 +1040,7 @@ namespace renderer
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
             {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
+            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
