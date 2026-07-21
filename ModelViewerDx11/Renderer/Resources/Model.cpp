@@ -66,10 +66,10 @@ namespace renderer
             renderer.BindShaderTo(subMesh.Material.ShaderType);
 
             renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
-            renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightProperty);
-            renderer.BindCbToVsByType(3U, 1U, eCbType::CbCameraPosition);
-            renderer.BindCbToVsByType(4U, 1U, eCbType::CbViewProj);
+            renderer.BindCbToVsByType(1U, 1U, eCbType::CbViewProj);
+            renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightViewProjMatrix);
+            renderer.BindCbToVsByType(3U, 1U, eCbType::CbLightProperty);
+            renderer.BindCbToVsByType(4U, 1U, eCbType::CbCameraPosition);
 
             renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
 
@@ -112,7 +112,7 @@ namespace renderer
         renderer.BindShaderTo(eShader::Shadow);
 
         renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
+        renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightViewProjMatrix);
 
         // Draw
         for (const auto& subMesh : mMesh.SubMeshes)

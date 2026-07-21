@@ -19,6 +19,7 @@ namespace renderer
             VsSimple,
             VsSkybox,
             VsScreen,
+            VsShadow,
             VertexShaderCount
         };
 

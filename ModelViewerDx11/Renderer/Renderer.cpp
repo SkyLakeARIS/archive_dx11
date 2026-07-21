@@ -973,6 +973,7 @@ namespace renderer
             L"Renderer/Shaders/VsSkybox.hlsl",
             L"Renderer/Shaders/VsRenderToTexture.hlsl",
             L"Renderer/Shaders/VsScreen.hlsl",
+            L"Renderer/Shaders/VsShadow.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
@@ -1018,6 +1019,7 @@ namespace renderer
             {eVertexShader::VsRenderToTexture, 4U}, // ?
             {eVertexShader::VsSkybox, 3U},
             {eVertexShader::VsScreen, 5U},
+            {eVertexShader::VsShadow, 6U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -1036,7 +1038,7 @@ namespace renderer
         {
             {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline}, 
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox}, 
-            { eShader::Shadow, eVertexShader::VsSimple, ePixelShader::PsShadow}, // TODO : 개선 예정(셰이더 최적화) - VSSimple을 다른걸로 변경하기.(inputlayout관점 최적화)
+            { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
             {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},

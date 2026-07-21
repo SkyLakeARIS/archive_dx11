@@ -203,6 +203,7 @@
     <FxCompile Include="Renderer\Shaders\LayoutP.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsSkybox.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsScreen.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsShadow.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

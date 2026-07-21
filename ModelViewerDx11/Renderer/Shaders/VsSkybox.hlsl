@@ -1,10 +1,20 @@
+/*
+    b0 ~ b5 ëŠ” ë Œë”ëŸ¬ì—ì„œ ì˜ˆì•½ (reserved slots by renderer)
 
-cbuffer CbWVP : register(b0)
+    b0 : World Matrix
+    b1 : View + Projection Matrix (mainly Perspective)
+    b2 : View + Projection Matrix of Light
+    b3 : Light Attributes (for lighting)
+    b4 : Camera Attribute (for lighting)
+    b5 : Orthographic Matrix (for screen)
+ */
+
+cbuffer CbMatWorld : register(b0)
 {
     matrix MatWorld;
 }
 
-cbuffer CbVP : register(b1)
+cbuffer CbMatViewProj : register(b1)
 {
     matrix MatViewProj;
 }
@@ -24,12 +34,12 @@ PsInput main(VsInput input)
 {
     PsInput output;
 
-    // ±íÀÌ °ªÀÌ °¡Àå µÚ¾î¾ß ÇÏ±â ¶§¹®¿¡ µû·Î ´Ù½Ã ÁöÁ¤ÇÏ±â º¸´Ù 1ÀÎ w°ªÀ» ´ë½Å ¾²´Â °Í. w = 1, using w instead of z
+    // ê¹Šì´ ê°’ì´ ê°€ì¥ ë’¤ì–´ì•¼ í•˜ê¸° ë•Œë¬¸ì— ë”°ë¡œ ë‹¤ì‹œ ì§€ì •í•˜ê¸° ë³´ë‹¤ 1ì¸ wê°’ì„ ëŒ€ì‹  ì“°ëŠ” ê²ƒ. w = 1, using w instead of z
     //output.Position = mul(float4(input.Position.xyz, 1), MatWorld).xyww;
     output.Position = mul(input.Position, MatWorld);
     output.Position = mul(float4(output.Position.xyz, 1), MatViewProj).xyww;
 
-    // tex°ªÀº À§Ä¡ °ª
+    // texê°’ì€ ìœ„ì¹˜ ê°’
     output.TexCoord = input.Position;
     return output;
 }

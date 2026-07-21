@@ -1,10 +1,20 @@
+/*
+    b0 ~ b5 는 렌더러에서 예약 (reserved slots by renderer)
 
-cbuffer cbMatView : register(b0)
+    b0 : World Matrix
+    b1 : View + Projection Matrix (mainly Perspective)
+    b2 : View + Projection Matrix of Light
+    b3 : Light Attributes (for lighting)
+    b4 : Camera Attribute (for lighting)
+    b5 : Orthographic Matrix (for screen)
+ */
+
+cbuffer CbMatWorld : register(b0)
 {
     matrix MatWorld;
 }
 
-cbuffer cbMatOrtho : register(b1)
+cbuffer CbMatOrtho : register(b5)
 {
     matrix MatOrtho;
 }

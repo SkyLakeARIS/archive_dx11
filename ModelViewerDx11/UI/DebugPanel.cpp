@@ -29,7 +29,7 @@ namespace ui
         cbWorldMat.Matrix = XMMatrixTranspose(XMMatrixIdentity());
         renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorldMat);
         renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbOrthoMatrix);
+        renderer.BindCbToVsByType(5, 1, renderer::eCbType::CbOrthoMatrix);
 
         renderer.BindInputLayoutTo(mMesh.VertexFormat);
 
