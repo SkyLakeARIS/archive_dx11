@@ -1,5 +1,5 @@
 root = true
 
-[*.{cpp,c,cc,cxx,h,hpp}]
+[*.{cpp,c,cc,cxx,h,hpp,hlsl,hlsli}]
 charset = utf-8
 insert_final_newline = true
