@@ -202,7 +202,7 @@ namespace renderer
                 {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty)},
                 {eCbType::CbLightProperty, sizeof(CbLightProperty)},
                 {eCbType::CbMaterial, sizeof(CbMaterial)},
-                {eCbType::CbColor, sizeof(CbMaterial)},
+                {eCbType::CbColor, sizeof(CbColor)},
                 {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
             };
         static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
