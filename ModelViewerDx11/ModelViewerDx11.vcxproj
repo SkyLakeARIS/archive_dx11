@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Renderer\Resources\Material.h" />
+    <ClInclude Include="Renderer\Shader\ShaderManager.h" />
     <ClInclude Include="Scene\Billboard.h" />
     <ClInclude Include="UI\DebugPanel.h" />
     <ClInclude Include="Renderer\Importer\ImportedModelData.h" />
@@ -209,6 +210,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Renderer\Shader\ShaderManager.cpp" />
     <ClCompile Include="Scene\Billboard.cpp" />
     <ClCompile Include="UI\DebugPanel.cpp" />
     <ClCompile Include="Renderer\Primitive\MeshGenerator.cpp" />
