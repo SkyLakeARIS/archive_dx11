@@ -1,5 +1,6 @@
 #pragma once
 #include "Material.h"
+#include "RenderTypes.h"
 #include "../../Util/Define.h"
 #include "../../Util/Type.h"
 
@@ -12,7 +13,7 @@ namespace renderer
     // 캐릭터 모델이 SubMesh별로 다른 Material을 가지므로 이 구조가 대응이 가능한 구조
     struct SubMesh
     {
-        Material Material;
+        SemiMaterial Material;
         // range in Mesh, in ElementCount.
         BufferRange VertexRange;
         BufferRange IndexRange;
