@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Renderer\Resources\Material.h" />
+    <ClInclude Include="Renderer\Resources\RenderPacket.h" />
     <ClInclude Include="Renderer\Shader\ShaderManager.h" />
     <ClInclude Include="Scene\Billboard.h" />
     <ClInclude Include="UI\DebugPanel.h" />

@@ -114,6 +114,9 @@
     <ClInclude Include="Renderer\Resources\Material.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Resources\RenderPacket.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="Renderer\Shader\ShaderManager.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
