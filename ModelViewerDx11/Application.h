@@ -2,6 +2,7 @@
 #include "framework.h"
 #include "Scene/Billboard.h"
 #include "UI/DebugPanel.h"
+#include "Renderer/Resources/RenderPacket.h"
 
 class Window;
 
@@ -53,6 +54,8 @@ private:
 
     Window* mWindow;
 
+    std::vector<renderer::RenderPacket> mCommandList;
+    renderer::RenderPacket mCommandCache;
     renderer::Renderer* mRenderer;
     renderer::ModelImporter* mImporter;
     renderer::Model* mCharacter;

@@ -1,4 +1,5 @@
 #include "Application.h"
+#include <algorithm>
 #include <string>
 #include "Window.h"
 #include "Renderer/Renderer.h"
@@ -16,11 +17,17 @@
 #include "Util/Macro.h"
 
 
+bool RenderPacketCompareDecr(const renderer::RenderPacket& lhs, const renderer::RenderPacket& rhs)
+{
+    return lhs.SortKey > rhs.SortKey;
+}
+
 Application::Application()
     : mWindowWidth(1280)
     , mWindowHeight(720)
     , mAppFrameRate(120)
     , mWindow(nullptr)
+    , mCommandCache()
     , mRenderer(nullptr)
     , mImporter(nullptr)
     , mCharacter(nullptr)
@@ -38,10 +45,12 @@ Application::Application()
 {
     mRenderer = new renderer::Renderer();
     mImporter = new renderer::ModelImporter();
+    mCommandList.reserve(64);
 }
 
 Application::~Application()
 {
+    std::vector<renderer::RenderPacket>().swap(mCommandList);
     delete mShadowDebugPanel;
     mDirectInput->Release();
     delete mDirectInput;
@@ -223,6 +232,15 @@ bool Application::initializeScene()
     ASSERT(lightIconTexID, "icon texture fail to add");
 
     mLightIcon->SetTexture(lightIconTexID);
+    // MEMO: 유효하지 않은 상태로 세팅
+    mCommandCache = {};
+    mCommandCache.VertexFormat = renderer::eVertexFormat::FormatCount;
+    mCommandCache.Stride = 0;
+    mCommandCache.RenderState.ShaderType = renderer::eShader::ShaderCount;
+    mCommandCache.RenderState.TopologyType = renderer::ePrimitiveTopology::TopologyCount;
+    mCommandCache.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
+    mCommandCache.RenderState.RasterType = renderer::eRasterType::RasterCount;
+    mCommandCache.RenderState.BlendHash = 0;
     return true;
 }
 
@@ -348,38 +366,193 @@ void Application::updateScene(double deltaTime)
 
     mLightIcon->SetPosition(mLight->GetPosition());
     mLightIcon->UpdateScaleMatrix(*mCamera);
+    mSkybox->Update(*mRenderer);
+    mCharacter->Update(*mRenderer);
+
+
+    mCommandList.clear();
+
+    mSkybox->Draw(mCommandList);
+
+    mFloor->Draw(mCommandList);
+
+    mCharacter->DrawShadow(mCommandList);
+    mCharacter->Draw(mCommandList);
+
+    mLight->DrawDebug(mCommandList);
+    mLightIcon->Draw(mCommandList);
+
+    mShadowDebugPanel->Draw(mCommandList);
+
+    for(auto& command : mCommandList)
+    {
+        renderer::Renderer::MakeSortKey(command);
+    }
+
+    std::sort(mCommandList.begin(), mCommandList.end(), RenderPacketCompareDecr);
 }
 
 void Application::preprocess()
 {
-    mRenderer->BindRenderTargetTo(renderer::eRenderTarget::Shadow);
-    mRenderer->SetViewport(false);
-    mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Shadow);
-    mCharacter->Update(*mRenderer);
-    mCharacter->DrawShadow(*mRenderer);
 }
 
 void Application::renderScene()
 {
     mBufferManager->MarkInvalidateDynamicBuf();
-    mRenderer->BindRenderTargetTo(renderer::eRenderTarget::Default);
-    mRenderer->SetViewport(true);
+    // FIXME: 카메라 거리별로 정렬하지 않아서 icon이 먼저 그려지면서 아무것도 없는 배경과 블렌딩이 됨. (투명/불투명을 먼저 구분해야 함)
+    // TODO: 이부분도 렌더링 전에 깔끔하게 세팅 될 수 있도록 해보자.
+    mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Shadow);
     mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Default);
 
+    for (auto& command : mCommandList)
+    {
+        if (mCommandCache.RenderTargetType != command.RenderTargetType)
+        {
+            mRenderer->BindRenderTargetTo(command.RenderTargetType);
+            mCommandCache.RenderTargetType = command.RenderTargetType;
 
-    // TODO: 지금은 WorldCB를 공유하여 Update함수를 같이 붙여둬야 하지만, 나중에 렌더큐를 가면 내부적으로 자동으로 업데이트 되게끔 처리해보기
-    mSkybox->Update(*mRenderer);
-    mSkybox->Draw(*mRenderer);
+            // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
+            // TODO: 생각해보면 이게 Viewport인데 렌더 패킷에 고려하지 못한 것 같다. 현재 큰 문제는 없으나, 해당 부분은 천천히 작업 필요
+            mRenderer->SetViewport(command.RenderTargetType == renderer::eRenderTarget::Default);
+        }
 
-    mFloor->Draw(*mRenderer);
-    mCharacter->Update(*mRenderer);
-    mCharacter->Draw(*mRenderer);
+        // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
+        if (command.RenderState.bClearDepthStencilBuffer)
+        {
+            mRenderer->ClearScreenAndDepth(mCommandCache.RenderTargetType);
+        }
 
-    mLight->DrawDebug(*mRenderer);
-    mLightIcon->Draw(*mRenderer);
+        bool bNeedBindBuffer = (mCommandCache.bUseDynamicBuffer != command.bUseDynamicBuffer) || (mCommandCache.Stride != command.Stride);
+
+        // MEMO: Buffer는 Stride 별로 Chunk가 나뉘어져 있기 때문에 Stride가 달라도 Bind를 다시 해줘야 함.
+        if (mCommandCache.VertexFormat != command.VertexFormat)
+        {
+            mRenderer->BindInputLayoutTo(command.VertexFormat);
+            bNeedBindBuffer = true;
+            mCommandCache.VertexFormat = command.VertexFormat;
+        }
+
+        if(bNeedBindBuffer)
+        {
+            ASSERT(command.Stride > 0, "유효하지 않은 버퍼이거나 올바르지 않은 command. stride(%d)", command.Stride);
+            if (command.bUseDynamicBuffer)
+            {
+                mRenderer->BindVertexBufferDynamic(command.Stride);
+                mRenderer->BindIndexBufferDynamic();
+            }
+            else
+            {
+                mRenderer->BindVertexBuffer(command.Stride);
+                mRenderer->BindIndexBuffer();
+            }
+            mCommandCache.bUseDynamicBuffer = command.bUseDynamicBuffer;
+            mCommandCache.Stride = command.Stride;
+        }
+
+        if (mCommandCache.RenderState.TopologyType != command.RenderState.TopologyType)
+        {
+            mRenderer->BindPrimitiveTopologyByType(command.RenderState.TopologyType);
+            mCommandCache.RenderState.TopologyType = command.RenderState.TopologyType;
+        }
+
+        if (mCommandCache.RenderState.ShaderType != command.RenderState.ShaderType)
+        {
+            mRenderer->BindShaderTo(command.RenderState.ShaderType);
+            mCommandCache.RenderState.ShaderType = command.RenderState.ShaderType;
+
+            // MEMO: Renderer 예약 Slot 바인딩
+            mRenderer->BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
+            mRenderer->BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
+            mRenderer->BindCbToVsByType(2, 1, renderer::eCbType::CbLightViewProjMatrix);
+            mRenderer->BindCbToVsByType(3, 1, renderer::eCbType::CbLightProperty);
+            mRenderer->BindCbToVsByType(4, 1, renderer::eCbType::CbCameraPosition);
+            mRenderer->BindCbToVsByType(5, 1, renderer::eCbType::CbOrthoMatrix);
+
+            // MEMO: Material 바인딩
+            if (command.RenderState.CbBindingDesc.BindSlot >= 0)
+            {
+                mRenderer->BindCbToPs(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+            }
+        }
+
+        for(uint8_t texture = static_cast<uint8_t>(renderer::eTextureType::Diffuse); texture < static_cast<uint8_t>(renderer::eTextureType::TextureTypeCount); ++texture)
+        {
+            if(command.RenderState.TexBindingSlots[texture] < 0)
+            {
+                continue;
+            }
+
+            if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && command.RenderState.bUseShadowMap)
+            {
+                mRenderer->BindShadowTextureToPs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+                mCommandCache.RenderState.bUseShadowMap = command.RenderState.bUseShadowMap;
+            }
+            else if (command.Material.TextureHashes[texture])
+            {
+                mRenderer->BindTextureToPs(command.RenderState.TexBindingSlots[texture], command.Material.TextureHashes[texture]);
+            }
+        }
+        
+
+        // TODO: 렌더큐 끝나면 이것도 좀 더 명확하게 개선해 봐야 할 항목.
+        // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
+        if(mCommandCache.RenderState.bUseDepthStencil != command.RenderState.bUseDepthStencil)
+        {
+            mRenderer->BindDepthStencilState(command.RenderState.bUseDepthStencil);
+            mCommandCache.RenderState.bUseDepthStencil = command.RenderState.bUseDepthStencil;
+        }
+
+        if (mCommandCache.RenderState.SamplerType != command.RenderState.SamplerType || mCommandCache.RenderState.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
+        {
+            // TODO: -1 일 때는 unbind나 기본값으로 하는 게 좋아보이는데, 이전 값을 그대로 쓰는게 더 나을지 조사가 필요함
+            if(command.RenderState.SamplerBindingSlot >= 0)
+            {
+                mRenderer->BindSamplerToPsByType(command.RenderState.SamplerBindingSlot, command.RenderState.SamplerType);
+                mCommandCache.RenderState.SamplerType = command.RenderState.SamplerType;
+                mCommandCache.RenderState.SamplerBindingSlot = command.RenderState.SamplerBindingSlot;
+            }
+        }
+
+        if (mCommandCache.RenderState.RasterType != command.RenderState.RasterType)
+        {
+            mRenderer->BindRasterStateByType(command.RenderState.RasterType);
+            mCommandCache.RenderState.RasterType = command.RenderState.RasterType;
+        }
+
+        if (mCommandCache.RenderState.BlendHash != command.RenderState.BlendHash)
+        {
+            // MEMO: blendFactor는 아직 사용하지 않음.
+            mRenderer->BindBlendStateByHash(command.RenderState.BlendHash, nullptr, 0xffffffff);
+            mCommandCache.RenderState.BlendHash = command.RenderState.BlendHash;
+        }
+
+        // MEMO: Material 식별자가 없는 상태이므로 우선은 매번 업로드
+        if (command.RenderState.CbBindingDesc.BindSlot >= 0)
+        {
+            mShaderManager->UpdateMaterial(command.RenderState.CbBindingDesc.Type, command.Material);
+        }
+
+        const renderer::CbWorld cbMatWorld = { command.MatWorld };
+        mRenderer->UpdateCB(renderer::eCbType::CbWorld, &cbMatWorld);
+
+        if(command.IndexRange.Count)
+        {
+            mRenderer->DrawIndexed(command.IndexRange.Count, command.IndexRange.StartIndex, command.VertexRange.StartIndex);
+        }
+        else
+        {
+            mRenderer->Draw(command.VertexRange.Count, command.VertexRange.StartIndex);
+        }
+
+        // TODO: 자주 호출될 것 같은데, 확인해 보고 최대한 Bind-UnBind를 덜할 수 있는 방법을 다시 고민해보자.
+        // MEMO: Shadow RenderTarget으로 써야 하므로 다시 Texture Slot에서 제거.
+        if (command.RenderState.bUseShadowMap)
+        {
+            mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+        }
+    }
 }
 
 void Application::renderUI()
 {
-    mShadowDebugPanel->Draw(*mRenderer);
 }
