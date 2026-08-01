@@ -1,6 +1,11 @@
 #pragma once
 #include "../framework.h"
-#include "./Resources/Material.h"
+#include "./Resources/RenderTypes.h"
+
+namespace renderer
+{
+    struct RenderPacket;
+}
 
 namespace renderer
 {
@@ -101,6 +106,8 @@ namespace renderer
         bool CheckDeviceLost(bool& outIsReInitialize) const;
 
         // Debug
+        // TODO: static 메서드들은 따로 섹션 분리하기.
+        static void MakeSortKey(RenderPacket& command);
         static void    CheckLiveObjects();
 
         // COM
