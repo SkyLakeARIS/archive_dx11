@@ -1,14 +1,18 @@
 #pragma once
 #include "framework.h"
-#include "Scene/Billboard.h"
-#include "UI/DebugPanel.h"
 #include "Renderer/Resources/RenderPacket.h"
 
+
+namespace ui
+{
+    class DebugPanel;
+}
 
 class Window;
 
 namespace scene
 {
+    class Billboard;
     class Floor;
     class Light;
     class Sky;

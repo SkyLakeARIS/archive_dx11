@@ -10,10 +10,12 @@
 #include "Renderer/Resources/ResourceManager.h"
 #include "Renderer/Resources/TextureManager.h"
 #include "Renderer/Shader/ShaderManager.h"
+#include "Scene/Billboard.h"
 #include "Scene/Camera.h"
 #include "Scene/Floor.h"
 #include "Scene/Light.h"
 #include "Scene/Sky.h"
+#include "UI/DebugPanel.h"
 #include "Util/Macro.h"
 
 
