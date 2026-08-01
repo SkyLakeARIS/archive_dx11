@@ -4,6 +4,7 @@
 
 namespace renderer
 {
+    struct RenderPacket;
     class Renderer;
 }
 
@@ -15,7 +16,7 @@ namespace scene
         Floor(XMFLOAT2 startPoint, uint32_t gapEachLine, uint32_t numLineX, uint32_t numLineY);
         ~Floor();
 
-        void Draw(renderer::Renderer& renderer);
+        void Draw(std::vector<renderer::RenderPacket>& commandList);
     private:
         renderer::Mesh mMesh;
     };

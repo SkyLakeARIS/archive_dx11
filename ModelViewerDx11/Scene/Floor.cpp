@@ -1,6 +1,8 @@
 #include "Floor.h"
 #include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
+#include "../Renderer/Resources/RenderPacket.h"
+#include "../Renderer/Shader/ShaderManager.h"
 #include "../Util/Macro.h"
 
 namespace scene
@@ -12,15 +14,10 @@ namespace scene
         ASSERT(gapEachLine >= 1, "gapEachLine must be 1 or greater");
 
         renderer::MeshGenerator::CreateGrid(startPoint, numLineX, numLineY, gapEachLine, mMesh);
-
-        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
-        subMeshMaterial.ShaderType = renderer::eShader::Color;
-        subMeshMaterial.RasterType = renderer::eRasterType::Basic;
-        // no sampler, blend
-        subMeshMaterial.BlendHash = 0;
-        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
-        subMeshMaterial.bUseDepthStencil = false;
-        subMeshMaterial.MaterialParam = {};
+        for (auto& subMesh : mMesh.SubMeshes)
+        {
+            subMesh.Material.MaterialParam.Diffuse = XMFLOAT3(0.0f, 1.0f, 0.0f);
+        }
     }
 
     Floor::~Floor()
@@ -28,37 +25,32 @@ namespace scene
         // TODO: 추가한 BufferData 처리할 수 있는 로직이 필요함. - (종료될 떄 처리되기 때문에 당장 문제는 없음)
     }
 
-    void Floor::Draw(renderer::Renderer& renderer)
+    void Floor::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
+        renderer::RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType = renderer::eRenderTarget::Default;
+        command.MatWorld = XMMatrixIdentity();
+        command.RenderState.ShaderType = renderer::eShader::Color;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = renderer::eRasterType::Basic;
+        command.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
+        command.RenderState.BlendHash = 0;
+        command.RenderState.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bUseShadowMap = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
 
-        renderer.BindInputLayoutTo(mMesh.VertexFormat);
-        const int16_t stride = renderer::GetVertexStrideSize(mMesh.VertexFormat);
-        renderer.BindVertexBuffer(stride);
-        for(const auto& subMesh : mMesh.SubMeshes)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindRasterStateByType(subMesh.Material.RasterType);
-            renderer.BindShaderTo(subMesh.Material.ShaderType);
-
-            renderer::CbWorld cbWorld;
-            cbWorld.Matrix = XMMatrixIdentity();
-            renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
-
-            renderer.BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
-            renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
-            renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
-
-            renderer::CbColor cbColor = {};
-            cbColor.Float3 = XMFLOAT3(0.0, 1.0, 0.0);
-            renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
-
-            D3D11_PRIMITIVE_TOPOLOGY orgTopology;
-            renderer.GetCurrentPrimitiveTopology(orgTopology);
-
-            renderer.BindPrimitiveTopologyByType(subMesh.Material.TopologyType);
-
-            renderer.Draw(subMesh.VertexRange.Count, subMesh.VertexRange.StartIndex);
-
-            renderer.BindPrimitiveTopologyTo(orgTopology);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 }

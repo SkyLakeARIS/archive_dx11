@@ -8,6 +8,7 @@ namespace scene
 
 namespace renderer
 {
+    struct RenderPacket;
     class BufferManager;
     class Renderer;
 
@@ -18,8 +19,8 @@ namespace renderer
         Model(scene::Camera* camera, BufferManager* bufferManager);
         ~Model();
 
-        void Draw(renderer::Renderer& renderer);
-        void DrawShadow(renderer::Renderer& renderer);
+        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void DrawShadow(std::vector<renderer::RenderPacket>& commandList);
 
         void Update(renderer::Renderer& renderer);
 

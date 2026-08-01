@@ -63,12 +63,6 @@ namespace renderer
 
             newSubMesh.Material.MaterialParam = std::move(subMesh.MaterialParam);
 
-            newSubMesh.Material.ShaderType = eShader::BasicWithShadow;
-            newSubMesh.Material.RasterType = eRasterType::Basic;
-            newSubMesh.Material.SamplerType = eSamplerType::AnisotropicWrap;
-            newSubMesh.Material.BlendHash = 0;
-            newSubMesh.Material.TopologyType = ePrimitiveTopology::Triangles;
-            newSubMesh.Material.bUseDepthStencil = false;
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)
             {

@@ -2,6 +2,13 @@
 #include "Camera.h"
 #include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
+#include "../Renderer/Resources/RenderPacket.h"
+#include "../Renderer/Shader/ShaderManager.h"
+
+namespace renderer
+{
+    struct RenderPacket;
+}
 
 namespace scene
 {
@@ -34,46 +41,36 @@ namespace scene
         renderer::MeshGenerator::CreatePlane(mMesh);
 
         // TODO: improve - Generator로 생성하는 경우에는 Material 을 어디서 설정해 줄지? 이런 동적 생성 Mesh는 Material을 뭘로 설정할지?
-        // Topology, VertexFormat은 Generator가 알지만 그 외에는 애매함. - 아니면 그냥 현재 코드 상태를 기반으로 세팅
-        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
-        subMeshMaterial.ShaderType = renderer::eShader::RenderToTexture;
-        subMeshMaterial.RasterType = renderer::eRasterType::Basic;
-        subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
-        subMeshMaterial.BlendHash = mBlendHash;
-        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
-        subMeshMaterial.bUseDepthStencil = false;
-        subMeshMaterial.MaterialParam = {};
     }
 
-    void Billboard::Draw(renderer::Renderer& renderer)
+    void Billboard::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer::CbWorld cbWorld = { };
-        const XMMATRIX matTranslate  = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
+        renderer::RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType= renderer::eRenderTarget::Default;
+        command.RenderState.ShaderType = renderer::eShader::RenderToTexture;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = renderer::eRasterType::Basic;
+        command.RenderState.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        command.RenderState.BlendHash = mBlendHash;
+        command.RenderState.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        command.RenderState.bUseShadowMap = false;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
+        const XMMATRIX matTranslate = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
         const XMMATRIX matWorld = mMatWorld * matTranslate;
-        cbWorld.Matrix = XMMatrixTranspose(matWorld);
-        renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
-
-        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexFormat);
-        renderer.BindVertexBuffer(strideVertex);
-        renderer.BindIndexBuffer();
-
-        renderer.BindInputLayoutTo(mMesh.VertexFormat);
+        command.MatWorld = XMMatrixTranspose(matWorld);
 
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindShaderTo(subMesh.Material.ShaderType);
-
-            renderer.BindRasterStateByType(subMesh.Material.RasterType);
-            renderer.BindBlendStateByHash(mBlendHash, nullptr, 0xffffffff);
-
-            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
-
-            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
-
-            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
-
-            renderer.DrawIndexed(subMesh.IndexRange.Count, subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 

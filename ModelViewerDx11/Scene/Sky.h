@@ -4,6 +4,7 @@
 
 namespace renderer
 {
+    struct RenderPacket;
     class Renderer;
     class TextureManager;
 }
@@ -21,7 +22,7 @@ namespace scene
 
         HRESULT Initialize(uint32 latLines, uint32 lonLines, renderer::TextureManager* const texManager);
 
-        void Draw(renderer::Renderer& renderer);
+        void Draw(std::vector<renderer::RenderPacket>& renderer);
         void Update(renderer::Renderer& renderer);
 
     private:

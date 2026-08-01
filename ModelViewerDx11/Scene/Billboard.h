@@ -6,6 +6,7 @@
 namespace renderer
 {
     class Renderer;
+    struct RenderPacket;
 }
 
 namespace scene
@@ -21,7 +22,7 @@ namespace scene
 
         void Initialize(renderer::Renderer& renderer);
 
-        void Draw(renderer::Renderer& renderer);
+        void Draw(std::vector<renderer::RenderPacket>& commandList);
 
         void UpdateScaleMatrix(Camera& camera);
 

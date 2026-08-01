@@ -3,6 +3,8 @@
 
 namespace renderer
 {
+    enum class eRenderTarget : uint8_t;
+    struct RenderPacket;
     class Renderer;
 }
 
@@ -14,7 +16,7 @@ namespace ui
         DebugPanel(int16_t originX, int16_t originY, int16_t width, int16_t height);
         ~DebugPanel();
 
-        void Draw(renderer::Renderer& renderer);
+        void Draw(std::vector<renderer::RenderPacket>& commandList);
 
         void SetDebugType(renderer::eRenderTarget type);
     private:

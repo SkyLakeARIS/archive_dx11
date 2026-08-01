@@ -1,8 +1,8 @@
 #include "Model.h"
 #include "BufferManager.h"
-#include "../Renderer.h"
+#include "../Resources/RenderPacket.h"
 #include "../../Util/Macro.h"
-#include "../Importer/ModelImporter.h"
+#include "../Shader/ShaderManager.h"
 
 namespace renderer
 {
@@ -32,101 +32,102 @@ namespace renderer
         mBufferManager = nullptr;
     }
 
-    void Model::Draw(renderer::Renderer& renderer)
+    void Model::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        // Draw
-        const uint32 stride = GetVertexStrideSize(mMesh.VertexFormat);
-
-        renderer.BindVertexBuffer(stride);
-        renderer.BindIndexBuffer();
+        RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType = eRenderTarget::Default;
+        command.MatWorld = mMatWorld;
 
         // outline
         if (mbHighlight)
         {
-            renderer.BindRasterStateByType(eRasterType::CullBack);
-
-            renderer.BindShaderTo(eShader::Outline);
-            renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, eCbType::CbOutlineProperty);
-            renderer.BindCbToVsByType(2U, 1U, eCbType::CbViewProj);
+            command.RenderState.ShaderType = eShader::Outline;
+            renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+            renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+            renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+            command.RenderState.RasterType = eRasterType::CullBack;
+            command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
+            command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+            command.RenderState.BlendHash = 0;
+            command.RenderState.bUseShadowMap = false;
+            command.RenderState.bUseDepthStencil = true;
+            command.RenderState.bClearDepthStencilBuffer = true;
 
             for (const auto& subMesh : mMesh.SubMeshes)
             {
-                renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
+                command.VertexRange = subMesh.VertexRange;
+                command.IndexRange = subMesh.IndexRange;
+                command.Material = subMesh.Material;
+
+                if (!mbActiveEmissive)
+                {
+                    command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                }
+
+                commandList.push_back(command);
             }
-            // reset for basic draw
-            renderer.ClearDepthBuffer();
+            commandList.push_back(command);
         }
 
-        renderer.BindInputLayoutTo(mMesh.VertexFormat);
+        // TODO: ResourceManager에 있는 하드코드가 여기로 이동된 셈. - 나중에 조금이나마 줄일 수 있는 방안이 있을지 고민은 해보고 코멘트 지우자.
+        command.RenderState.ShaderType = eShader::BasicWithShadow;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = eRasterType::Basic;
+        command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
+        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+        command.RenderState.BlendHash = 0;
+        command.RenderState.bUseShadowMap = true;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
+
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            // TODO: 상태 중복 바인드 방지는 렌더큐에서 구현하자.
-            renderer.BindRasterStateByType(subMesh.Material.RasterType);
-            renderer.BindShaderTo(subMesh.Material.ShaderType);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
 
-            renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, eCbType::CbViewProj);
-            renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightViewProjMatrix);
-            renderer.BindCbToVsByType(3U, 1U, eCbType::CbLightProperty);
-            renderer.BindCbToVsByType(4U, 1U, eCbType::CbCameraPosition);
-
-            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
-
-            renderer.BindCbToPs(0U, 1U, eCbType::CbMaterial);
-
-            renderer.BindShadowTextureToPs(2);
-
-            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Diffuse)]);
-            if(subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Normal)])
-            {
-                renderer.BindTextureToPs(1, subMesh.Material.TextureHashes[static_cast<int8_t>(eTextureType::Normal)]);
-            }
-            CbMaterial cbMaterial;
-            ZeroMemory(&cbMaterial, sizeof(CbMaterial));
-
-            memcpy(&cbMaterial, &subMesh.Material.MaterialParam, sizeof(MaterialParameter));
             if (!mbActiveEmissive)
             {
-                cbMaterial.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
-            renderer.UpdateCB(eCbType::CbMaterial, &cbMaterial);
 
-            renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
+            commandList.push_back(command);
         }
-
-        renderer.UnbindTexturePs(2);
     }
 
-    void Model::DrawShadow(renderer::Renderer& renderer)
+    void Model::DrawShadow(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer.BindInputLayoutTo(eVertexFormat::P);
+        RenderPacket command = {};
+        command.VertexFormat = eVertexFormat::P;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType = eRenderTarget::Shadow;
+        command.RenderState.ShaderType = eShader::Shadow;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+        command.MatWorld = mMatWorld;
+        command.RenderState.RasterType = eRasterType::Outline;
 
-        const uint32 stride = GetVertexStrideSize(mMesh.VertexFormat);
-
-        renderer.BindVertexBuffer(stride);
-        renderer.BindIndexBuffer();
-        // TODO: 이런 부분들을 보면 SubMesh나 Material로 처리하기 보다 RenderPacket에서 이런 부분들을 처리해야 할 것 같다.
-        // 같은 메시를 다르게 처리해야 하는 경우들.
-        renderer.BindRasterStateByType(eRasterType::Outline);
-        renderer.BindShaderTo(eShader::Shadow);
-
-        renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-        renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightViewProjMatrix);
-
-        // Draw
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.DrawIndexed(static_cast<uint32_t>(subMesh.IndexRange.Count), subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 
     void Model::Update(renderer::Renderer& renderer)
     {
-        CbWorld cbWorld;
-        cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
-
-        renderer.UpdateCB(eCbType::CbWorld, &cbWorld);
+        // MEMO: 전치 안 해도 되지만, 나중에 필요해질 테니 까먹지 않도록 미리 구성해둠.
+        mMatWorld = XMMatrixTranspose(XMMatrixIdentity());
     }
 
     void Model::SetMesh(const Mesh& mesh)

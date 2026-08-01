@@ -1,8 +1,9 @@
 #include "Sky.h"
 #include "Camera.h"
-#include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
+#include "../Renderer/Resources/RenderPacket.h"
 #include "../Renderer/Resources/TextureManager.h"
+#include "../Renderer/Shader/ShaderManager.h"
 
 namespace scene
 {
@@ -23,50 +24,39 @@ namespace scene
     {
         renderer::MeshGenerator::CreateSphere(latLines, lonLines, mMesh);
 
-        renderer::Material& subMeshMaterial = mMesh.SubMeshes.front().Material;
 
-        subMeshMaterial.ShaderType = renderer::eShader::Skybox;
-        subMeshMaterial.RasterType = renderer::eRasterType::Skybox;
-        subMeshMaterial.SamplerType = renderer::eSamplerType::AnisotropicWrap;
-        subMeshMaterial.BlendHash = 0;
-        subMeshMaterial.TopologyType = renderer::ePrimitiveTopology::Triangles;
-        subMeshMaterial.bUseDepthStencil = true;
-        subMeshMaterial.MaterialParam = {};
 
         const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/skybox.dds");
         texManager->AddDTextureDDS(filePath, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
         return S_OK;
     }
 
-    void Sky::Draw(renderer::Renderer& renderer)
+    void Sky::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        // render
-        const int16_t strideVertex = renderer::GetVertexStrideSize(mMesh.VertexFormat);
+        renderer::RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType = renderer::eRenderTarget::Default;
+        command.MatWorld = mWorld;
+        command.RenderState.ShaderType = renderer::eShader::Skybox;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = renderer::eRasterType::Skybox;
+        command.RenderState.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        command.RenderState.BlendHash = 0;
+        command.RenderState.TopologyType = renderer::ePrimitiveTopology::Triangles;
+        command.RenderState.bUseDepthStencil = true;
+        command.RenderState.bUseShadowMap = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
 
-        renderer.BindVertexBuffer(strideVertex);
-        renderer.BindIndexBuffer();
-
-        renderer.BindInputLayoutTo(mMesh.VertexFormat);
-
-        for(const auto& subMesh : mMesh.SubMeshes)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindRasterStateByType(subMesh.Material.RasterType);
-
-            renderer.BindShaderTo(subMesh.Material.ShaderType);
-
-            renderer.BindSamplerToPsByType(0, subMesh.Material.SamplerType);
-
-
-            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
-
-            renderer.BindDepthStencilState(subMesh.Material.bUseDepthStencil);
-
-            renderer.BindTextureToPs(0, subMesh.Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
-
-            renderer.DrawIndexed(subMesh.IndexRange.Count, subMesh.IndexRange.StartIndex, subMesh.VertexRange.StartIndex);
-
-            renderer.BindDepthStencilState(false);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 
@@ -79,10 +69,7 @@ namespace scene
 
         matTranslate = XMMatrixTranslation(cameraPosition.x, cameraPosition.y, cameraPosition.z);
 
-        mWorld = matScale * matTranslate;
+        mWorld = XMMatrixTranspose(matScale * matTranslate);
 
-        renderer::CbWorld cbWVP;
-        cbWVP.Matrix = XMMatrixTranspose(mWorld);
-        renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWVP);
     }
 }

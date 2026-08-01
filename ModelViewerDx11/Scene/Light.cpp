@@ -3,6 +3,8 @@
 #include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
 #include "../Renderer/Resources/BufferManager.h"
+#include "../Renderer/Resources/RenderPacket.h"
+#include "../Renderer/Shader/ShaderManager.h"
 #include "../Util/Util.h"
 
 namespace scene
@@ -34,38 +36,33 @@ namespace scene
     {
     }
 
-    void Light::DrawDebug(renderer::Renderer& renderer)
+    void Light::DrawDebug(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer.BindInputLayoutTo(mMeshDebug.VertexFormat);
+        renderer::RenderPacket command = {};
+        command.VertexFormat = mMeshDebug.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMeshDebug.VertexFormat);
+        command.bUseDynamicBuffer = true;
+        command.RenderTargetType = renderer::eRenderTarget::Default;
+        command.MatWorld = XMMatrixIdentity();
+        command.RenderState.ShaderType = renderer::eShader::Color;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = renderer::eRasterType::Basic;
+        // TODO: improve 사용하지 않는 옵션에 대해서 각 열거형의 0번을 UnBind로 추가해 주는 게 좋아보임. - CommandCache변수가 오염되기 쉬울 것 같음.
+        command.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
+        command.RenderState.BlendHash = 0;
+        command.RenderState.TopologyType = renderer::ePrimitiveTopology::Lines;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bUseShadowMap = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
 
-        for(const auto& subMesh : mMeshDebug.SubMeshes)
+        for (const auto& subMesh : mMeshDebug.SubMeshes)
         {
-            renderer.BindShaderTo(subMesh.Material.ShaderType);
-
-            // TODO: improve - 일단 이렇게 하되, 이런 Color 값들은 Material의 Diffuse 속성을 이용하도록 변경하기.
-            renderer::CbColor cbColor = {  };
-            cbColor.Float3 = XMFLOAT3(1.0f, 1.0f, 0.0f);
-
-            renderer.UpdateCB(renderer::eCbType::CbColor, &cbColor);
-            renderer.BindCbToPs(0, 1, renderer::eCbType::CbColor);
-
-            renderer::CbWorld cbWorld;
-            cbWorld.Matrix = XMMatrixTranspose(XMMatrixIdentity());
-            renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
-
-            renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-            renderer.BindCbToVsByType(1, 1, renderer::eCbType::CbViewProj);
-
-            const int16_t strideVertex = renderer::GetVertexStrideSize(mMeshDebug.VertexFormat);
-            renderer.BindVertexBufferDynamic(strideVertex);
-
-            D3D11_PRIMITIVE_TOPOLOGY origTopology;
-            renderer.GetCurrentPrimitiveTopology(origTopology);
-            renderer.BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-
-            renderer.Draw(subMesh.VertexRange.Count, subMesh.VertexRange.StartIndex);
-
-            renderer.BindPrimitiveTopologyTo(origTopology);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 
@@ -324,13 +321,7 @@ namespace scene
             // TODO: 단일 메시의 경우 서브메시와 해시를 같게하는게 맞을지? .subMesh로 구분을 하는게 나을지? - 어떻게 처리하는 게 더 나을지 자료 조사하기
             (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
             newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
-
-            newSubMesh.Material.ShaderType = renderer::eShader::Color;
-            newSubMesh.Material.RasterType = renderer::eRasterType::Basic;
-            newSubMesh.Material.BlendHash = 0;
-            newSubMesh.Material.TopologyType = renderer::ePrimitiveTopology::Lines;
-            newSubMesh.Material.bUseDepthStencil = false;
-            newSubMesh.Material.MaterialParam = {};
+            newSubMesh.Material.MaterialParam.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);
 
             mMeshDebug.SubMeshes.push_back(std::move(newSubMesh));
         }
