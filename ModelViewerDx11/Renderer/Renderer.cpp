@@ -209,6 +209,7 @@ namespace renderer
             };
         static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
         D3D11_BUFFER_DESC desc = {};
+        // TODO: optimize - 업데이트 빈도에 따라서 분류하고난 뒤에 분류에 따라서 Usage도 적절한 값으로 지정하기
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         desc.CPUAccessFlags = 0;

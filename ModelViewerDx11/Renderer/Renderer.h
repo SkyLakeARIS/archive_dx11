@@ -34,6 +34,7 @@ namespace renderer
             PsOutline,
             PsShadow,
             PsSkybox,
+            // TODO: improve - PsTexture 정도가 적당한 네이밍일 듯하다. - 후순위로 작업
             PsRenderToTexture,
             PsColor,
             PixelShaderCount
