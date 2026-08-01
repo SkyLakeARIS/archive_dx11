@@ -42,6 +42,7 @@ namespace scene
         command.VertexFormat = mMeshDebug.VertexFormat;
         command.Stride = GetVertexStrideSize(mMeshDebug.VertexFormat);
         command.bUseDynamicBuffer = true;
+        command.bTransparency = false;
         command.RenderTargetType = renderer::eRenderTarget::Default;
         command.MatWorld = XMMatrixIdentity();
         command.RenderState.ShaderType = renderer::eShader::Color;

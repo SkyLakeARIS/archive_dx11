@@ -39,6 +39,7 @@ namespace renderer
         command.VertexFormat = mMesh.VertexFormat;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
         command.bUseDynamicBuffer = false;
+        command.bTransparency = false;
         command.RenderTargetType = eRenderTarget::Default;
         command.MatWorld = mMatWorld;
 

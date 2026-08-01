@@ -37,6 +37,7 @@ namespace scene
         command.VertexFormat = mMesh.VertexFormat;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
         command.bUseDynamicBuffer = false;
+        command.bTransparency = false;
         command.RenderTargetType = renderer::eRenderTarget::Default;
         command.MatWorld = mWorld;
         command.RenderState.ShaderType = renderer::eShader::Skybox;
