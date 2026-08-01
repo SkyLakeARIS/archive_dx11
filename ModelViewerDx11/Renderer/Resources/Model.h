@@ -22,7 +22,7 @@ namespace renderer
         void Draw(std::vector<renderer::RenderPacket>& commandList);
         void DrawShadow(std::vector<renderer::RenderPacket>& commandList);
 
-        void Update(renderer::Renderer& renderer);
+        void Update();
 
         void SetMesh(const Mesh& mesh);
         void SetCenterPoint(XMFLOAT4& centerPoint);

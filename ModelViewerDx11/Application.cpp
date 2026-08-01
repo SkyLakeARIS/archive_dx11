@@ -166,9 +166,7 @@ void Application::Run()
 
         updateScene(deltaTime);
 
-        preprocess();
         renderScene();
-        renderUI();
         mRenderer->Present();
 
         mBufferManager->MarkInvalidateDynamicBuf();
@@ -374,8 +372,8 @@ void Application::updateScene(double deltaTime)
     mLightIcon->SetPosition(mLight->GetPosition());
     mLightIcon->UpdateScaleMatrix(*mCamera);
 
-    mSkybox->Update(*mRenderer);
-    mCharacter->Update(*mRenderer);
+    mSkybox->Update();
+    mCharacter->Update();
 
 
     mCommandList.clear();
@@ -398,10 +396,6 @@ void Application::updateScene(double deltaTime)
     }
 
     std::sort(mCommandList.begin(), mCommandList.end(), RenderPacketCompareDecr);
-}
-
-void Application::preprocess()
-{
 }
 
 void Application::renderScene()
@@ -558,8 +552,4 @@ void Application::renderScene()
             mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
         }
     }
-}
-
-void Application::renderUI()
-{
 }

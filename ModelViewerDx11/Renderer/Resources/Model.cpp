@@ -1,7 +1,7 @@
 #include "Model.h"
 #include "BufferManager.h"
-#include "../Resources/RenderPacket.h"
 #include "../../Util/Macro.h"
+#include "../Resources/RenderPacket.h"
 #include "../Shader/ShaderManager.h"
 
 namespace renderer
@@ -124,7 +124,7 @@ namespace renderer
         }
     }
 
-    void Model::Update(renderer::Renderer& renderer)
+    void Model::Update()
     {
         // MEMO: 전치 안 해도 되지만, 나중에 필요해질 테니 까먹지 않도록 미리 구성해둠.
         mMatWorld = XMMatrixTranspose(XMMatrixIdentity());

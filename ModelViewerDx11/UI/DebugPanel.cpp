@@ -1,5 +1,4 @@
 #include "DebugPanel.h"
-#include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
 #include "../Renderer/Resources/RenderPacket.h"
 #include "../Renderer/Shader/ShaderManager.h"

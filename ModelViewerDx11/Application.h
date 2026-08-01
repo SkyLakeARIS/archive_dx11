@@ -48,9 +48,8 @@ private:
     // TODO: input update와 scene update 로직 분리하기
     void updateScene(double deltaTime);
 
-    void preprocess();
     void renderScene();
-    void renderUI();
+
 private:
 
     int16_t mWindowWidth;

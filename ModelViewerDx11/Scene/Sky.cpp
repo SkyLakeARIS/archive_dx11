@@ -60,7 +60,7 @@ namespace scene
         }
     }
 
-    void Sky::Update(renderer::Renderer& renderer)
+    void Sky::Update()
     {
         // update
         XMFLOAT3 cameraPosition = mCamera->GetCameraPositionFloat();
