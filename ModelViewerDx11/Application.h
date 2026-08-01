@@ -4,6 +4,7 @@
 #include "UI/DebugPanel.h"
 #include "Renderer/Resources/RenderPacket.h"
 
+
 class Window;
 
 namespace scene

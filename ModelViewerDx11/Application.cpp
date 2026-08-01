@@ -170,6 +170,7 @@ void Application::Run()
         mRenderer->Present();
 
         mBufferManager->MarkInvalidateDynamicBuf();
+
         ++frameCount;
         if (startTime - lastFPSTime >= 1000.0)
         {
@@ -233,6 +234,7 @@ bool Application::initializeScene()
     ASSERT(lightIconTexID, "icon texture fail to add");
 
     mLightIcon->SetTexture(lightIconTexID);
+
     // MEMO: 유효하지 않은 상태로 세팅
     mCommandCache = {};
     mCommandCache.VertexFormat = renderer::eVertexFormat::FormatCount;
@@ -249,7 +251,9 @@ bool Application::initializeManagers()
 {
     ID3D11Device* device = mRenderer->GetDevice();
     ID3D11DeviceContext* deviceContext = mRenderer->GetDeviceContext();
+
     mShaderManager = new renderer::ShaderManager(*device, *mRenderer);
+
     mBufferManager = new renderer::BufferManager(device, deviceContext, renderer::BufferManager::eIndexListFormat::UInt32);
     if (!mBufferManager->Initialize(renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize, renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize))
     {
@@ -367,6 +371,7 @@ void Application::updateScene(double deltaTime)
 
     mLightIcon->SetPosition(mLight->GetPosition());
     mLightIcon->UpdateScaleMatrix(*mCamera);
+
     mSkybox->Update(*mRenderer);
     mCharacter->Update(*mRenderer);
 
