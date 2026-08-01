@@ -8,6 +8,7 @@ namespace renderer
 {
     Model::Model(scene::Camera* camera, BufferManager* bufferManager)
         : mBufferManager(bufferManager)
+        , mMesh()
         , mCenterPosition(0.0f, 0.0f, 0.0f)
         , mMatRotation(XMMatrixIdentity())
         , mMatScale(XMMatrixIdentity())

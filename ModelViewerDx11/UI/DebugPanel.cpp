@@ -6,9 +6,9 @@
 namespace ui
 {
     DebugPanel::DebugPanel(int16_t originX, int16_t originY, int16_t width, int16_t height)
+        : mType()
     {
         renderer::MeshGenerator::CreateScreenPlane(originX, originY, width, height, mMesh);
-
     }
 
     DebugPanel::~DebugPanel()

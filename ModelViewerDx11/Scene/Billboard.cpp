@@ -13,11 +13,11 @@ namespace renderer
 namespace scene
 {
     Billboard::Billboard()
-        : mBlendHash(0)
+        : mMesh()
+        , mBlendHash(0)
         , mPosition()
         , mMatWorld(XMMatrixIdentity())
-    {
-    }
+    {}
 
     Billboard::~Billboard()
     {
