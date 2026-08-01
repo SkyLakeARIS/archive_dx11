@@ -8,7 +8,10 @@ namespace renderer
     // MEMO: 일단 현재 필요한 정보들만 모아놓는다.
     struct RenderPacket
     {
+        // bind to inputlayout
         eVertexFormat VertexFormat;
+        // bind to buffer
+        int16_t Stride;
         // SubMesh's Ranges
         BufferRange VertexRange;
         BufferRange IndexRange;
