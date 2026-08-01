@@ -49,6 +49,7 @@ namespace scene
         command.VertexFormat = mMesh.VertexFormat;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
         command.bUseDynamicBuffer = false;
+        command.bTransparency = true;
         command.RenderTargetType= renderer::eRenderTarget::Default;
         command.RenderState.ShaderType = renderer::eShader::RenderToTexture;
         renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);

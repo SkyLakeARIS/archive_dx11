@@ -12,10 +12,11 @@ namespace renderer
         eVertexFormat VertexFormat;
         // bind to buffer
         int16_t Stride;
+        bool bUseDynamicBuffer;
+        bool bTransparency;
         // SubMesh's Ranges
         BufferRange VertexRange;
         BufferRange IndexRange;
-        bool bUseDynamicBuffer;
         SemiMaterial Material;
         // shadow, normal pass
         eRenderTarget RenderTargetType;

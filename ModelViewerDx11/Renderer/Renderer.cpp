@@ -1195,18 +1195,20 @@ namespace renderer
         // BlendHash
         // TODO: 텍스처 해시도 동일한 텍스처를 쓰는 드로우콜을 뭉치면 좋을 것 같지만, 그렇게하면 해시가 아니라 다른 ID로 써야할 것 같다.
 
-
+        // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다.
         uint32_t sortKey = 0;
         sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
-        sortKey |= static_cast<uint8_t>(command.bUseDynamicBuffer) << 30;
-        sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 29;
-        sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 28;
-        sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 27);
-        sortKey |= static_cast<uint8_t>(command.RenderState.bUseShadowMap) << 26;
-        sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 22);
-        sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 19);
-        sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 15);
-        sortKey |= (PrimitiveTopologyPriority[static_cast<uint8_t>(command.RenderState.TopologyType)] << 11);
+        // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
+        sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
+        sortKey |= static_cast<uint8_t>(command.bUseDynamicBuffer) << 29;
+        sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 28;
+        sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
+        sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);
+        sortKey |= static_cast<uint8_t>(command.RenderState.bUseShadowMap) << 25;
+        sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 21);
+        sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 18);
+        sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 14);
+        sortKey |= (PrimitiveTopologyPriority[static_cast<uint8_t>(command.RenderState.TopologyType)] << 10);
 
         command.SortKey = sortKey;
     }

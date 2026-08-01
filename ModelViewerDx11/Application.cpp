@@ -400,7 +400,6 @@ void Application::updateScene(double deltaTime)
 
 void Application::renderScene()
 {
-    // FIXME: 카메라 거리별로 정렬하지 않아서 icon이 먼저 그려지면서 아무것도 없는 배경과 블렌딩이 됨. (투명/불투명을 먼저 구분해야 함)
     // TODO: 이부분도 렌더링 전에 깔끔하게 세팅 될 수 있도록 해보자.
     mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Shadow);
     mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Default);
