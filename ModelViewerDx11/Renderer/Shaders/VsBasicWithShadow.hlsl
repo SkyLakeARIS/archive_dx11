@@ -1,30 +1,42 @@
+/*
+    b0 ~ b5 는 렌더러에서 예약 (reserved slots by renderer)
 
-cbuffer cbMatrices : register(b0)
+    b0 : World Matrix
+    b1 : View + Projection Matrix (mainly Perspective)
+    b2 : View + Projection Matrix of Light
+    b3 : Light Attributes (for lighting)
+    b4 : Camera Attribute (for lighting)
+    b5 : Orthographic Matrix (for screen)
+ */
+
+// TODO: 위 코멘트를 각 파일에 복붙하기보다 추후 공용 헤더파일로 빼서 공통으로 쓰는 방법 조사하기
+cbuffer CbMatWorld : register(b0)
 {
     matrix MatWorld;
 }
 
-cbuffer cbLightMatrix : register(b1)
+cbuffer CbMatViewProj : register(b1)
+{
+    matrix MatViewProj;
+}
+
+cbuffer CbMatLightViewProj : register(b2)
 {
     matrix MatLightViewProj;
 }
 
-cbuffer cbLightProperty : register(b2)
+cbuffer CbLightProperty : register(b3)
 {
     float4 vLightColor;
     float4 vLightDir;
 }
 
-cbuffer CbCamera : register(b3)
+cbuffer CbCamera : register(b4)
 {
     float3 Position;
     float Reserve;
 }
 
-cbuffer cbViewProj : register(b4)
-{
-    matrix MatViewProj;
-}
 
 struct VS_INPUT
 {

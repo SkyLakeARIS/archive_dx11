@@ -4,6 +4,7 @@
 
 namespace renderer
 {
+    struct RenderPacket;
     class Renderer;
 }
 
@@ -23,7 +24,7 @@ namespace scene
         ~Light();
 
         // TODO: 별도 함수보다 GUI 추가되면 Debug모드 추가하여 on/off 방식으로 처리
-        void DrawDebug(renderer::Renderer& renderer);
+        void DrawDebug(std::vector<renderer::RenderPacket>& commandList);
 
         void SetupCascade(renderer::Renderer& renderer);
 

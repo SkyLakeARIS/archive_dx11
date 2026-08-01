@@ -83,7 +83,7 @@ namespace renderer
         nodes.reserve(16);
         preprocess(nullptr, rootNode, nodes);
 
-        modelContainer.Meshes.reserve(nodes.size());
+        modelContainer.SubMeshes.reserve(nodes.size());
 
         FbxVector4 minBound = {};
         FbxVector4 maxBound = {};
@@ -301,7 +301,7 @@ namespace renderer
                     }
                 }
             }
-            outModelContainer.Meshes.emplace_back(std::move(newMeshData));
+            outModelContainer.SubMeshes.emplace_back(std::move(newMeshData));
         }
         outMinBound = minBound;
         outMaxBound = maxBound;
@@ -373,11 +373,11 @@ namespace renderer
                                 std::filesystem::path fileChecker(reinterpret_cast<const char*>(filePath));
                                 if(std::filesystem::exists(fileChecker))
                                 {
-                                    memcpy(outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].FilePath, filePath, util::MAX_PATH_LENGTH);
-                                    outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].TextureType = eTextureType::Diffuse;
+                                    memcpy(outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].FilePath, filePath, util::MAX_PATH_LENGTH);
+                                    outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].TextureType = eTextureType::Diffuse;
 
                                     const HashID hash = util::GetDjb2Hash(filePath);
-                                    outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].TextureHash = hash;
+                                    outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Diffuse)].TextureHash = hash;
                                 }
                             }
 
@@ -395,12 +395,12 @@ namespace renderer
                             std::filesystem::path fileChecker(reinterpret_cast<const char*>(pathNormalTex));
                             if (std::filesystem::exists(fileChecker))
                             {
-                                outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].TextureType = eTextureType::Normal;
+                                outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].TextureType = eTextureType::Normal;
 
-                                memcpy(outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].FilePath, pathNormalTex, util::MAX_PATH_LENGTH);
+                                memcpy(outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].FilePath, pathNormalTex, util::MAX_PATH_LENGTH);
 
                                 const HashID hash = util::GetDjb2Hash(pathNormalTex);
-                                outModelContainer.Meshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].TextureHash = hash;
+                                outModelContainer.SubMeshes[nodeIndex].Textures[static_cast<int32_t>(eTextureType::Normal)].TextureHash = hash;
                             }
                         }
                         else
@@ -572,35 +572,35 @@ namespace renderer
                         // We found a Phong material.  Display its properties.
                         // Display the Ambient Color
                         lKFbxDouble3 = ((FbxSurfacePhong*)lMaterial)->Diffuse;
-                        outModelContainer.Meshes[nodeIndex].Material.Diffuse.x = lKFbxDouble3.Get()[0];
-                        outModelContainer.Meshes[nodeIndex].Material.Diffuse.y = lKFbxDouble3.Get()[1];
-                        outModelContainer.Meshes[nodeIndex].Material.Diffuse.z = lKFbxDouble3.Get()[2];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Diffuse.x = lKFbxDouble3.Get()[0];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Diffuse.y = lKFbxDouble3.Get()[1];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Diffuse.z = lKFbxDouble3.Get()[2];
 
                         lKFbxDouble3 = ((FbxSurfacePhong*)lMaterial)->Ambient;
-                        outModelContainer.Meshes[nodeIndex].Material.Ambient.x = lKFbxDouble3.Get()[0];
-                        outModelContainer.Meshes[nodeIndex].Material.Ambient.y = lKFbxDouble3.Get()[1];
-                        outModelContainer.Meshes[nodeIndex].Material.Ambient.z = lKFbxDouble3.Get()[2];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Ambient.x = lKFbxDouble3.Get()[0];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Ambient.y = lKFbxDouble3.Get()[1];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Ambient.z = lKFbxDouble3.Get()[2];
 
                         lKFbxDouble3 = ((FbxSurfacePhong*)lMaterial)->Specular;
-                        outModelContainer.Meshes[nodeIndex].Material.Specular.x = lKFbxDouble3.Get()[0];
-                        outModelContainer.Meshes[nodeIndex].Material.Specular.y = lKFbxDouble3.Get()[1];
-                        outModelContainer.Meshes[nodeIndex].Material.Specular.z = lKFbxDouble3.Get()[2];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Specular.x = lKFbxDouble3.Get()[0];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Specular.y = lKFbxDouble3.Get()[1];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Specular.z = lKFbxDouble3.Get()[2];
 
                         lKFbxDouble3 = ((FbxSurfacePhong*)lMaterial)->Emissive;
-                        outModelContainer.Meshes[nodeIndex].Material.Emissive.x = lKFbxDouble3.Get()[0];
-                        outModelContainer.Meshes[nodeIndex].Material.Emissive.y = lKFbxDouble3.Get()[1];
-                        outModelContainer.Meshes[nodeIndex].Material.Emissive.z = lKFbxDouble3.Get()[2];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Emissive.x = lKFbxDouble3.Get()[0];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Emissive.y = lKFbxDouble3.Get()[1];
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Emissive.z = lKFbxDouble3.Get()[2];
 
                         //Opacity is Transparency factor now
                         lKFbxDouble1 = ((FbxSurfacePhong*)lMaterial)->TransparencyFactor;
-                        outModelContainer.Meshes[nodeIndex].Material.Opacity = 1.0 - lKFbxDouble1.Get();
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Opacity = 1.0 - lKFbxDouble1.Get();
 
                         lKFbxDouble1 = ((FbxSurfacePhong*)lMaterial)->Shininess;
-                        outModelContainer.Meshes[nodeIndex].Material.Shininess = lKFbxDouble1.Get();
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Shininess = lKFbxDouble1.Get();
 
                         //// Display the Reflectivity
                         lKFbxDouble1 = ((FbxSurfacePhong*)lMaterial)->ReflectionFactor;
-                        outModelContainer.Meshes[nodeIndex].Material.Reflectivity = lKFbxDouble1.Get();
+                        outModelContainer.SubMeshes[nodeIndex].MaterialParam.Reflectivity = lKFbxDouble1.Get();
 
                     }
                     else if (lMaterial->GetClassId().Is(FbxSurfaceLambert::ClassId))

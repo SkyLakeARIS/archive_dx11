@@ -111,6 +111,15 @@
     <ClInclude Include="Scene\Billboard.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Resources\Material.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Resources\RenderPacket.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Shader\ShaderManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ModelViewerDx11.cpp">
@@ -170,6 +179,9 @@
     <ClCompile Include="Scene\Billboard.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Shader\ShaderManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ModelViewerDx11.rc">
@@ -199,6 +211,8 @@
     <FxCompile Include="Renderer\Shaders\VsSimple.hlsl" />
     <FxCompile Include="Renderer\Shaders\LayoutP.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsSkybox.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsScreen.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsShadow.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -95,10 +95,10 @@ namespace renderer
 
 
 
-        mVertexBuffers.reserve(static_cast<int16_t>(eInputLayout::InputlayoutCount));
-        for(int16_t layoutType = 0; layoutType < static_cast<int16_t>(eInputLayout::InputlayoutCount); ++layoutType)
+        mVertexBuffers.reserve(static_cast<int16_t>(eVertexFormat::FormatCount));
+        for(int16_t layoutType = 0; layoutType < static_cast<int16_t>(eVertexFormat::FormatCount); ++layoutType)
         {
-            const int16_t stride = GetVertexStrideSize(static_cast<eInputLayout>(layoutType));
+            const int16_t stride = GetVertexStrideSize(static_cast<eVertexFormat>(layoutType));
             BufferChunk bufferRes = {};
             if (mDevice->CreateBuffer(&bufferDesc, nullptr, &bufferRes.Buffer) == E_FAIL)
             {
@@ -117,7 +117,7 @@ namespace renderer
         bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         bufferDesc.ByteWidth = indexBufferByteSizeStatic;
 
-        mIndexBuffers.reserve(static_cast<int16_t>(eInputLayout::InputlayoutCount));
+        mIndexBuffers.reserve(static_cast<int16_t>(eVertexFormat::FormatCount));
         const int16_t indexStrideSize = sIndexFormatMap[static_cast<int8_t>(mIndexFormat)].Stride;
 
 
@@ -140,10 +140,10 @@ namespace renderer
         bufferDesc.ByteWidth = vertexBufferByteSizeDynamic;
         bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-        mVertexBuffersDynamic.reserve(static_cast<int16_t>(eInputLayout::InputlayoutCount));
-        for (int16_t layoutType = 0; layoutType < static_cast<int16_t>(eInputLayout::InputlayoutCount); ++layoutType)
+        mVertexBuffersDynamic.reserve(static_cast<int16_t>(eVertexFormat::FormatCount));
+        for (int16_t layoutType = 0; layoutType < static_cast<int16_t>(eVertexFormat::FormatCount); ++layoutType)
         {
-            const int16_t stride = GetVertexStrideSize(static_cast<eInputLayout>(layoutType));
+            const int16_t stride = GetVertexStrideSize(static_cast<eVertexFormat>(layoutType));
             BufferChunk bufferResDynamic = {};
             if (mDevice->CreateBuffer(&bufferDesc, nullptr, &bufferResDynamic.Buffer) == E_FAIL)
             {
@@ -159,7 +159,7 @@ namespace renderer
         bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
         bufferDesc.ByteWidth = indexBufferByteSizeDynamic;
 
-        mIndexBuffersDynamic.reserve(static_cast<int16_t>(eInputLayout::InputlayoutCount));
+        mIndexBuffersDynamic.reserve(static_cast<int16_t>(eVertexFormat::FormatCount));
 
         BufferChunk indexBufDynamic = {};
         if (mDevice->CreateBuffer(&bufferDesc, nullptr, &indexBufDynamic.Buffer) == E_FAIL)

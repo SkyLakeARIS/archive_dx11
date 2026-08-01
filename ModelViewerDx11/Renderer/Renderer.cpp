@@ -1,6 +1,8 @@
 #include "Renderer.h"
 #include "../Util/Macro.h"
 #include "Resources/BufferManager.h"
+#include "Resources/Material.h"
+#include "Resources/RenderPacket.h"
 #include "Resources/TextureManager.h"
 
 namespace renderer
@@ -63,14 +65,18 @@ namespace renderer
         , mDepthStencilTexture(nullptr)
         , mSkyboxDepthStencil(nullptr)
         , mRenderTargetViewList{nullptr}
-        , mDepthStencilViewList{ nullptr }
-        , mRtvDsMapTable{0}
+        , mDepthStencilViewList{nullptr}
+        , mRtvDsMapTable{}
         , mTexShadow(nullptr)
         , mTexColor(nullptr)
         , mShadowSrv(nullptr)
+        , mCascadeShadowSrvList(nullptr)
         , mViewportFull()
         , mViewportTex()
-        , mRasterStates{ nullptr }
+        , mRasterStates{nullptr}
+        , mSamplerState{}
+        , mCbList{}
+        , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
     {}
@@ -119,9 +125,8 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::createRasterState()
+    bool Renderer::createRasterState()
     {
-        HRESULT result = S_OK;
         // 기본 래스터 스테이트
         D3D11_RASTERIZER_DESC rasterDesc;
         ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
@@ -130,10 +135,11 @@ namespace renderer
         rasterDesc.FillMode = D3D11_FILL_SOLID;
         // MEMO: CW winding으로 통일 
         rasterDesc.FrontCounterClockwise = false;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for basic");
+            return false;
         }
         // 아웃라인용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_FRONT;
@@ -144,6 +150,7 @@ namespace renderer
         if(FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for outline");
+            return false;
         }
 
         // 스카이박스용 래스터 스테이트
@@ -151,7 +158,8 @@ namespace renderer
         result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Skybox)]);
         if (FAILED(result))
         {
-            ASSERT(false, "Failed to create RasterState for outline");
+            ASSERT(false, "Failed to create RasterState for Skybox");
+            return false;
         }
 
         // back-culling 래스터 스테이트
@@ -160,9 +168,10 @@ namespace renderer
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for back face culling");
+            return false;
         }
 
-        return result;
+        return true;
     }
 
     HRESULT Renderer::createSamplerState()
@@ -195,11 +204,12 @@ namespace renderer
                 {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty)},
                 {eCbType::CbLightProperty, sizeof(CbLightProperty)},
                 {eCbType::CbMaterial, sizeof(CbMaterial)},
-                {eCbType::CbColor, sizeof(CbMaterial)},
-                {eCbType::CbScreenSpaceMatrix, sizeof(CbScreenSpaceMatrix)},
+                {eCbType::CbColor, sizeof(CbColor)},
+                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
             };
         static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
         D3D11_BUFFER_DESC desc = {};
+        // TODO: optimize - 업데이트 빈도에 따라서 분류하고난 뒤에 분류에 따라서 Usage도 적절한 값으로 지정하기
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
         desc.CPUAccessFlags = 0;
@@ -274,7 +284,7 @@ namespace renderer
 
         // 왠만하면 D3D_DRIVER_TYPE_HARDWARE로 정해질 것임.
         D3D_FEATURE_LEVEL featureLevel;
-        HRESULT result;
+        HRESULT result = S_OK;
         for (UINT32 driverTypeIndex = 0; driverTypeIndex < numDriverTypes; ++driverTypeIndex)
         {
             result = D3D11CreateDeviceAndSwapChain(nullptr, driverTypes[driverTypeIndex], nullptr, createDeviceFlag, featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swapChainDesc, &mSwapChain, &mDevice, &featureLevel, &mDeviceContext);
@@ -382,8 +392,7 @@ namespace renderer
             return E_FAIL;
         }
 
-        result = createRasterState();
-        if(FAILED(result))
+        if(!createRasterState())
         {
             return E_FAIL;
         }
@@ -419,7 +428,7 @@ namespace renderer
 
         // set default resources
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc;
+        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc = {};
         texDefaultDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         texDefaultDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         texDefaultDesc.Texture2D.MipLevels = 1;
@@ -462,11 +471,26 @@ namespace renderer
             return false;
         }
 
+        constexpr PrimitiveTopologyMap TopologyMap[] =
+        {
+            {ePrimitiveTopology::Triangles, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST},
+            {ePrimitiveTopology::TriangleStrip, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP},
+            {ePrimitiveTopology::Lines, D3D11_PRIMITIVE_TOPOLOGY_LINELIST},
+        };
+        static_assert((sizeof(TopologyMap) / sizeof(PrimitiveTopologyMap)) == static_cast<uint8_t>(ePrimitiveTopology::TopologyCount));
+#if defined(_DEBUG)
+        for (int32_t topology = 0; topology < static_cast<uint8_t>(ePrimitiveTopology::TopologyCount); ++topology)
+        {
+            ASSERT(TopologyMap[topology].UserType == static_cast<ePrimitiveTopology>(topology), "열거값과 Map 순서가 일치하지 않음. indexInMap(%d): Map.UserType(%d) != enum(%d))", topology, static_cast<uint8_t>(TopologyMap[topology].UserType), static_cast<uint8_t>(topology));
+        }
+#endif
+        (void)memcpy(mPrimitiveTopologies, TopologyMap, sizeof(TopologyMap));
+
         return true;
     }
 
     HRESULT Renderer::CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-        uint32 numDescElements, eInputLayout type, ID3D11InputLayout** const outInputLayout)
+        uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
     {
 
         ASSERT(outInputLayout != nullptr, "do not pass nullptr");
@@ -573,7 +597,7 @@ namespace renderer
         const WCHAR* fileName,
         WIC_FLAGS flag,
         D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
-        ID3D11ShaderResourceView** outShaderResourceView)
+        ID3D11ShaderResourceView** outShaderResourceView) const
     {
         ScratchImage image;
         ID3D11Texture2D* textureResource = nullptr;
@@ -613,14 +637,13 @@ namespace renderer
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
-        ID3D11RenderTargetView** outRtv, const char* const debugTag)
+        ID3D11RenderTargetView** outRtv, const char* const debugTag) const
     {
-        HRESULT result = S_OK;
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outRtv != nullptr, "outRtv) do not pass nullptr.");
         ASSERT((*outRtv) == nullptr, "outRtv)pRtv is already initialized.");
 
-        result = mDevice->CreateRenderTargetView(texture, desc, outRtv);
+        const HRESULT result = mDevice->CreateRenderTargetView(texture, desc, outRtv);
         if(FAILED(result))
         {
             ASSERT(false, "failed to create RenderTargetView: RenderTargetView 생성 실패");
@@ -631,14 +654,13 @@ namespace renderer
     }
 
     HRESULT Renderer::CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc,
-        ID3D11DepthStencilView** outDs, const char* const debugTag)
+        ID3D11DepthStencilView** outDs, const char* const debugTag) const
     {
-        HRESULT result = S_OK;
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outDs != nullptr, "outDs) do not pass nullptr.");
         ASSERT((*outDs) == nullptr, "outDs)pOutDs is already initialized.");
 
-        result = mDevice->CreateDepthStencilView(texture, desc, outDs);
+        const HRESULT result = mDevice->CreateDepthStencilView(texture, desc, outDs);
         if (FAILED(result))
         {
             ASSERT(false, "failed to create DepthStencilView: DepthStencilView 생성 실패");
@@ -648,9 +670,9 @@ namespace renderer
         return result;
     }
 
-    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb)
+    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const
     {
-        ASSERT(desc.BindFlags == D3D11_BIND_CONSTANT_BUFFER, "desc.BindFlags not bind as Constant-buffer");
+        ASSERT(desc.BindFlags & static_cast<uint32_t>(D3D11_BIND_CONSTANT_BUFFER), "desc.BindFlags not bind as Constant-buffer");
         ASSERT(desc.ByteWidth != 0, "desc.ByteWidth is zero");
 
         HRESULT result = mDevice->CreateBuffer(&desc, nullptr, outCb);
@@ -665,12 +687,12 @@ namespace renderer
         mDeviceContext->OMSetRenderTargets(rtvDs.NumViews, &mRenderTargetViewList[rtvDs.RenderTargetIndex], mDepthStencilViewList[rtvDs.DepthStencilIndex]);
     }
 
-    void Renderer::BindInputLayoutTo(eInputLayout type) const
+    void Renderer::BindInputLayoutTo(eVertexFormat type) const
     {
         mDeviceContext->IASetInputLayout(mInputLayoutList[static_cast<uint32>(type)]);
     }
 
-    void Renderer::BindShaderTo(eShader type)
+    void Renderer::BindShaderTo(eShader type) const
     {
         const ShaderMap& shaderMap = mShaderMapTable[static_cast<uint32_t>(type)];
         mDeviceContext->VSSetShader(mVertexShadersList[static_cast<uint32_t>(shaderMap.VsIndex)], nullptr, 0U);
@@ -687,7 +709,7 @@ namespace renderer
         mDeviceContext->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
     }
 
-    void Renderer::SetViewport(bool bFullScreen)
+    void Renderer::SetViewport(bool bFullScreen) const
     {
         if (bFullScreen)
         {
@@ -788,7 +810,7 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag)
+    HRESULT Renderer::CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const
     {
         ASSERT(*outTex == nullptr, "pass nullptr before create texture.");
         if(!tag)
@@ -808,8 +830,8 @@ namespace renderer
 
     void Renderer::BindVertexBuffer(uint32_t stride) const
     {
-        uint32_t offset = 0;
-        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBuffer(stride);
+        constexpr uint32_t offset = 0;
+        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBuffer(static_cast<int16_t>(stride));
         mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
     }
 
@@ -825,7 +847,7 @@ namespace renderer
     void Renderer::BindVertexBufferDynamic(uint32_t stride) const
     {
         uint32_t offset = 0;
-        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBufferDynamic(stride);
+        ID3D11Buffer* const vertexBuffer = mBufferManager->GetVertexBufferDynamic(static_cast<int16_t>(stride));
         mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
     }
 
@@ -852,7 +874,8 @@ namespace renderer
         }
         else
         {
-            ASSERT(false, "no blendState to bind. Hash(%u)", hash);
+            ID3D11BlendState* const unbind = nullptr;
+            mDeviceContext->OMSetBlendState(unbind, blendFactors, mask);
         }
     }
 
@@ -887,12 +910,18 @@ namespace renderer
         mDeviceContext->IASetPrimitiveTopology(topology);
     }
 
-    void Renderer::BindRasterStateByType(eRasterType type)
+    void Renderer::BindPrimitiveTopologyByType(ePrimitiveTopology topology) const
+    {
+        const PrimitiveTopologyMap topologyElement = mPrimitiveTopologies[static_cast<uint8_t>(topology)];
+        mDeviceContext->IASetPrimitiveTopology(topologyElement.ApiType);
+    }
+
+    void Renderer::BindRasterStateByType(eRasterType type) const
     {
         mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
     }
 
-    void Renderer::BindDepthStencilState(bool bSkybox)
+    void Renderer::BindDepthStencilState(bool bSkybox) const
     {
         if(bSkybox)
         {
@@ -904,7 +933,7 @@ namespace renderer
         }
     }
 
-    void Renderer::ClearScreenAndDepth(eRenderTarget type)
+    void Renderer::ClearScreenAndDepth(eRenderTarget type) const
     {
         constexpr float CLEAR_COLOR[] = { 0.4f, 0.6f, 1.0f, 1.0f };
         RtvDsMap rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
@@ -913,7 +942,7 @@ namespace renderer
         mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[rtvDs.DepthStencilIndex], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
     }
 
-    void Renderer::ClearDepthBuffer()
+    void Renderer::ClearDepthBuffer() const
     {
         mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], D3D11_CLEAR_DEPTH, 1.0f, 0);
     }
@@ -947,6 +976,8 @@ namespace renderer
             L"Renderer/Shaders/VsSimple.hlsl",
             L"Renderer/Shaders/VsSkybox.hlsl",
             L"Renderer/Shaders/VsRenderToTexture.hlsl",
+            L"Renderer/Shaders/VsScreen.hlsl",
+            L"Renderer/Shaders/VsShadow.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
@@ -971,17 +1002,17 @@ namespace renderer
 
         struct InputLayoutContainer
         {
-            eInputLayout ListIndex;
+            eVertexFormat ListIndex;
             uint32_t      SourceIndex;
             D3D11_INPUT_ELEMENT_DESC* Desc;
             uint32_t numDescElements;
         };
 
-        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eInputLayout::InputlayoutCount)] =
+        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
         {
-            { eInputLayout::PTN, 0U, layoutPTNDesc, 3},
-            { eInputLayout::PT, 1U, layoutPTNDesc, 2},
-            {eInputLayout::P, 2U, layoutPTNDesc, 1},
+            { eVertexFormat::PTN, 0U, layoutPTNDesc, 3},
+            { eVertexFormat::PT, 1U, layoutPTNDesc, 2},
+            {eVertexFormat::P, 2U, layoutPTNDesc, 1},
         };
 
         constexpr VertexShaderContainer VertexShaderListMapTable[static_cast<uint32_t>(eVertexShader::VertexShaderCount)] =
@@ -991,6 +1022,8 @@ namespace renderer
             {eVertexShader::VsSimple, 2U},
             {eVertexShader::VsRenderToTexture, 4U}, // ?
             {eVertexShader::VsSkybox, 3U},
+            {eVertexShader::VsScreen, 5U},
+            {eVertexShader::VsShadow, 6U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -1009,10 +1042,11 @@ namespace renderer
         {
             {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline}, 
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox}, 
-            { eShader::Shadow, eVertexShader::VsSimple, ePixelShader::PsShadow}, // TODO : 개선 예정(셰이더 최적화) - VSSimple을 다른걸로 변경하기.(inputlayout관점 최적화)
+            { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
             {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
+            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -1092,6 +1126,93 @@ namespace renderer
         return bTerminateProgram;
     }
 
+    void Renderer::MakeSortKey(RenderPacket& command)
+    {
+        // MEMO: 32bit, 내림차순 정렬(값이 큰 순서로 렌더링)
+        // MEMO:  높은 쪽 <-----------> 낮은 쪽
+        // MEMO: 상위 비트 | 중간 비트 | 하위 비트
+
+        // MEMO: 추후에 작업하면서 필요에 따라 Bit 수, 순서 조정하면서 정답을 찾아가기.
+
+        // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
+        // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
+        // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
+        // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
+        // MEMO: 셰이더는, 머티리얼보다 높은 쪽을 사용한다.
+        // 현재는 머티리얼당 셰이더 하나와 대응되어 의미 없지만 같은 셰이더를 공유하는 머티리얼이 있다면 대응이 될 수 있는 구조로 판단됨.
+        // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
+
+
+        // TODO: improve - 값을 보고 총 몇비트가 필요한지 자동으로 계산하도록 하면 좋을 것 같다. 나중에 한번 고민해보기(컴파일 타임에도 가능한가?)
+        constexpr uint8_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
+        {
+            0,
+            1,
+        };
+
+        // TODO: RenderTarget 같은 경우는 순서가 중요하지만, 셰이더나, 머티리얼 등 몇몇개는 순서가 별로 중요하지 않은 것 같다. 좀 더 조사해보고 좀 더 개선하기.
+        constexpr uint8_t VertexFormatPriority[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
+        {
+            2,
+            1,
+            0
+        };
+
+        constexpr uint8_t ShaderPriority[static_cast<uint8_t>(eShader::ShaderCount)] =
+        {
+            1, // Outline,
+            2, // Skybox,
+            3, // Shadow,
+            4, // BasicWithShadow,
+            5, // RenderToTexture,
+            6, // Color,
+            0, // DebugHUD,
+        };
+
+        constexpr uint8_t RasterStatePriority[static_cast<uint8_t>(eRasterType::RasterCount)] =
+        {
+            1, // Basic,
+            2, // Outline,
+            3, // Skybox,
+            4, // CullBack,
+        };
+
+        constexpr uint8_t SamplerStatePriority[static_cast<uint8_t>(eSamplerType::SamplerCount)] =
+        {
+            0 // AnisotropicWrap,
+        };
+
+        constexpr uint8_t PrimitiveTopologyPriority[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)] =
+        {
+            0, // Triangles,
+            1, // TriangleStrip,
+            2, // Lines
+        };
+
+        // TODO: 머티리얼은 같은지 다른지 구분할 식별자가 필요하다. 우선은 구분하지 않아도 되므로 무시하되, 렌더큐 구조 완료 후 바로 작업이 필요함.
+        // MaterialParameter
+        // TODO: 해시라서 Bit에 할당하기 애매한 상태. BlendState를 여러 개 대표적으로 쓸 것들만 뽑아서 열거형으로 만들어 사용하는 것으로 변경한다.
+        // BlendHash
+        // TODO: 텍스처 해시도 동일한 텍스처를 쓰는 드로우콜을 뭉치면 좋을 것 같지만, 그렇게하면 해시가 아니라 다른 ID로 써야할 것 같다.
+
+        // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다.
+        uint32_t sortKey = 0;
+        sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
+        // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
+        sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
+        sortKey |= static_cast<uint8_t>(command.bUseDynamicBuffer) << 29;
+        sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 28;
+        sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
+        sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);
+        sortKey |= static_cast<uint8_t>(command.RenderState.bUseShadowMap) << 25;
+        sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 21);
+        sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 18);
+        sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 14);
+        sortKey |= (PrimitiveTopologyPriority[static_cast<uint8_t>(command.RenderState.TopologyType)] << 10);
+
+        command.SortKey = sortKey;
+    }
+
     void Renderer::Cleanup()
     {
         for (uint32 i = 0; i < static_cast<uint32>(eCbType::ConstantBufferCount); ++i)
@@ -1125,7 +1246,7 @@ namespace renderer
             SAFETY_RELEASE(mPixelShaderList[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eInputLayout::InputlayoutCount); ++i)
+        for (uint32 i = 0; i < static_cast<uint32>(eVertexFormat::FormatCount); ++i)
         {
             SAFETY_RELEASE(mInputLayoutList[i]);
         }
@@ -1149,18 +1270,17 @@ namespace renderer
 
     ULONG Renderer::AddRef()
     {
-        ++mRefCount;
-        return mRefCount;
+        return InterlockedIncrement(&mRefCount);
     }
 
     ULONG Renderer::Release()
     {
-        --mRefCount;
-        if(mRefCount <= 0)
+        const uint32_t ref = InterlockedDecrement(&mRefCount);
+        if(ref <= 0)
         {
             delete this;
         }
-        return mRefCount;
+        return ref;
     }
 
     HRESULT Renderer::QueryInterface(const IID& riid, void** ppvObject)
@@ -1169,7 +1289,7 @@ namespace renderer
         return E_FAIL;
     }
 
-    void Renderer::UpdateCB(eCbType type, void* data) const
+    void Renderer::UpdateCB(eCbType type, const void* const data) const
     {
         mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)], 0U, nullptr, data, 0U, 0U);
     }

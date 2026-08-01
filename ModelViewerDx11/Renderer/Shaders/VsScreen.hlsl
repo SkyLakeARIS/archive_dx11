@@ -14,25 +14,34 @@ cbuffer CbMatWorld : register(b0)
     matrix MatWorld;
 }
 
-cbuffer CbMatViewProj : register(b1)
+cbuffer CbMatOrtho : register(b5)
 {
-    matrix MatViewProj;
+    matrix MatOrtho;
 }
 
-struct VsInput
+
+struct VS_INPUT
 {
     float4 Pos : POSITION;
+    float2 Tex : TEXCOORD0;
 };
 
-struct PsInput
+
+struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
+    float2 Tex : TEXCOORD0;
 };
 
-PsInput main(VsInput input)
+
+
+PS_INPUT main(VS_INPUT input)
 {
-    PsInput output;
+    PS_INPUT output;
+
     output.Pos = mul(input.Pos, MatWorld);
-    output.Pos = mul(output.Pos, MatViewProj);
+    output.Pos = mul(output.Pos, MatOrtho);
+
+    output.Tex = input.Tex;
     return output;
 }

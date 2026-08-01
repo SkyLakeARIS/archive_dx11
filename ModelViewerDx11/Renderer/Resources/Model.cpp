@@ -1,13 +1,14 @@
 #include "Model.h"
 #include "BufferManager.h"
-#include "../Renderer.h"
 #include "../../Util/Macro.h"
-#include "../Importer/ModelImporter.h"
+#include "../Resources/RenderPacket.h"
+#include "../Shader/ShaderManager.h"
 
 namespace renderer
 {
     Model::Model(scene::Camera* camera, BufferManager* bufferManager)
         : mBufferManager(bufferManager)
+        , mMesh()
         , mCenterPosition(0.0f, 0.0f, 0.0f)
         , mMatRotation(XMMatrixIdentity())
         , mMatScale(XMMatrixIdentity())
@@ -21,118 +22,119 @@ namespace renderer
 
     Model::~Model()
     {
-        for(auto& mesh : mMeshes)
+        const int16_t stride = GetVertexStrideSize(mMesh.VertexFormat);
+        for(auto& subMesh : mMesh.SubMeshes)
         {
-            const int16_t stride = GetVertexStrideSize(mesh.VertexLayoutType);
             const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
-            mBufferManager->RemoveVertexData(stride, mesh.MeshHash);
-            mBufferManager->RemoveIndexData(strideIndex, mesh.MeshHash);
+            mBufferManager->RemoveVertexData(stride, subMesh.SubMeshHash);
+            mBufferManager->RemoveIndexData(strideIndex, subMesh.SubMeshHash);
         }
         // TODO: BufferManager를 받지 않고, BufferData 처리할 수 있는 로직이 필요함.
         mBufferManager = nullptr;
     }
 
-    void Model::Draw(renderer::Renderer& renderer)
+    void Model::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer.BindInputLayoutTo(eInputLayout::PTN);
-
-        const uint32 stride = sizeof(VertexPTN);
-
-        renderer.BindVertexBuffer(stride);
-        renderer.BindIndexBuffer();
+        RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.bTransparency = false;
+        command.RenderTargetType = eRenderTarget::Default;
+        command.MatWorld = mMatWorld;
 
         // outline
         if (mbHighlight)
         {
-            renderer.BindRasterStateByType(eRasterType::CullBack);
+            command.RenderState.ShaderType = eShader::Outline;
+            renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+            renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+            renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+            command.RenderState.RasterType = eRasterType::CullBack;
+            command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
+            command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+            command.RenderState.BlendHash = 0;
+            command.RenderState.bUseShadowMap = false;
+            command.RenderState.bUseDepthStencil = true;
+            command.RenderState.bClearDepthStencilBuffer = true;
 
-            renderer.BindShaderTo(eShader::Outline);
-            renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-            renderer.BindCbToVsByType(1U, 1U, eCbType::CbOutlineProperty);
-            renderer.BindCbToVsByType(2U, 1U, eCbType::CbViewProj);
-
-            for (uint32_t index = 0U; index < mMeshes.size(); ++index)
+            for (const auto& subMesh : mMesh.SubMeshes)
             {
-                renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+                command.VertexRange = subMesh.VertexRange;
+                command.IndexRange = subMesh.IndexRange;
+                command.Material = subMesh.Material;
+
+                if (!mbActiveEmissive)
+                {
+                    command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                }
+
+                commandList.push_back(command);
             }
-            // reset for basic draw
-            renderer.ClearDepthBuffer();
+            commandList.push_back(command);
         }
 
-        renderer.BindRasterStateByType(eRasterType::Basic);
+        // TODO: ResourceManager에 있는 하드코드가 여기로 이동된 셈. - 나중에 조금이나마 줄일 수 있는 방안이 있을지 고민은 해보고 코멘트 지우자.
+        command.RenderState.ShaderType = eShader::BasicWithShadow;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = eRasterType::Basic;
+        command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
+        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+        command.RenderState.BlendHash = 0;
+        command.RenderState.bUseShadowMap = true;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
 
-        renderer.BindShaderTo(eShader::BasicWithShadow);
-
-        renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
-        renderer.BindCbToVsByType(2U, 1U, eCbType::CbLightProperty);
-        renderer.BindCbToVsByType(3U, 1U, eCbType::CbCameraPosition);
-        renderer.BindCbToVsByType(4U, 1U, eCbType::CbViewProj);
-
-        renderer.BindSamplerToPsByType(0, eSamplerType::AnisotropicWrap);
-
-        renderer.BindCbToPs(0U, 1U, eCbType::CbMaterial);
-
-        renderer.BindShadowTextureToPs(2);
-
-        // Draw
-        for (size_t index = 0U; index < mMeshes.size(); ++index)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.BindTextureToPs(0, mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Diffuse)]);
-            if(mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Normal)])
-            {
-                renderer.BindTextureToPs(1, mMeshes[index].TextureHashes[static_cast<int8_t>(eTextureType::Normal)]);
-            }
-            CbMaterial cbMaterial;
-            ZeroMemory(&cbMaterial, sizeof(CbMaterial));
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
 
-            memcpy(&cbMaterial, &mMeshes[index].Material, sizeof(Material));
             if (!mbActiveEmissive)
             {
-                cbMaterial.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
-            renderer.UpdateCB(eCbType::CbMaterial, &cbMaterial);
 
-            renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+            commandList.push_back(command);
         }
-
-        renderer.UnbindTexturePs(2);
     }
 
-    void Model::DrawShadow(renderer::Renderer& renderer)
+    void Model::DrawShadow(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer.BindInputLayoutTo(eInputLayout::P);
+        RenderPacket command = {};
+        command.VertexFormat = eVertexFormat::P;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.RenderTargetType = eRenderTarget::Shadow;
+        command.RenderState.ShaderType = eShader::Shadow;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
+        command.MatWorld = mMatWorld;
+        command.RenderState.RasterType = eRasterType::Outline;
 
-        const uint32 stride = sizeof(VertexPTN);
-
-        renderer.BindVertexBuffer(stride);
-        renderer.BindIndexBuffer();
-
-        renderer.BindRasterStateByType(eRasterType::Outline);
-        renderer.BindShaderTo(eShader::Shadow);
-
-        renderer.BindCbToVsByType(0U, 1U, eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, eCbType::CbLightViewProjMatrix);
-
-        // Draw
-        for (size_t index = 0U; index < mMeshes.size(); ++index)
+        for (const auto& subMesh : mMesh.SubMeshes)
         {
-            renderer.DrawIndexed(static_cast<uint32_t>(mMeshes[index].IndexRange.Count), mMeshes[index].IndexRange.StartIndex, mMeshes[index].VertexRange.StartIndex);
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
         }
     }
 
-    void Model::Update(renderer::Renderer& renderer)
+    void Model::Update()
     {
-        CbWorld cbWorld;
-        cbWorld.Matrix = XMMatrixTranspose(mMatWorld);
-
-        renderer.UpdateCB(eCbType::CbWorld, &cbWorld);
+        // MEMO: 전치 안 해도 되지만, 나중에 필요해질 테니 까먹지 않도록 미리 구성해둠.
+        mMatWorld = XMMatrixTranspose(XMMatrixIdentity());
     }
 
-    void Model::SetMeshes(std::vector<Mesh>& meshes)
+    void Model::SetMesh(const Mesh& mesh)
     {
-        ASSERT(mMeshes.empty(), "mMeshes is not empty.");
-        mMeshes.swap(meshes);
+        mMesh = std::move(mesh);
     }
 
     void Model::SetCenterPoint(XMFLOAT4& centerPoint)

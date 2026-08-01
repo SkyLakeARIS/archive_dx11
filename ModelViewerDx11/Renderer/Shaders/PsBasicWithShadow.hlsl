@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------
 // Pixel Shader
-// ¿©·¯°³ ¸¸µé¾îµµ µÈ´Ù. ÄÄÆÄÀÏ ÇÒ ¶§ ÇÔ¼ö¸í¸¸ Àß ÁöÁ¤ÇØµÎ¸é. (¿©·¯ ¼ÎÀÌ´õ ÄÄÆÄÀÏ ÇØµÎ°í, blob¸¸ ¹Ù²ã¼­ ·±Å¸ÀÓ¿¡ ¾²µµ·Ï ÇÏ´Â°Í?)
+// ì—¬ëŸ¬ê°œ ë§Œë“¤ì–´ë„ ëœë‹¤. ì»´íŒŒì¼ í•  ë•Œ í•¨ìˆ˜ëª…ë§Œ ì˜ ì§€ì •í•´ë‘ë©´. (ì—¬ëŸ¬ ì…°ì´ë” ì»´íŒŒì¼ í•´ë‘ê³ , blobë§Œ ë°”ê¿”ì„œ ëŸ°íƒ€ì„ì— ì“°ë„ë¡ í•˜ëŠ”ê²ƒ?)
 //--------------------------------------------------------------------------------------
 Texture2D texModel : register(t0);
 Texture2D texNormal : register(t1);
@@ -19,9 +19,9 @@ cbuffer cbMaterial : register(b0)
     float Reserve2;
     float3 Emissive;
     float Reserve3;
-    float Opacity; // ¾ËÆÄ°ªÀ¸·Î »ç¿ë
+    float Opacity; // ì•ŒíŒŒê°’ìœ¼ë¡œ ì‚¬ìš©
     float Reflectivity;
-    float Shininess; // ½ºÆäÅ§·¯ °ÅµìÁ¦°ö °ª
+    float Shininess; // ìŠ¤í˜í˜ëŸ¬ ê±°ë“­ì œê³± ê°’
     float Reserve4;
 }
 
@@ -38,7 +38,7 @@ struct PS_INPUT
 float4 main(PS_INPUT input) : SV_TARGET
 {
     float4 finalColor = texModel.Sample(samLinear, input.UV);
-    float3 normal = texNormal.Sample(samLinear, input.UV); // face´Â _N ÅØ½ºÃÄ°¡ ¾øÀ½.
+    float3 normal = texNormal.Sample(samLinear, input.UV); // faceëŠ” _N í…ìŠ¤ì³ê°€ ì—†ìŒ.
 
     float3 shadowCoord = input.ClipPosition.xyz / input.ClipPosition.w;
     float depth = shadowCoord.z;
@@ -53,9 +53,9 @@ float4 main(PS_INPUT input) : SV_TARGET
     {
         normal.z = sqrt(1.0 - (normal.x * normal.x + normal.y * normal.y));
 
-    // 1. VS¿¡¼­ °è»êÇÑ ³ë¸»°ª »ç¿ëÇÒ ¶§
+    // 1. VSì—ì„œ ê³„ì‚°í•œ ë…¸ë§ê°’ ì‚¬ìš©í•  ë•Œ
         float3 diffuse = dot(normalize(normal), -normalize(input.LightDir));
-    // 2. ÅØ½ºÃÄ°¡ ³ë¸»¸ÊÀÌ¶ó°í °¡Á¤ÇÏ°í »ç¿ëÇÒ ¶§
+    // 2. í…ìŠ¤ì³ê°€ ë…¸ë§ë§µì´ë¼ê³  ê°€ì •í•˜ê³  ì‚¬ìš©í•  ë•Œ
     //float3 diffuse = dot(normal, -input.LightDir);
         float3 specular = float3(0.0f, 0.0f, 0.0f);
         if (diffuse.x > 0)
@@ -69,7 +69,7 @@ float4 main(PS_INPUT input) : SV_TARGET
         diffuse = saturate(diffuse) * input.LightColor.xyz * Reflectivity;
 
         float3 ambient = Ambient * input.LightColor;
-   // finalColor.xyz *= (specular + diffuse + ambient + Emissive); // ºû³ª´Â È¿°ú == Emissive. ÄÑ°í ²ø ¼ö ÀÖ´Â ±â´É Ãß°¡ ÇÊ¿ä
+   // finalColor.xyz *= (specular + diffuse + ambient + Emissive); // ë¹›ë‚˜ëŠ” íš¨ê³¼ == Emissive. ì¼œê³  ëŒ ìˆ˜ ìˆëŠ” ê¸°ëŠ¥ ì¶”ê°€ í•„ìš”
         finalColor.xyz *= (specular + diffuse + ambient);
         finalColor.a = Opacity;
     }

@@ -2,16 +2,22 @@
 #include "Camera.h"
 #include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
+#include "../Renderer/Resources/RenderPacket.h"
+#include "../Renderer/Shader/ShaderManager.h"
+
+namespace renderer
+{
+    struct RenderPacket;
+}
 
 namespace scene
 {
     Billboard::Billboard()
-        : mBlendHash(0)
+        : mMesh()
+        , mBlendHash(0)
         , mPosition()
         , mMatWorld(XMMatrixIdentity())
-    {
-        renderer::MeshGenerator::CreatePlane(mMesh);
-    }
+    {}
 
     Billboard::~Billboard()
     {
@@ -31,36 +37,42 @@ namespace scene
         blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
         blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
         renderer.CreateBlendState(blendDesc, mBlendHash);
+
+        renderer::MeshGenerator::CreatePlane(mMesh);
+
+        // TODO: improve - Generator로 생성하는 경우에는 Material 을 어디서 설정해 줄지? 이런 동적 생성 Mesh는 Material을 뭘로 설정할지?
     }
 
-    void Billboard::Draw(renderer::Renderer& renderer)
+    void Billboard::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer::CbWorld cbWorld = { };
-        const XMMATRIX matTranslate  = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
+        renderer::RenderPacket command = {};
+        command.VertexFormat = mMesh.VertexFormat;
+        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
+        command.bUseDynamicBuffer = false;
+        command.bTransparency = true;
+        command.RenderTargetType= renderer::eRenderTarget::Default;
+        command.RenderState.ShaderType = renderer::eShader::RenderToTexture;
+        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
+        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
+        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
+        command.RenderState.RasterType = renderer::eRasterType::Basic;
+        command.RenderState.SamplerType = renderer::eSamplerType::AnisotropicWrap;
+        command.RenderState.BlendHash = mBlendHash;
+        command.RenderState.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
+        command.RenderState.bUseShadowMap = false;
+        command.RenderState.bUseDepthStencil = false;
+        command.RenderState.bClearDepthStencilBuffer = false;
+        const XMMATRIX matTranslate = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
         const XMMATRIX matWorld = mMatWorld * matTranslate;
-        cbWorld.Matrix = XMMatrixTranspose(matWorld);
-        renderer.UpdateCB(renderer::eCbType::CbWorld, &cbWorld);
+        command.MatWorld = XMMatrixTranspose(matWorld);
 
-
-        renderer.BindInputLayoutTo(renderer::eInputLayout::PT);
-        renderer.BindShaderTo(renderer::eShader::RenderToTexture);
-
-        renderer.BindRasterStateByType(renderer::eRasterType::Basic);
-        renderer.BindBlendStateByHash(mBlendHash, nullptr, 0xffffffff);
-
-        renderer.BindCbToVsByType(0U, 1U, renderer::eCbType::CbWorld);
-        renderer.BindCbToVsByType(1U, 1U, renderer::eCbType::CbViewProj);
-
-
-        const int16_t strideVertex = GetVertexStrideSize(mMesh.VertexLayoutType);
-        renderer.BindVertexBuffer(strideVertex);
-        renderer.BindIndexBuffer();
-
-        renderer.BindTextureToPs(0, mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
-        
-        renderer.BindSamplerToPsByType(0, renderer::eSamplerType::AnisotropicWrap);
-
-        renderer.DrawIndexed(mMesh.IndexRange.Count, mMesh.IndexRange.StartIndex, mMesh.VertexRange.StartIndex);
+        for (const auto& subMesh : mMesh.SubMeshes)
+        {
+            command.VertexRange = subMesh.VertexRange;
+            command.IndexRange = subMesh.IndexRange;
+            command.Material = subMesh.Material;
+            commandList.push_back(command);
+        }
     }
 
     void Billboard::UpdateScaleMatrix(Camera& camera)
@@ -77,7 +89,7 @@ namespace scene
 
     void Billboard::SetTexture(HashID texHash)
     {
-        mMesh.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)] = texHash;
+        mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)] = texHash;
     }
 
     void Billboard::SetPosition(const XMFLOAT3& position)

@@ -1,15 +1,30 @@
 #pragma once
 #include "../../framework.h"
+#include "TextureData.h"
 
 namespace renderer
 {
-    // TODO: eVertexFormat 으로 바꾸는게 더 명확한 네임이 될 것 같다.
-    enum class eInputLayout : uint8_t
+    enum class eSamplerType : uint8_t;
+    enum class eRasterType : uint8_t;
+    enum class eShader : uint8_t;
+}
+
+namespace renderer
+{
+    enum class ePrimitiveTopology : uint8_t
+    {
+        Triangles,
+        TriangleStrip,
+        Lines,
+        TopologyCount
+    };
+
+    enum class eVertexFormat : uint8_t
     {
         PTN,    // pos, normal, tex
         PT,     // pos, tex
         P,      // pos
-        InputlayoutCount
+        FormatCount
     };
 
     struct VertexPTN // 4bytes align
@@ -31,9 +46,9 @@ namespace renderer
         XMFLOAT3 Position;
     };
 
-    inline constexpr int16_t GetVertexStrideSize(eInputLayout vertexAttrib)
+    inline constexpr int16_t GetVertexStrideSize(eVertexFormat vertexAttrib)
     {
-        constexpr int16_t VertexStrideMap[static_cast<int8_t>(eInputLayout::InputlayoutCount)] =
+        constexpr int16_t VertexStrideMap[static_cast<int8_t>(eVertexFormat::FormatCount)] =
         {
             sizeof(VertexPTN),
             sizeof(VertexPT),
@@ -41,24 +56,6 @@ namespace renderer
         };
         return VertexStrideMap[static_cast<int8_t>(vertexAttrib)];
     }
-
-    // 모델링 프로그램에서 미리 계산된 값으로 사용
-    struct Material // 16 bytes align
-    {
-        XMFLOAT3 Diffuse;
-        float    Reserve0;
-        XMFLOAT3 Ambient;
-        float    Reserve1;
-        XMFLOAT3 Specular;
-        float    Reserve2;
-        XMFLOAT3 Emissive;
-        float    Reserve3;
-        float    Opacity;       // 알파값으로 사용
-        float    Reflectivity;
-        float    Shininess;     // 스페큘러 거듭제곱 값
-        float    Reserve4;
-    };
-    typedef Material CbMaterial;
 
     struct BufferRange
     {
@@ -75,6 +72,7 @@ namespace renderer
     {
         XMFLOAT3    Float3;
         float       Reserve;
+        // TODO: improve - outlineProperty는 왜 float3로 했는지? -> CbFloat으로 분리하기
     } CbCameraPosition, CbOutlineProperty, CbColor;
 
     typedef struct CbTwoVec4
@@ -83,6 +81,7 @@ namespace renderer
         XMFLOAT4    Second;
     }CbLightProperty;
 
+    // TODO: cleanup - 관련 코드들 ShaderManager로 이동
     enum class eCbType : uint8_t
     {
         CbWorld,
@@ -93,11 +92,11 @@ namespace renderer
         CbLightProperty,
         CbMaterial,
         CbColor,
-        CbScreenSpaceMatrix,
+        CbOrthoMatrix,
         ConstantBufferCount
     };
 
-    enum class eRasterType
+    enum class eRasterType : uint8_t
     {
         Basic,
         Outline,
@@ -106,14 +105,14 @@ namespace renderer
         RasterCount,
     };
 
-    enum class eSamplerType
+    enum class eSamplerType : uint8_t
     {
         AnisotropicWrap,
         SamplerCount
     };
 
 
-    enum class eShader : uint32_t
+    enum class eShader : uint8_t
     {
         Outline,
         Skybox,
@@ -121,6 +120,7 @@ namespace renderer
         BasicWithShadow,
         RenderToTexture,
         Color,
+        DebugHUD,
         ShaderCount
     };
 
@@ -132,4 +132,32 @@ namespace renderer
         RenderTargetCount
     };
 
+    struct MaterialCbBinding
+    {
+        eCbType Type;
+        bool bBindPixelShader;
+        int8_t BindSlot;
+    };
+
+    struct RenderState
+    {
+        // MEMO: 셰이더
+        eShader ShaderType;
+        // MEMO: 정의된 머티리얼, 셰이더 파일로부터 정보를 얻어와야 하지만,
+        // 프로젝트가 외부 fbx를 읽기 때문에 별도 파일은 만들지 않고, 엔진에서 어느 정도 하드코드하는 형식으로 선택.
+        // 프로젝트가 고도화되었을 때 파일 형식으로 갈지는 그때 가서 고민하기로
+        // MEMO: 머티리얼을 생성할 때 셰이더 매니저로부터 얻어오도록
+        MaterialCbBinding CbBindingDesc;
+        int8_t TexBindingSlots[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
+        int8_t SamplerBindingSlot;
+        // MEMO: 렌더 상태
+        eRasterType RasterType;
+        eSamplerType SamplerType;
+        ePrimitiveTopology TopologyType;
+        HashID BlendHash;
+        // TODO: improve - 현재 옵션이 Skybox 전용으로만 존재하므로 확장이 필요함.
+        bool bUseDepthStencil;
+        bool bUseShadowMap;
+        bool bClearDepthStencilBuffer;
+    };
 }

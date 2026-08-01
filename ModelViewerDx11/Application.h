@@ -1,12 +1,18 @@
 #pragma once
 #include "framework.h"
-#include "Scene/Billboard.h"
-#include "UI/DebugPanel.h"
+#include "Renderer/Resources/RenderPacket.h"
+
+
+namespace ui
+{
+    class DebugPanel;
+}
 
 class Window;
 
 namespace scene
 {
+    class Billboard;
     class Floor;
     class Light;
     class Sky;
@@ -21,6 +27,7 @@ namespace renderer
     class BufferManager;
     class ResourceManager;
     class Renderer;
+    class ShaderManager;
 }
 
 class Application
@@ -41,9 +48,8 @@ private:
     // TODO: input update와 scene update 로직 분리하기
     void updateScene(double deltaTime);
 
-    void preprocess();
     void renderScene();
-    void renderUI();
+
 private:
 
     int16_t mWindowWidth;
@@ -52,6 +58,8 @@ private:
 
     Window* mWindow;
 
+    std::vector<renderer::RenderPacket> mCommandList;
+    renderer::RenderPacket mCommandCache;
     renderer::Renderer* mRenderer;
     renderer::ModelImporter* mImporter;
     renderer::Model* mCharacter;
@@ -63,6 +71,7 @@ private:
     renderer::BufferManager* mBufferManager;
     renderer::TextureManager* mTextureManager;
     renderer::ResourceManager* mResourceManager;
+    renderer::ShaderManager* mShaderManager;
     core::DirectInput* mDirectInput;
     ui::DebugPanel* mShadowDebugPanel;
 };
