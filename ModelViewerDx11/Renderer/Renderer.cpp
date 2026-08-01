@@ -1285,7 +1285,7 @@ namespace renderer
         return E_FAIL;
     }
 
-    void Renderer::UpdateCB(eCbType type, void* data) const
+    void Renderer::UpdateCB(eCbType type, const void* const data) const
     {
         mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)], 0U, nullptr, data, 0U, 0U);
     }

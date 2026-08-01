@@ -116,7 +116,7 @@ namespace renderer
         HRESULT QueryInterface(const IID& riid, void** ppvObject) override;
 
         //  D3D state
-        void UpdateCB(eCbType type, void* data) const;
+        void UpdateCB(eCbType type, const void* const data) const;
 
         void BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const;
         void BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const;
