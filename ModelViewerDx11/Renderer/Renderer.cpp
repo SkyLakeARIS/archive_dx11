@@ -873,7 +873,8 @@ namespace renderer
         }
         else
         {
-            ASSERT(false, "no blendState to bind. Hash(%u)", hash);
+            ID3D11BlendState* const unbind = nullptr;
+            mDeviceContext->OMSetBlendState(unbind, blendFactors, mask);
         }
     }
 
