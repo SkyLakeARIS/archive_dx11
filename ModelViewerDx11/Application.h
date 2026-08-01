@@ -21,6 +21,7 @@ namespace renderer
     class BufferManager;
     class ResourceManager;
     class Renderer;
+    class ShaderManager;
 }
 
 class Application
@@ -63,6 +64,7 @@ private:
     renderer::BufferManager* mBufferManager;
     renderer::TextureManager* mTextureManager;
     renderer::ResourceManager* mResourceManager;
+    renderer::ShaderManager* mShaderManager;
     core::DirectInput* mDirectInput;
     ui::DebugPanel* mShadowDebugPanel;
 };

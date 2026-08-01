@@ -8,6 +8,7 @@
 #include "Renderer/Resources/Model.h"
 #include "Renderer/Resources/ResourceManager.h"
 #include "Renderer/Resources/TextureManager.h"
+#include "Renderer/Shader/ShaderManager.h"
 #include "Scene/Camera.h"
 #include "Scene/Floor.h"
 #include "Scene/Light.h"
@@ -31,6 +32,7 @@ Application::Application()
     , mBufferManager(nullptr)
     , mTextureManager(nullptr)
     , mResourceManager(nullptr)
+    , mShaderManager(nullptr)
     , mDirectInput(nullptr)
     , mShadowDebugPanel(nullptr)
 {
@@ -56,6 +58,7 @@ Application::~Application()
     delete mBufferManager;
     delete mTextureManager;
     delete mResourceManager;
+    delete mShaderManager;
     delete mRenderer;
 #ifdef _DEBUG
     renderer::Renderer::CheckLiveObjects();
@@ -227,6 +230,7 @@ bool Application::initializeManagers()
 {
     ID3D11Device* device = mRenderer->GetDevice();
     ID3D11DeviceContext* deviceContext = mRenderer->GetDeviceContext();
+    mShaderManager = new renderer::ShaderManager(*device, *mRenderer);
     mBufferManager = new renderer::BufferManager(device, deviceContext, renderer::BufferManager::eIndexListFormat::UInt32);
     if (!mBufferManager->Initialize(renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize, renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize))
     {
