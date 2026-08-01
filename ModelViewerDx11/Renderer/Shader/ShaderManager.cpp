@@ -74,7 +74,6 @@ namespace renderer
         };
         static_assert(sizeof(MaterialCbTableEachShader) / sizeof(MaterialCbBinding) == static_cast<uint8_t>(eShader::ShaderCount), "셰이더 수와 Table 수가 맞지 않음.");
         outBindingDesc = MaterialCbTableEachShader[static_cast<uint8_t>(type)];
-        ASSERT(outBindingDesc.Type != eCbType::ConstantBufferCount, "머티리얼을 사용하지 않는 셰이더. 호출할 필요 없음.");
     }
 
     void ShaderManager::GetMaterialTextureBindSlots(eShader type, int8_t* const outBindingSlots)
