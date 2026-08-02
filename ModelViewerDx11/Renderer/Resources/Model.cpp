@@ -2,7 +2,6 @@
 #include "BufferManager.h"
 #include "../../Util/Macro.h"
 #include "../Resources/RenderPacket.h"
-#include "../Shader/ShaderManager.h"
 
 namespace renderer
 {

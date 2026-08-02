@@ -2,7 +2,6 @@
 #include "../Util/Macro.h"
 #include "Resources/BufferManager.h"
 #include "Resources/Material.h"
-#include "Resources/RenderPacket.h"
 #include "Resources/TextureManager.h"
 
 namespace renderer

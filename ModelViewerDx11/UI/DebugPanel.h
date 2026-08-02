@@ -5,7 +5,6 @@ namespace renderer
 {
     enum class eRenderTarget : uint8_t;
     struct RenderPacket;
-    class Renderer;
 }
 
 namespace ui

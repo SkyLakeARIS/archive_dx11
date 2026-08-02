@@ -10,7 +10,6 @@ namespace renderer
 {
     struct RenderPacket;
     class BufferManager;
-    class Renderer;
 
 
     class Model

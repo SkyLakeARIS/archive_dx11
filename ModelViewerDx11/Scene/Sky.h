@@ -5,7 +5,6 @@
 namespace renderer
 {
     struct RenderPacket;
-    class Renderer;
     class TextureManager;
 }
 
