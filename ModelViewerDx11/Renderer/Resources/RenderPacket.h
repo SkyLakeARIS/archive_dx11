@@ -179,4 +179,8 @@ namespace renderer
         HashID BlendHash = 0;
     };
 
+    inline bool RenderPacketCompareDecr(const renderer::RenderPacket& lhs, const renderer::RenderPacket& rhs)
+    {
+        return lhs.SortKey > rhs.SortKey;
+    }
 }

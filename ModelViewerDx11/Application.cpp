@@ -19,10 +19,6 @@
 #include "Util/Macro.h"
 
 
-bool RenderPacketCompareDecr(const renderer::RenderPacket& lhs, const renderer::RenderPacket& rhs)
-{
-    return lhs.SortKey > rhs.SortKey;
-}
 
 Application::Application()
     : mWindowWidth(1280)
@@ -381,7 +377,7 @@ void Application::updateScene(double deltaTime)
 
     mShadowDebugPanel->Draw(mCommandList);
 
-    std::sort(mCommandList.begin(), mCommandList.end(), RenderPacketCompareDecr);
+    std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }
 
 void Application::renderScene()
