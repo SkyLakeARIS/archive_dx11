@@ -464,10 +464,10 @@ void Application::renderScene()
                 continue;
             }
 
-            if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && command.RenderState.bUseShadowMap)
+            if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && static_cast<bool>(command.RenderState.UseShadowMapUsage))
             {
                 mRenderer->BindShadowTextureToPs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
-                mCommandCache.bUseShadowMap = command.RenderState.bUseShadowMap;
+                mCommandCache.ShadowMapUsage = command.RenderState.UseShadowMapUsage;
             }
             else if (command.Material.TextureHashes[texture])
             {
@@ -478,10 +478,10 @@ void Application::renderScene()
 
         // TODO: 렌더큐 끝나면 이것도 좀 더 명확하게 개선해 봐야 할 항목.
         // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
-        if(mCommandCache.bUseDepthStencil != command.RenderState.bUseDepthStencil)
+        if(mCommandCache.DepthStencilUsage != command.RenderState.DepthStencilUsage)
         {
-            mRenderer->BindDepthStencilState(command.RenderState.bUseDepthStencil);
-            mCommandCache.bUseDepthStencil = command.RenderState.bUseDepthStencil;
+            mRenderer->BindDepthStencilState(static_cast<bool>(command.RenderState.DepthStencilUsage));
+            mCommandCache.DepthStencilUsage = command.RenderState.DepthStencilUsage;
         }
 
         if (mCommandCache.SamplerType != command.RenderState.SamplerType || mCommandCache.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
@@ -527,7 +527,7 @@ void Application::renderScene()
 
         // TODO: 자주 호출될 것 같은데, 확인해 보고 최대한 Bind-UnBind를 덜할 수 있는 방법을 다시 고민해보자.
         // MEMO: Shadow RenderTarget으로 써야 하므로 다시 Texture Slot에서 제거.
-        if (command.RenderState.bUseShadowMap)
+        if (static_cast<bool>(command.RenderState.UseShadowMapUsage))
         {
             mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
         }

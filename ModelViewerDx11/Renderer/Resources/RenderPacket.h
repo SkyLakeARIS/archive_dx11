@@ -11,6 +11,7 @@ namespace renderer
     struct RenderPacket
     {
         // MEMO: 렌더패킷 생성 시 실수로 놓치는 필드가 없도록 하게끔 강제하기 위한 수단으로 팩토리 함수 사용
+        // MEMO: DepthStencil, ShadowMap은 쓸지 안쓸지만 결정하므로 생성할 때에는 기존처럼 bool 타입 유지 (열거형은 상태 캐시용이므로)
         static RenderPacket MakeCommand(
             const eVertexFormat vertexFormat,
             const int16_t stride,
@@ -49,8 +50,8 @@ namespace renderer
             command.RenderState.SamplerType = sampler;
             command.RenderState.BlendHash = blendHash;
             command.RenderState.TopologyType = topology;
-            command.RenderState.bUseShadowMap = bUseShadowMap;
-            command.RenderState.bUseDepthStencil = bUseDepthStencil;
+            command.RenderState.UseShadowMapUsage = static_cast<eShadowMapUsage>(bUseShadowMap);
+            command.RenderState.DepthStencilUsage = static_cast<eDepthStencilUsage>(bUseDepthStencil);
             command.RenderState.bClearDepthStencilBuffer = bClearDepthStencilBuffer;
 
             // MEMO: 잘못된 조합 체크. MaterialCb, Texture는 -1이면 사용 안함으로 간주
@@ -124,16 +125,16 @@ namespace renderer
             // BlendHash
             // TODO: 텍스처 해시도 동일한 텍스처를 쓰는 드로우콜을 뭉치면 좋을 것 같지만, 그렇게하면 해시가 아니라 다른 ID로 써야할 것 같다.
 
-            // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다.
+            // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다. -> 후순위. 64비트로 바꿔야 할 수 있으므로 텍스처/머티리얼 식별자를 먼저 작업하고 대응한다.
             uint32_t sortKey = 0;
             sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
             sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
             sortKey |= static_cast<uint8_t>(command.BufferUsage) << 29;
-            sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 28;
+            sortKey |= static_cast<uint8_t>(command.RenderState.DepthStencilUsage) << 28;
             sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
             sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);
-            sortKey |= static_cast<uint8_t>(command.RenderState.bUseShadowMap) << 25;
+            sortKey |= static_cast<uint8_t>(command.RenderState.UseShadowMapUsage) << 25;
             sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 21);
             sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 18);
             sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 14);
@@ -162,7 +163,6 @@ namespace renderer
 
     // MEMO: RenderPacket을 사용하지 않고, 캐시가 필요한 상태값들만 명확하게 모아서 처리한다.
     // MEMO: 구조체에서 멤버를 따로 분리하여 유효하지 않은 초기화를 통해 캐시 오염을 막기 위함.
-    // MEMO: 캐시되는 상태들은 bool -> 열거형 전환이 필요함.
     struct RenderPacketCache
     {
         int16_t Stride = 0;
@@ -173,8 +173,8 @@ namespace renderer
         eRasterType RasterType = renderer::eRasterType::RasterCount;
         eSamplerType SamplerType = renderer::eSamplerType::SamplerCount;
         ePrimitiveTopology TopologyType = renderer::ePrimitiveTopology::TopologyCount;
-        bool bUseDepthStencil = false;
-        bool bUseShadowMap = false;
+        eDepthStencilUsage DepthStencilUsage = eDepthStencilUsage::UsageCount;
+        eShadowMapUsage ShadowMapUsage = eShadowMapUsage::UsageCount;
         int8_t SamplerBindingSlot = -1;
         HashID BlendHash = 0;
     };

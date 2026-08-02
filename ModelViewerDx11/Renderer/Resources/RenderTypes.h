@@ -139,6 +139,21 @@ namespace renderer
         RenderTargetCount
     };
 
+    // MEMO: 우선은 캐시 변수가 unbind 상태로 초기화 될 수 있도록 열거형으로 변경
+    enum class eDepthStencilUsage
+    {
+        Off,
+        On,
+        UsageCount
+    };
+
+    enum class eShadowMapUsage
+    {
+        Off,
+        On,
+        UsageCount
+    };
+
     struct MaterialCbBinding
     {
         eCbType Type;
@@ -163,8 +178,8 @@ namespace renderer
         ePrimitiveTopology TopologyType;
         HashID BlendHash;
         // TODO: improve - 현재 옵션이 Skybox 전용으로만 존재하므로 확장이 필요함.
-        bool bUseDepthStencil;
-        bool bUseShadowMap;
+        eDepthStencilUsage DepthStencilUsage;
+        eShadowMapUsage UseShadowMapUsage;
         bool bClearDepthStencilBuffer;
     };
 }
