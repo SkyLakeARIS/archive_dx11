@@ -59,7 +59,7 @@ private:
     Window* mWindow;
 
     std::vector<renderer::RenderPacket> mCommandList;
-    renderer::RenderPacket mCommandCache;
+    renderer::RenderPacketCache mCommandCache;
     renderer::Renderer* mRenderer;
     renderer::ModelImporter* mImporter;
     renderer::Model* mCharacter;

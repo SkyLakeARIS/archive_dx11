@@ -38,7 +38,7 @@ namespace renderer
         RenderPacket command = {};
         command.VertexFormat = mMesh.VertexFormat;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.bUseDynamicBuffer = false;
+        command.BufferUsage = eBufferUsage::Static;
         command.bTransparency = false;
         command.RenderTargetType = eRenderTarget::Default;
         command.MatWorld = mMatWorld;
@@ -107,7 +107,7 @@ namespace renderer
         RenderPacket command = {};
         command.VertexFormat = eVertexFormat::P;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.bUseDynamicBuffer = false;
+        command.BufferUsage = eBufferUsage::Static;
         command.RenderTargetType = eRenderTarget::Shadow;
         command.RenderState.ShaderType = eShader::Shadow;
         renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);

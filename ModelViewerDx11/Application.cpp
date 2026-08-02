@@ -235,15 +235,6 @@ bool Application::initializeScene()
 
     mLightIcon->SetTexture(lightIconTexID);
 
-    // MEMO: 유효하지 않은 상태로 세팅
-    mCommandCache = {};
-    mCommandCache.VertexFormat = renderer::eVertexFormat::FormatCount;
-    mCommandCache.Stride = 0;
-    mCommandCache.RenderState.ShaderType = renderer::eShader::ShaderCount;
-    mCommandCache.RenderState.TopologyType = renderer::ePrimitiveTopology::TopologyCount;
-    mCommandCache.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
-    mCommandCache.RenderState.RasterType = renderer::eRasterType::RasterCount;
-    mCommandCache.RenderState.BlendHash = 0;
     return true;
 }
 
@@ -422,7 +413,7 @@ void Application::renderScene()
             mRenderer->ClearScreenAndDepth(mCommandCache.RenderTargetType);
         }
 
-        bool bNeedBindBuffer = (mCommandCache.bUseDynamicBuffer != command.bUseDynamicBuffer) || (mCommandCache.Stride != command.Stride);
+        bool bNeedBindBuffer = (mCommandCache.BufferUsage != command.BufferUsage) || (mCommandCache.Stride != command.Stride);
 
         // MEMO: Buffer는 Stride 별로 Chunk가 나뉘어져 있기 때문에 Stride가 달라도 Bind를 다시 해줘야 함.
         if (mCommandCache.VertexFormat != command.VertexFormat)
@@ -435,7 +426,7 @@ void Application::renderScene()
         if(bNeedBindBuffer)
         {
             ASSERT(command.Stride > 0, "유효하지 않은 버퍼이거나 올바르지 않은 command. stride(%d)", command.Stride);
-            if (command.bUseDynamicBuffer)
+            if (command.BufferUsage == renderer::eBufferUsage::Dynamic)
             {
                 mRenderer->BindVertexBufferDynamic(command.Stride);
                 mRenderer->BindIndexBufferDynamic();
@@ -445,20 +436,20 @@ void Application::renderScene()
                 mRenderer->BindVertexBuffer(command.Stride);
                 mRenderer->BindIndexBuffer();
             }
-            mCommandCache.bUseDynamicBuffer = command.bUseDynamicBuffer;
+            mCommandCache.BufferUsage = command.BufferUsage;
             mCommandCache.Stride = command.Stride;
         }
 
-        if (mCommandCache.RenderState.TopologyType != command.RenderState.TopologyType)
+        if (mCommandCache.TopologyType != command.RenderState.TopologyType)
         {
             mRenderer->BindPrimitiveTopologyByType(command.RenderState.TopologyType);
-            mCommandCache.RenderState.TopologyType = command.RenderState.TopologyType;
+            mCommandCache.TopologyType = command.RenderState.TopologyType;
         }
 
-        if (mCommandCache.RenderState.ShaderType != command.RenderState.ShaderType)
+        if (mCommandCache.ShaderType != command.RenderState.ShaderType)
         {
             mRenderer->BindShaderTo(command.RenderState.ShaderType);
-            mCommandCache.RenderState.ShaderType = command.RenderState.ShaderType;
+            mCommandCache.ShaderType = command.RenderState.ShaderType;
 
             // MEMO: Renderer 예약 Slot 바인딩
             mRenderer->BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
@@ -485,7 +476,7 @@ void Application::renderScene()
             if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && command.RenderState.bUseShadowMap)
             {
                 mRenderer->BindShadowTextureToPs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
-                mCommandCache.RenderState.bUseShadowMap = command.RenderState.bUseShadowMap;
+                mCommandCache.bUseShadowMap = command.RenderState.bUseShadowMap;
             }
             else if (command.Material.TextureHashes[texture])
             {
@@ -496,34 +487,33 @@ void Application::renderScene()
 
         // TODO: 렌더큐 끝나면 이것도 좀 더 명확하게 개선해 봐야 할 항목.
         // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
-        if(mCommandCache.RenderState.bUseDepthStencil != command.RenderState.bUseDepthStencil)
+        if(mCommandCache.bUseDepthStencil != command.RenderState.bUseDepthStencil)
         {
             mRenderer->BindDepthStencilState(command.RenderState.bUseDepthStencil);
-            mCommandCache.RenderState.bUseDepthStencil = command.RenderState.bUseDepthStencil;
+            mCommandCache.bUseDepthStencil = command.RenderState.bUseDepthStencil;
         }
 
-        if (mCommandCache.RenderState.SamplerType != command.RenderState.SamplerType || mCommandCache.RenderState.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
+        if (mCommandCache.SamplerType != command.RenderState.SamplerType || mCommandCache.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
         {
-            // TODO: -1 일 때는 unbind나 기본값으로 하는 게 좋아보이는데, 이전 값을 그대로 쓰는게 더 나을지 조사가 필요함
             if(command.RenderState.SamplerBindingSlot >= 0)
             {
                 mRenderer->BindSamplerToPsByType(command.RenderState.SamplerBindingSlot, command.RenderState.SamplerType);
-                mCommandCache.RenderState.SamplerType = command.RenderState.SamplerType;
-                mCommandCache.RenderState.SamplerBindingSlot = command.RenderState.SamplerBindingSlot;
+                mCommandCache.SamplerType = command.RenderState.SamplerType;
+                mCommandCache.SamplerBindingSlot = command.RenderState.SamplerBindingSlot;
             }
         }
 
-        if (mCommandCache.RenderState.RasterType != command.RenderState.RasterType)
+        if (mCommandCache.RasterType != command.RenderState.RasterType)
         {
             mRenderer->BindRasterStateByType(command.RenderState.RasterType);
-            mCommandCache.RenderState.RasterType = command.RenderState.RasterType;
+            mCommandCache.RasterType = command.RenderState.RasterType;
         }
 
-        if (mCommandCache.RenderState.BlendHash != command.RenderState.BlendHash)
+        if (mCommandCache.BlendHash != command.RenderState.BlendHash)
         {
             // MEMO: blendFactor는 아직 사용하지 않음.
             mRenderer->BindBlendStateByHash(command.RenderState.BlendHash, nullptr, 0xffffffff);
-            mCommandCache.RenderState.BlendHash = command.RenderState.BlendHash;
+            mCommandCache.BlendHash = command.RenderState.BlendHash;
         }
 
         // MEMO: Material 식별자가 없는 상태이므로 우선은 매번 업로드

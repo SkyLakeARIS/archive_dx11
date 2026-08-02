@@ -41,7 +41,7 @@ namespace scene
         renderer::RenderPacket command = {};
         command.VertexFormat = mMeshDebug.VertexFormat;
         command.Stride = GetVertexStrideSize(mMeshDebug.VertexFormat);
-        command.bUseDynamicBuffer = true;
+        command.BufferUsage = renderer::eBufferUsage::Dynamic;
         command.bTransparency = false;
         command.RenderTargetType = renderer::eRenderTarget::Default;
         command.MatWorld = XMMatrixIdentity();
@@ -50,7 +50,6 @@ namespace scene
         renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
         renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
         command.RenderState.RasterType = renderer::eRasterType::Basic;
-        // TODO: improve 사용하지 않는 옵션에 대해서 각 열거형의 0번을 UnBind로 추가해 주는 게 좋아보임. - CommandCache변수가 오염되기 쉬울 것 같음.
         command.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
         command.RenderState.BlendHash = 0;
         command.RenderState.TopologyType = renderer::ePrimitiveTopology::Lines;

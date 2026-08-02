@@ -1200,7 +1200,7 @@ namespace renderer
         sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
         // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
         sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
-        sortKey |= static_cast<uint8_t>(command.bUseDynamicBuffer) << 29;
+        sortKey |= static_cast<uint8_t>(command.BufferUsage) << 29;
         sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 28;
         sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
         sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);

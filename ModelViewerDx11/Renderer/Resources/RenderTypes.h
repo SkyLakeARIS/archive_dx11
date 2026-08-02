@@ -11,6 +11,13 @@ namespace renderer
 
 namespace renderer
 {
+    enum class eBufferUsage : uint8_t
+    {
+        Static,
+        Dynamic,
+        UsageCount
+    };
+
     enum class ePrimitiveTopology : uint8_t
     {
         Triangles,

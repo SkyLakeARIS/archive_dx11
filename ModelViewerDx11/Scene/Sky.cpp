@@ -36,7 +36,7 @@ namespace scene
         renderer::RenderPacket command = {};
         command.VertexFormat = mMesh.VertexFormat;
         command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.bUseDynamicBuffer = false;
+        command.BufferUsage = renderer::eBufferUsage::Static;
         command.bTransparency = false;
         command.RenderTargetType = renderer::eRenderTarget::Default;
         command.MatWorld = mWorld;
