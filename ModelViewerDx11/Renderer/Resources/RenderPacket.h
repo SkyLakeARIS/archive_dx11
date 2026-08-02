@@ -68,6 +68,7 @@ namespace renderer
             // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
             // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
             // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
+            // MEMO: 투명/불투명 여부도 중간 비트를 사용한다. 중간에서 가장 최상위로 둔다.
             // MEMO: 셰이더는, 머티리얼보다 높은 쪽을 사용한다.
             // 현재는 머티리얼당 셰이더 하나와 대응되어 의미 없지만 같은 셰이더를 공유하는 머티리얼이 있다면 대응이 될 수 있는 구조로 판단됨.
             // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
@@ -89,9 +90,12 @@ namespace renderer
 
             // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다. -> 후순위. 64비트로 바꿔야 할 수 있으므로 텍스처/머티리얼 식별자를 먼저 작업하고 대응한다.
             uint32_t sortKey = 0;
+            // MEMO: 상위 비트 영역
             sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
+            // MEMO: 중간 비트 영역
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
             sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
+            // MEMO: 하위 비트 영역
             sortKey |= static_cast<uint8_t>(command.BufferUsage) << 29;
             sortKey |= static_cast<uint8_t>(command.RenderState.DepthStencilUsage) << 28;
             sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
