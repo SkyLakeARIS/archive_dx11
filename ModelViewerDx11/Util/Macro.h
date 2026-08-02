@@ -13,7 +13,7 @@ namespace util
     #define ASSERT(expr, format, ...)                                                   \
     if(!(expr))                                                                         \
     {                                                                                   \
-        _CrtDbgReport(_CRT_ASSERT, __FILE__, __LINE__, nullptr, format, ##__VA_ARGS__); \
+        _CrtDbgReportW(_CRT_ASSERT, _CRT_WIDE(__FILE__), __LINE__, nullptr, _CRT_WIDE(format), ##__VA_ARGS__); \
         __debugbreak();                                                                 \
     }                                                                                   \
 

@@ -646,7 +646,7 @@ namespace renderer
         if(FAILED(result))
         {
             ASSERT(false, "failed to create RenderTargetView: RenderTargetView 생성 실패");
-            ASSERT(false, debugTag);
+            ASSERT(false, "%hs", debugTag);
         }
 
         return result;
@@ -663,7 +663,7 @@ namespace renderer
         if (FAILED(result))
         {
             ASSERT(false, "failed to create DepthStencilView: DepthStencilView 생성 실패");
-            ASSERT(false, debugTag);
+            ASSERT(false, "%hs", debugTag);
         }
 
         return result;

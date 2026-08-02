@@ -67,7 +67,7 @@ namespace renderer
             int8_t str[util::MAX_STRING_LENGTH] = {};
             sprintf_s(reinterpret_cast<char*>(str), util::MAX_STRING_LENGTH, "\n\n\n\nERROR : %s\n\n\n\n", mImporter->GetStatus().GetErrorString());
             OutputDebugStringA(reinterpret_cast<LPCSTR>(str));
-            ASSERT(false, "fbxImporter file initialization failed. fileName(%s)", fileName);
+            ASSERT(false, "fbxImporter file initialization failed. fileName(%hs)", fileName);
             return;
         }
 
