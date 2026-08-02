@@ -80,44 +80,6 @@ namespace renderer
                 1,
             };
 
-            // TODO: RenderTarget 같은 경우는 순서가 중요하지만, 셰이더나, 머티리얼 등 몇몇개는 순서가 별로 중요하지 않은 것 같다. 좀 더 조사해보고 좀 더 개선하기.
-            constexpr uint8_t VertexFormatPriority[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
-            {
-                2,
-                1,
-                0
-            };
-
-            constexpr uint8_t ShaderPriority[static_cast<uint8_t>(eShader::ShaderCount)] =
-            {
-                1, // Outline,
-                2, // Skybox,
-                3, // Shadow,
-                4, // BasicWithShadow,
-                5, // RenderToTexture,
-                6, // Color,
-                0, // DebugHUD,
-            };
-
-            constexpr uint8_t RasterStatePriority[static_cast<uint8_t>(eRasterType::RasterCount)] =
-            {
-                1, // Basic,
-                2, // Outline,
-                3, // Skybox,
-                4, // CullBack,
-            };
-
-            constexpr uint8_t SamplerStatePriority[static_cast<uint8_t>(eSamplerType::SamplerCount)] =
-            {
-                0 // AnisotropicWrap,
-            };
-
-            constexpr uint8_t PrimitiveTopologyPriority[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)] =
-            {
-                0, // Triangles,
-                1, // TriangleStrip,
-                2, // Lines
-            };
 
             // TODO: 머티리얼은 같은지 다른지 구분할 식별자가 필요하다. 우선은 구분하지 않아도 되므로 무시하되, 렌더큐 구조 완료 후 바로 작업이 필요함.
             // MaterialParameter
@@ -133,12 +95,12 @@ namespace renderer
             sortKey |= static_cast<uint8_t>(command.BufferUsage) << 29;
             sortKey |= static_cast<uint8_t>(command.RenderState.DepthStencilUsage) << 28;
             sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
-            sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);
+            sortKey |= static_cast<uint8_t>(command.RenderState.ShaderType) << 26;
             sortKey |= static_cast<uint8_t>(command.RenderState.UseShadowMapUsage) << 25;
-            sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 21);
-            sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 18);
-            sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 14);
-            sortKey |= (PrimitiveTopologyPriority[static_cast<uint8_t>(command.RenderState.TopologyType)] << 10);
+            sortKey |= static_cast<uint8_t>(command.RenderState.ShaderType) << 21;
+            sortKey |= static_cast<uint8_t>(command.VertexFormat) << 18;
+            sortKey |= static_cast<uint8_t>(command.RenderState.RasterType) << 14;
+            sortKey |= static_cast<uint8_t>(command.RenderState.TopologyType) << 10;
 
             command.SortKey = sortKey;
 
