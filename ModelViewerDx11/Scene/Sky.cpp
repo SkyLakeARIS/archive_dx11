@@ -33,30 +33,28 @@ namespace scene
 
     void Sky::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer::RenderPacket command = {};
-        command.VertexFormat = mMesh.VertexFormat;
-        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.BufferUsage = renderer::eBufferUsage::Static;
-        command.bTransparency = false;
-        command.RenderTargetType = renderer::eRenderTarget::Default;
-        command.MatWorld = mWorld;
-        command.RenderState.ShaderType = renderer::eShader::Skybox;
-        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-        command.RenderState.RasterType = renderer::eRasterType::Skybox;
-        command.RenderState.SamplerType = renderer::eSamplerType::AnisotropicWrap;
-        command.RenderState.BlendHash = 0;
-        command.RenderState.TopologyType = renderer::ePrimitiveTopology::Triangles;
-        command.RenderState.bUseDepthStencil = true;
-        command.RenderState.bUseShadowMap = false;
-        command.RenderState.bClearDepthStencilBuffer = false;
-
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            command.VertexRange = subMesh.VertexRange;
-            command.IndexRange = subMesh.IndexRange;
-            command.Material = subMesh.Material;
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                mWorld,
+                renderer::eShader::Skybox,
+                renderer::eRasterType::Skybox,
+                renderer::eSamplerType::AnisotropicWrap,
+                0,
+                renderer::ePrimitiveTopology::Triangles,
+                false,
+                true,
+                false
+            );
+
             commandList.push_back(command);
         }
     }

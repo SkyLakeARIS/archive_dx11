@@ -38,30 +38,28 @@ namespace scene
 
     void Light::DrawDebug(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer::RenderPacket command = {};
-        command.VertexFormat = mMeshDebug.VertexFormat;
-        command.Stride = GetVertexStrideSize(mMeshDebug.VertexFormat);
-        command.BufferUsage = renderer::eBufferUsage::Dynamic;
-        command.bTransparency = false;
-        command.RenderTargetType = renderer::eRenderTarget::Default;
-        command.MatWorld = XMMatrixIdentity();
-        command.RenderState.ShaderType = renderer::eShader::Color;
-        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-        command.RenderState.RasterType = renderer::eRasterType::Basic;
-        command.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
-        command.RenderState.BlendHash = 0;
-        command.RenderState.TopologyType = renderer::ePrimitiveTopology::Lines;
-        command.RenderState.bUseDepthStencil = false;
-        command.RenderState.bUseShadowMap = false;
-        command.RenderState.bClearDepthStencilBuffer = false;
-
         for (const auto& subMesh : mMeshDebug.SubMeshes)
         {
-            command.VertexRange = subMesh.VertexRange;
-            command.IndexRange = subMesh.IndexRange;
-            command.Material = subMesh.Material;
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                mMeshDebug.VertexFormat,
+                renderer::GetVertexStrideSize(mMeshDebug.VertexFormat),
+                renderer::eBufferUsage::Dynamic,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                XMMatrixIdentity(),
+                renderer::eShader::Color,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::SamplerCount,
+                0,
+                renderer::ePrimitiveTopology::Lines,
+                false,
+                false,
+                false
+            );
+
             commandList.push_back(command);
         }
     }

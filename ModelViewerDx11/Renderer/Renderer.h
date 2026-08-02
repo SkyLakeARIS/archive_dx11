@@ -108,7 +108,6 @@ namespace renderer
 
         // Debug
         // TODO: static 메서드들은 따로 섹션 분리하기.
-        static void MakeSortKey(RenderPacket& command);
         static void    CheckLiveObjects();
 
         // COM

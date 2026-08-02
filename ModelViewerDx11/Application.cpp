@@ -381,11 +381,6 @@ void Application::updateScene(double deltaTime)
 
     mShadowDebugPanel->Draw(mCommandList);
 
-    for(auto& command : mCommandList)
-    {
-        renderer::Renderer::MakeSortKey(command);
-    }
-
     std::sort(mCommandList.begin(), mCommandList.end(), RenderPacketCompareDecr);
 }
 

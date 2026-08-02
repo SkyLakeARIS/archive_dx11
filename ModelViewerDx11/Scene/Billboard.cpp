@@ -45,32 +45,30 @@ namespace scene
 
     void Billboard::Draw(std::vector<renderer::RenderPacket>& commandList)
     {
-        renderer::RenderPacket command = {};
-        command.VertexFormat = mMesh.VertexFormat;
-        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.BufferUsage = renderer::eBufferUsage::Static;
-        command.bTransparency = true;
-        command.RenderTargetType= renderer::eRenderTarget::Default;
-        command.RenderState.ShaderType = renderer::eShader::RenderToTexture;
-        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-        command.RenderState.RasterType = renderer::eRasterType::Basic;
-        command.RenderState.SamplerType = renderer::eSamplerType::AnisotropicWrap;
-        command.RenderState.BlendHash = mBlendHash;
-        command.RenderState.TopologyType = renderer::ePrimitiveTopology::TriangleStrip;
-        command.RenderState.bUseShadowMap = false;
-        command.RenderState.bUseDepthStencil = false;
-        command.RenderState.bClearDepthStencilBuffer = false;
         const XMMATRIX matTranslate = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
         const XMMATRIX matWorld = mMatWorld * matTranslate;
-        command.MatWorld = XMMatrixTranspose(matWorld);
 
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            command.VertexRange = subMesh.VertexRange;
-            command.IndexRange = subMesh.IndexRange;
-            command.Material = subMesh.Material;
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                true,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                XMMatrixTranspose(matWorld),
+                renderer::eShader::RenderToTexture,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::AnisotropicWrap,
+                mBlendHash,
+                renderer::ePrimitiveTopology::TriangleStrip,
+                false,
+                false,
+                false
+            );
             commandList.push_back(command);
         }
     }
