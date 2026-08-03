@@ -34,6 +34,7 @@ namespace renderer
         XMFLOAT3 OutlineWidth;
         // MEMO: 텍스처
         HashID TextureHashes[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
+        int16_t TextureSerials[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
     };
 
 }
