@@ -26,7 +26,7 @@ namespace scene
 
 
         const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/skybox.dds");
-        texManager->AddDTextureDDS(filePath, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
+        texManager->AddTextureDDS(filePath, mMesh.SubMeshes.front().Material.TextureHashes[static_cast<int8_t>(renderer::eTextureType::Diffuse)]);
         return S_OK;
     }
 

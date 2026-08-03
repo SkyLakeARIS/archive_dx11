@@ -79,7 +79,7 @@ namespace renderer
         }
     }
 
-    void TextureManager::AddDTextureDDS(const int8_t* const filePath, HashID& outTexHash)
+    void TextureManager::AddTextureDDS(const int8_t* const filePath, HashID& outTexHash)
     {
         outTexHash = 0;
 
