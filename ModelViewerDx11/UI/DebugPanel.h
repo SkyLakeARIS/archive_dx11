@@ -3,7 +3,6 @@
 
 namespace renderer
 {
-    enum class eRenderTarget : uint8_t;
     struct RenderPacket;
 }
 
@@ -17,9 +16,8 @@ namespace ui
 
         void Draw(std::vector<renderer::RenderPacket>& commandList);
 
-        void SetDebugType(renderer::eRenderTarget type);
+        void SetDebugType(HashID texHash, int16_t serialID);
     private:
         renderer::Mesh mMesh;
-        renderer::eRenderTarget mType;
     };
 }

@@ -219,7 +219,8 @@ bool Application::initializeScene()
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
 
     mShadowDebugPanel = new ui::DebugPanel(0, 0, 200, 200);
-    mShadowDebugPanel->SetDebugType(renderer::eRenderTarget::Shadow);
+    const int16_t shadowTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sShadowTexHash);
+    mShadowDebugPanel->SetDebugType(renderer::TextureManager::sShadowTexHash, shadowTexSerial);
 
     mLightIcon = new scene::Billboard();
     mLightIcon->Initialize(*mRenderer);
