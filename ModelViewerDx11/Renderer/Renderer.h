@@ -96,7 +96,6 @@ namespace renderer
         HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
-        HRESULT CreateTextureResource(const WCHAR* fileName, WIC_FLAGS flag, D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView) const;
 
         // Renderer 
         void ClearScreenAndDepth(eRenderTarget type) const;
@@ -155,6 +154,8 @@ namespace renderer
         BufferManager* const GetBufferManager() const;
 
     private:
+        // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
+        void registerShadowTexture();
 
         HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
@@ -163,9 +164,6 @@ namespace renderer
         HRESULT createPresetConstantBuffers();
         HRESULT setupShaders();
 
-    private:
-        // TODO texture resource manager 생기면 이동 시키기.
-        ID3D11ShaderResourceView*   mDefaultTexture;
     private:
 
 
@@ -194,12 +192,12 @@ namespace renderer
         RtvDsMap mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
 
         // shadow
-        ID3D11Texture2D*            mTexShadow;
-        ID3D11Texture2D*            mTexColor;
-        ID3D11ShaderResourceView*     mShadowSrv;
-        ID3D11ShaderResourceView**     mCascadeShadowSrvList;
-        D3D11_VIEWPORT mViewportFull;
-        D3D11_VIEWPORT mViewportTex;
+        ID3D11Texture2D*           mTexShadow;
+        ID3D11Texture2D*           mTexColor;
+        ID3D11ShaderResourceView*  mShadowSrv;
+        ID3D11ShaderResourceView** mCascadeShadowSrvList;
+        D3D11_VIEWPORT             mViewportFull;
+        D3D11_VIEWPORT             mViewportTex;
 
         // raster state
         ID3D11RasterizerState*      mRasterStates[static_cast<uint32>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull

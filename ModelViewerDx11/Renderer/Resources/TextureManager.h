@@ -12,16 +12,30 @@ namespace renderer
         TextureManager(ID3D11Device* device);
         ~TextureManager();
 
+        bool InitDefaultTexture();
+
+        // TODO: 중복 로직 깔끔하게 처리하는 것이 필요
         void AddTexture(const int8_t* const filePath, HashID& outTexHash);
         void AddTextureDDS(const int8_t* const filePath, HashID& outTexHash);
+        // MEMO: 사실상 렌더러를 위한 함수
+        void AddTextureByHash(HashID hash, ID3D11ShaderResourceView* const srv);
 
         void RemoveTexture(HashID hash);
 
         ID3D11ShaderResourceView* GetTextureByHash(HashID hash);
         // MEMO: 나중에 생성할 때 같이 반환시켜 준다.
         int16_t GetTextureSerial(HashID hash);
+        void GetDefaultTexture(HashID& outHash, int16_t& outSerialID);
     private:
         int16_t getSerialID();
+
+        HRESULT createTextureResource(const WCHAR* fileName, WIC_FLAGS flag, D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView) const;
+    public:
+        // MEMO: Renderer가 예약한 텍스처
+        static HashID sShadowTexHash;
+        static int16_t sShadowTexSerialID;
+    private:
+        static HashID sDefaultTexHash;
     private:
         ID3D11Device* mDevice;
         std::unordered_map<HashID, TextureData> mTextures;

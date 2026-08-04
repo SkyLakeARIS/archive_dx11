@@ -252,6 +252,8 @@ bool Application::initializeManagers()
     }
 
     mTextureManager = new renderer::TextureManager(device);
+    mTextureManager->InitDefaultTexture();
+
     mResourceManager = new renderer::ResourceManager(device, mTextureManager, mImporter, mBufferManager);
 
     mRenderer->SetManagers(mBufferManager, mTextureManager);

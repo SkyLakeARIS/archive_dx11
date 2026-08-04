@@ -48,12 +48,14 @@ namespace renderer
         return mBufferManager;
     }
 
-
-
+    void Renderer::registerShadowTexture()
+    {
+        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);
+        TextureManager::sShadowTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sShadowTexHash);
+    }
 
     Renderer::Renderer()
-        : mDefaultTexture(nullptr)
-        , mRefCount(1)
+        : mRefCount(1)
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
         , mShaderMapTable{}
@@ -246,6 +248,8 @@ namespace renderer
         ASSERT(textureManager, "textureManager is nullptr");
         mBufferManager = bufferManager;
         mTextureManager = textureManager;
+
+        registerShadowTexture();
     }
 
     HRESULT Renderer::CreateDeviceAndSetup(
@@ -427,21 +431,6 @@ namespace renderer
 
         // set default resources
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc = {};
-        texDefaultDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        texDefaultDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        texDefaultDesc.Texture2D.MipLevels = 1;
-        texDefaultDesc.Texture2D.MostDetailedMip = 0;
-
-        // TODO: HRESULT를 에러 메세지로 변환하여 출력해주는 로그 클래스도 만드는 게 좋을 것 같다.(그래야 result를 받는 의미가 있을 듯)
-        result = CreateTextureResource(L"AssetData/textures/default.png", WIC_FLAGS_NONE, texDefaultDesc, &mDefaultTexture);
-        if (FAILED(result))
-        {
-            ASSERT(false, "FAIL : CreateTextureResource - default texture");
-            return false;
-        }
-        SET_PRIVATE_DATA(mDefaultTexture, "DefaultTexture");
-
         result = CreateShadowRenderTarget();
         if (FAILED(result))
         {
@@ -590,49 +579,6 @@ namespace renderer
             ASSERT(false, "hash collision detected or double insertion. Hash(%u)", it->first);
         }
         return S_OK;
-    }
-
-    HRESULT Renderer::CreateTextureResource(
-        const WCHAR* fileName,
-        WIC_FLAGS flag,
-        D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
-        ID3D11ShaderResourceView** outShaderResourceView) const
-    {
-        ScratchImage image;
-        ID3D11Texture2D* textureResource = nullptr;
-        
-        HRESULT result = LoadFromWICFile(fileName, flag, nullptr, image);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to load imamge file : 이미지 로드 실패");
-            goto FAILED;
-        }
-
-        result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)(&textureResource));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create TextureResource : gTextureResource 생성 실패");
-            goto FAILED;
-        }
-        D3D11_TEXTURE2D_DESC desc;
-        textureResource->GetDesc(&desc);
-        srvDesc.Format = desc.Format;
-        srvDesc.Texture2D.MipLevels = desc.MipLevels;
-        result = mDevice->CreateShaderResourceView((ID3D11Resource*)textureResource, &srvDesc, &(*outShaderResourceView));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create outShaderResourceView : outShaderResourceView 생성 실패");
-            goto FAILED;
-        }
-
-        result = S_OK;
-
-    FAILED:
-        image.Release();
-        SAFETY_RELEASE(textureResource);
-
-        return result;
-        
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
@@ -895,7 +841,11 @@ namespace renderer
 
     void Renderer::BindDefaultTextureToPs(uint32_t slot) const
     {
-        mDeviceContext->PSSetShaderResources(slot, 1, &mDefaultTexture);
+        HashID hash = 0;
+        int16_t serial = 0;
+        mTextureManager->GetDefaultTexture(hash, serial);
+        ID3D11ShaderResourceView* const srv = mTextureManager->GetTextureByHash(hash);
+        mDeviceContext->PSSetShaderResources(slot, 1, &srv);
     }
 
     void Renderer::UnbindTexturePs(uint32_t slot) const
@@ -1169,7 +1119,6 @@ namespace renderer
             SAFETY_RELEASE(mDepthStencilViewList[i]);
         }
 
-        SAFETY_RELEASE(mDefaultTexture);
         SAFETY_RELEASE(mTexShadow);
         SAFETY_RELEASE(mTexColor);
         SAFETY_RELEASE(mShadowSrv);
