@@ -65,6 +65,8 @@ namespace renderer
             // MEMO: 추후에 작업하면서 필요에 따라 Bit 수, 순서 조정하면서 정답을 찾아가기.
 
             // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
+            // TODO: DebugPanel은 같은 렌더타깃이긴 하지만 엄연히 UI/HUD 패스에 속하므로 RenderTarget == Pass 가정은 깨지는 게 맞아보인다.
+            // TODO: 별도 Pass 열거형 추가해서 SortKey로 추가하고, z-order 값도 추가해야 한다.
             // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
             // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
             // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
@@ -86,9 +88,7 @@ namespace renderer
             // MaterialParameter
             // TODO: 해시라서 Bit에 할당하기 애매한 상태. BlendState를 여러 개 대표적으로 쓸 것들만 뽑아서 열거형으로 만들어 사용하는 것으로 변경한다.
             // BlendHash
-            // TODO: 텍스처 해시도 동일한 텍스처를 쓰는 드로우콜을 뭉치면 좋을 것 같지만, 그렇게하면 해시가 아니라 다른 ID로 써야할 것 같다.
 
-            // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다. -> 후순위. 64비트로 바꿔야 할 수 있으므로 텍스처/머티리얼 식별자를 먼저 작업하고 대응한다.
             uint64_t sortKey = 0;
             // MEMO: 상위 비트 영역
             sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 63);
