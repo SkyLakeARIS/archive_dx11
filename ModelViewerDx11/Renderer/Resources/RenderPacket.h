@@ -75,7 +75,7 @@ namespace renderer
 
 
             // TODO: improve - 값을 보고 총 몇비트가 필요한지 자동으로 계산하도록 하면 좋을 것 같다. 나중에 한번 고민해보기(컴파일 타임에도 가능한가?)
-            constexpr uint8_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
+            constexpr uint64_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
             {
                 0,
                 1,
@@ -94,17 +94,17 @@ namespace renderer
             sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 63);
             // MEMO: 중간 비트 영역
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
-            sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 54;
-            sortKey |= static_cast<uint8_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 20;
+            sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54;
+            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 20;
             // MEMO: 하위 비트 영역
-            sortKey |= static_cast<uint8_t>(command.BufferUsage) << 18;
-            sortKey |= static_cast<uint8_t>(command.RenderState.DepthStencilUsage) << 17;
-            sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 16;
-            sortKey |= static_cast<uint8_t>(command.RenderState.UseShadowMapUsage) << 15;
-            sortKey |= static_cast<uint8_t>(command.RenderState.ShaderType) << 11;
-            sortKey |= static_cast<uint8_t>(command.VertexFormat) << 8;
-            sortKey |= static_cast<uint8_t>(command.RenderState.RasterType) << 4;
-            sortKey |= static_cast<uint8_t>(command.RenderState.TopologyType) << 0;
+            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 18;
+            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilUsage) << 17;
+            sortKey |= static_cast<uint64_t>(command.RenderState.bClearDepthStencilBuffer) << 16;
+            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 15;
+            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 11;
+            sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8;
+            sortKey |= static_cast<uint64_t>(command.RenderState.RasterType) << 4;
+            sortKey |= static_cast<uint64_t>(command.RenderState.TopologyType) << 0;
 
             command.SortKey = sortKey;
 
