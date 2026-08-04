@@ -70,6 +70,7 @@ namespace renderer
                 {
                     mTextureManager->AddTexture(subMesh.Textures[tex].FilePath, subMesh.Textures[tex].TextureHash);
                     newSubMesh.Material.TextureHashes[tex] = subMesh.Textures[tex].TextureHash;
+                    newSubMesh.Material.TextureSerials[tex] = mTextureManager->GetTextureSerial(subMesh.Textures[tex].TextureHash);
                 }
             }
             newMesh.SubMeshes.push_back(std::move(newSubMesh));

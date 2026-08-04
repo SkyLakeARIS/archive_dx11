@@ -26,7 +26,7 @@ namespace scene
 
         void UpdateScaleMatrix(Camera& camera);
 
-        void SetTexture(HashID texHash);
+        void SetTexture(HashID texHash, int16_t texSerial);
         void SetPosition(const XMFLOAT3& position);
     private:
         renderer::Mesh mMesh;

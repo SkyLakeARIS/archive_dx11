@@ -226,10 +226,13 @@ bool Application::initializeScene()
 
     const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/lightIcon.png");
     HashID lightIconTexID = 0;
+    int16_t lightIconSerialID = 0;
     mTextureManager->AddTexture(filePath, lightIconTexID);
+    lightIconSerialID = mTextureManager->GetTextureSerial(lightIconTexID);
     ASSERT(lightIconTexID, "icon texture fail to add");
+    ASSERT(lightIconSerialID >= 0, "icon texture 의 serial 값을 얻어오지 못함.");
 
-    mLightIcon->SetTexture(lightIconTexID);
+    mLightIcon->SetTexture(lightIconTexID, lightIconSerialID);
 
     return true;
 }
