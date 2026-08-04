@@ -69,6 +69,7 @@ namespace renderer
                 if(subMesh.Textures[tex].TextureHash)
                 {
                     mTextureManager->AddTexture(subMesh.Textures[tex].FilePath, subMesh.Textures[tex].TextureHash);
+
                     newSubMesh.Material.TextureHashes[tex] = subMesh.Textures[tex].TextureHash;
                     newSubMesh.Material.TextureSerials[tex] = mTextureManager->GetTextureSerial(subMesh.Textures[tex].TextureHash);
                 }
