@@ -32,6 +32,14 @@ namespace renderer
             const bool bClearDepthStencilBuffer
         )
         {
+            ASSERT(vertexFormat != eVertexFormat::FormatCount, "vertexFormat 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(vertexFormat));
+            ASSERT(stride > 0 , "stride 값이 올바르지 않음. stride > 0 이어야 합니다. passed(%d)", stride);
+            ASSERT(bufferUsage != eBufferUsage::UsageCount, "bufferUsage는 반드시 Static/Dynamic 중 하나로 지정되어야 함.");
+            ASSERT(renderTargetType != eRenderTarget::RenderTargetCount, "renderTargetType 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(renderTargetType));
+            ASSERT(shader != eShader::ShaderCount, "shader 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(shader));
+            ASSERT(rasterState != eRasterType::RasterCount, "rasterState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(rasterState));
+            // MEMO: sampler는 텍스처 여부에 따라 다르므로 우선 대상 제외
+            ASSERT(topology != ePrimitiveTopology::TopologyCount, "topology 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(topology));
             RenderPacket command;
             command.VertexFormat = vertexFormat;
             command.Stride = stride;
