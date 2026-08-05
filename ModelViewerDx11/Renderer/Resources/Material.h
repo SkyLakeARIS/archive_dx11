@@ -7,19 +7,14 @@ namespace renderer
     // MEMO: Shader에 바로 넘길 수 있도록 별도로 데이터 구조 분리.
     struct MaterialParameter // 16 bytes align
     {
-        // TODO: optimize - packing을 좀 더 타이트하게: Reserve slot에 float값들로 교체하기 
         XMFLOAT3 Diffuse;
-        float    Reserve0;
+        float    Opacity;   // 알파값으로 사용
         XMFLOAT3 Ambient;
-        float    Reserve1;
-        XMFLOAT3 Specular;
-        float    Reserve2;
-        XMFLOAT3 Emissive;
-        float    Reserve3;
-        float    Opacity;       // 알파값으로 사용
         float    Reflectivity;
-        float    Shininess;     // 스페큘러 거듭제곱 값
-        float    Reserve4;
+        XMFLOAT3 Specular;  // 스페큘러 거듭제곱 값
+        float    Shininess;
+        XMFLOAT3 Emissive;
+        float    Reserve1;
     };
     typedef MaterialParameter CbMaterial;
 
