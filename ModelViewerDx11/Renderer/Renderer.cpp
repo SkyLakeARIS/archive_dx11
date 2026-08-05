@@ -198,31 +198,33 @@ namespace renderer
     {
         constexpr ConstantBufferMap cbMapTable[static_cast<uint8_t>(eCbType::ConstantBufferCount)] =
             {
-                {eCbType::CbWorld, sizeof(CbWorld)},
-                {eCbType::CbViewProj, sizeof(CbViewProj)},
-                {eCbType::CbLightViewProjMatrix, sizeof(CbLightViewProjMatrix)},
-                {eCbType::CbCameraPosition, sizeof(CbCameraPosition)},
-                {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty)},
-                {eCbType::CbLightProperty, sizeof(CbLightProperty)},
-                {eCbType::CbMaterialFactors, sizeof(CbMaterialFactors)},
-                {eCbType::CbColor, sizeof(CbColor)},
-                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
+                {eCbType::CbWorld, sizeof(CbWorld), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbViewProj, sizeof(CbViewProj), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbLightViewProjMatrix, sizeof(CbLightViewProjMatrix), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbCameraPosition, sizeof(CbCameraPosition), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty), D3D11_USAGE_DEFAULT},
+                {eCbType::CbLightProperty, sizeof(CbLightProperty), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbMaterialFactors, sizeof(CbMaterialFactors), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbColor, sizeof(CbColor), D3D11_USAGE_DYNAMIC},
+                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix), D3D11_USAGE_DYNAMIC},
             };
         static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
         D3D11_BUFFER_DESC desc = {};
-        // TODO: optimize - 업데이트 빈도에 따라서 분류하고난 뒤에 분류에 따라서 Usage도 적절한 값으로 지정하기
-        desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        desc.CPUAccessFlags = 0;
+   
         HRESULT result = {};
         for (uint8_t index = 0; index < static_cast<uint8_t>(eCbType::ConstantBufferCount); ++index)
         {
+            desc.Usage = cbMapTable[index].Usage;
+            desc.CPUAccessFlags = (cbMapTable[index].Usage == D3D11_USAGE_DYNAMIC) ? D3D11_CPU_ACCESS_WRITE : 0;
             desc.ByteWidth = cbMapTable[index].ByteWidth;
-            result = CreateConstantBuffer(desc, &mCbList[index]);
+            result = CreateConstantBuffer(desc, &mCbList[index].Buffer);
             if (FAILED(result))
             {
                 break;
             }
+            mCbList[index].Usage = desc.Usage;
+            mCbList[index].ByteWidth = desc.ByteWidth;
         }
         return result;
     }
@@ -1079,7 +1081,7 @@ namespace renderer
     {
         for (uint32 i = 0; i < static_cast<uint32>(eCbType::ConstantBufferCount); ++i)
         {
-            SAFETY_RELEASE(mCbList[i]);
+            SAFETY_RELEASE(mCbList[i].Buffer);
         }
 
         for (uint32 i = 0; i < static_cast<uint32>(eRasterType::RasterCount); ++i)
@@ -1152,18 +1154,31 @@ namespace renderer
 
     void Renderer::UpdateCB(eCbType type, const void* const data) const
     {
-        mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)], 0U, nullptr, data, 0U, 0U);
+        if (mCbList[static_cast<uint32_t>(type)].Usage == D3D11_USAGE_DYNAMIC)
+        {
+            // MEMO: Discard하거나, 4-5개 사이즈 여유를 두고 NoOverWrite해도 괜찮을지도.
+            D3D11_MAPPED_SUBRESOURCE mappedRes = {};
+            mDeviceContext->Map(mCbList[static_cast<uint32_t>(type)].Buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedRes);
+
+            (void)memcpy(mappedRes.pData, data, mCbList[static_cast<uint32_t>(type)].ByteWidth);
+
+            mDeviceContext->Unmap(mCbList[static_cast<uint32_t>(type)].Buffer, 0);
+        }
+        else
+        {
+            mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)].Buffer, 0U, nullptr, data, 0U, 0U);
+        }
     }
 
 
     void Renderer::BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)].Buffer);
     }
 
 
     void Renderer::BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)].Buffer);
     }
 }

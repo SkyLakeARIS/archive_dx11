@@ -59,12 +59,20 @@ namespace renderer
         {
             eCbType Index; // added for easy to see.
             uint32_t ByteWidth;
+            D3D11_USAGE Usage;
         };
 
         struct PrimitiveTopologyMap
         {
             ePrimitiveTopology UserType;
             D3D11_PRIMITIVE_TOPOLOGY ApiType;
+        };
+
+        struct ConstantBufferEntry
+        {
+            ID3D11Buffer* Buffer;
+            uint32_t ByteWidth;
+            D3D11_USAGE Usage;
         };
     public:
         Renderer();
@@ -207,7 +215,7 @@ namespace renderer
         // MEMO: option이 많고, 블렌드 하는데 조합이 많을 것 같으니 Hash로 관리하는 게 나을 것 같다.
         std::unordered_map<HashID, ID3D11BlendState*> mBlendStateMap;
         // CB
-        ID3D11Buffer* mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
+        ConstantBufferEntry mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
         // topology
         PrimitiveTopologyMap mPrimitiveTopologies[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)];
         // Managers
