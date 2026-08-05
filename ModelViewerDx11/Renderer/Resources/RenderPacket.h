@@ -93,7 +93,7 @@ namespace renderer
 
 
             // TODO: 머티리얼은 같은지 다른지 구분할 식별자가 필요하다. 우선은 구분하지 않아도 되므로 무시하되, 렌더큐 구조 완료 후 바로 작업이 필요함.
-            // MaterialParameter
+            // MaterialFactors
             // TODO: 해시라서 Bit에 할당하기 애매한 상태. BlendState를 여러 개 대표적으로 쓸 것들만 뽑아서 열거형으로 만들어 사용하는 것으로 변경한다.
             // BlendHash
 

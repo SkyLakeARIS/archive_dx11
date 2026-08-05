@@ -61,7 +61,7 @@ namespace renderer
             totalIndexCount += newSubMesh.IndexRange.Count;
             (void)memcpy(newSubMesh.SubMeshName, subMesh.MeshName, util::MAX_NAME_LENGTH);
 
-            newSubMesh.Material.MaterialParam = std::move(subMesh.MaterialParam);
+            newSubMesh.Material.Factors = std::move(subMesh.MaterialParam);
 
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)

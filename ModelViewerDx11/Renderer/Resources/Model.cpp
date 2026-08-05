@@ -62,7 +62,7 @@ namespace renderer
 
                 if (!mbActiveEmissive)
                 {
-                    command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    command.Material.Factors.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
                 }
 
                 commandList.push_back(command);
@@ -94,7 +94,7 @@ namespace renderer
 
             if (!mbActiveEmissive)
             {
-                command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                command.Material.Factors.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
 
             commandList.push_back(command);

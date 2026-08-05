@@ -30,16 +30,16 @@ namespace renderer
             ASSERT(false, "렌더러가 예약하고 있는 상수버퍼에 업데이트를 시도. 머테리얼로 지정된 슬롯에만 접근해야 합니다. type(%d)", static_cast<uint8_t>(type))
             break;
         }
-        case eCbType::CbMaterial:
+        case eCbType::CbMaterialFactors:
         {
-            const CbMaterial cbMaterialParam = material.MaterialParam;
+            const CbMaterialFactors cbMaterialParam = material.Factors;
             mRenderer->UpdateCB(type, reinterpret_cast<const void*>(&cbMaterialParam));
             break;
         }
         case eCbType::CbColor:
         {
             CbColor cbColor = {};
-            cbColor.Float3 = material.MaterialParam.Diffuse;
+            cbColor.Float3 = material.Factors.Diffuse;
             mRenderer->UpdateCB(type, reinterpret_cast<void*>(&cbColor));
             break;
         }
@@ -67,7 +67,7 @@ namespace renderer
             { eCbType::CbOutlineProperty,   false,  6 }, // Outline
             { eCbType::ConstantBufferCount, false, -1 }, // Skybox
             { eCbType::ConstantBufferCount, false, -1 }, // Shadow
-            { eCbType::CbMaterial,          true,   0 }, // BasicWithShadow
+            { eCbType::CbMaterialFactors,          true,   0 }, // BasicWithShadow
             { eCbType::ConstantBufferCount, false, -1 }, // RenderToTexture
             { eCbType::CbColor,             true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD

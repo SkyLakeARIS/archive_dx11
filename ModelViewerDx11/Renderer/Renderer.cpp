@@ -204,7 +204,7 @@ namespace renderer
                 {eCbType::CbCameraPosition, sizeof(CbCameraPosition)},
                 {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty)},
                 {eCbType::CbLightProperty, sizeof(CbLightProperty)},
-                {eCbType::CbMaterial, sizeof(CbMaterial)},
+                {eCbType::CbMaterialFactors, sizeof(CbMaterialFactors)},
                 {eCbType::CbColor, sizeof(CbColor)},
                 {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
             };

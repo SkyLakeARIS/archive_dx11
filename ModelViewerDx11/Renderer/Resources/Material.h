@@ -5,7 +5,7 @@ namespace renderer
 {
     // 모델링 프로그램에서 미리 계산된 값으로 사용
     // MEMO: Shader에 바로 넘길 수 있도록 별도로 데이터 구조 분리.
-    struct MaterialParameter // 16 bytes align
+    struct MaterialFactors // 16 bytes align
     {
         XMFLOAT3 Diffuse;
         float    Opacity;   // 알파값으로 사용
@@ -16,7 +16,7 @@ namespace renderer
         XMFLOAT3 Emissive;
         float    Reserve1;
     };
-    typedef MaterialParameter CbMaterial;
+    typedef MaterialFactors CbMaterialFactors;
 
     // MEMO:(신버전) Material에서 셰이더 + 렌더 상태를 분리(struct RenderState)하고 SemiMaterial로 변경.
     // 현재 구조로는 material이 여러 셰이더(패스)를 제공하지 못하고, RenderPacket이 정보를 가지면 Material 시스템의 의미가 퇴색되므로 구조를 축소함.
@@ -24,8 +24,8 @@ namespace renderer
     struct SemiMaterial
     {
         // MEMO: 재질
-        // TODO: improve - 좀 더 깔끔한 네이밍이 있을지.?
-        MaterialParameter MaterialParam;
+        // MEMO: 네이밍을 glTF 표준 관례로 따름.
+        MaterialFactors Factors;
         XMFLOAT3 OutlineWidth;
         // MEMO: 텍스처
         HashID TextureHashes[static_cast<uint8_t>(eTextureType::TextureTypeCount)];

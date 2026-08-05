@@ -21,7 +21,7 @@ namespace renderer
         uint32_t VertexCount;
         std::unique_ptr<uint32_t[]> IndexBuffer;
         uint32_t IndexCount;
-        MaterialParameter MaterialParam;
+        MaterialFactors MaterialParam;
         ImportedTextureData Textures[static_cast<int32_t>(eTextureType::TextureTypeCount)];
     };
 

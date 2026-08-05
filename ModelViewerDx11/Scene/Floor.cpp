@@ -15,7 +15,7 @@ namespace scene
         renderer::MeshGenerator::CreateGrid(startPoint, numLineX, numLineY, gapEachLine, mMesh);
         for (auto& subMesh : mMesh.SubMeshes)
         {
-            subMesh.Material.MaterialParam.Diffuse = XMFLOAT3(0.0f, 1.0f, 0.0f);
+            subMesh.Material.Factors.Diffuse = XMFLOAT3(0.0f, 1.0f, 0.0f);
         }
     }
 

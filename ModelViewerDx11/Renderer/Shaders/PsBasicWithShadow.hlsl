@@ -9,7 +9,7 @@ Texture2D texShadow : register(t2);
 SamplerState samLinear : register(s0);
 
 
-cbuffer cbMaterial : register(b0)
+cbuffer cbMaterialFactors : register(b0)
 {
     float3 Diffuse;
     float Opacity;   // 알파값으로 사용

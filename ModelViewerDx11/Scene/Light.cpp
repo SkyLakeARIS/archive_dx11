@@ -318,7 +318,7 @@ namespace scene
             // TODO: 단일 메시의 경우 서브메시와 해시를 같게하는게 맞을지? .subMesh로 구분을 하는게 나을지? - 어떻게 처리하는 게 더 나을지 자료 조사하기
             (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
             newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
-            newSubMesh.Material.MaterialParam.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);
+            newSubMesh.Material.Factors.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);
 
             mMeshDebug.SubMeshes.push_back(std::move(newSubMesh));
         }

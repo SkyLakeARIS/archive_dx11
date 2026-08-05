@@ -97,7 +97,7 @@ namespace renderer
         CbCameraPosition,
         CbOutlineProperty,
         CbLightProperty,
-        CbMaterial,
+        CbMaterialFactors,
         CbColor,
         CbOrthoMatrix,
         ConstantBufferCount
