@@ -184,7 +184,7 @@
     <ClInclude Include="Renderer\Importer\ImportedModelData.h" />
     <ClInclude Include="Renderer\Primitive\MeshGenerator.h" />
     <ClInclude Include="Renderer\Resources\BufferManager.h" />
-    <ClInclude Include="Renderer\Resources\ModelData.h" />
+    <ClInclude Include="Renderer\Resources\Mesh.h" />
     <ClInclude Include="Renderer\Resources\RenderTypes.h" />
     <ClInclude Include="Renderer\Resources\ResourceManager.h" />
     <ClInclude Include="Renderer\Resources\TextureData.h" />

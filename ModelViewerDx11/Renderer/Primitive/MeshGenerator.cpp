@@ -2,7 +2,7 @@
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
 #include "../Resources/BufferManager.h"
-#include "../Resources/ModelData.h"
+#include "../Resources/Mesh.h"
 #include "../Resources/RenderTypes.h"
 
 namespace renderer

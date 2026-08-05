@@ -1,6 +1,6 @@
 #pragma once
 #include "../../framework.h"
-#include "../Resources/ModelData.h"
+#include "../Resources/Mesh.h"
 
 namespace renderer
 {

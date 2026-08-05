@@ -6,7 +6,6 @@
 
 namespace renderer
 {
-    // TODO: cleanup - ModelData -> Mesh로 파일명을 바꿔도 좋을 것 같다.
 
     // MEMO: SubMesh가 Mesh의 부분집합
     // MEMO: SubMesh가 Material을 가지고, Mesh가 SubMesh들을 가지는 구조로 정리.

@@ -1,5 +1,5 @@
 #pragma once
-#include "../Resources/ModelData.h"
+#include "../Resources/Mesh.h"
 
 namespace scene
 {

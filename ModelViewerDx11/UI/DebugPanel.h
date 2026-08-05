@@ -1,5 +1,5 @@
 #pragma once
-#include "../Renderer/Resources/ModelData.h"
+#include "../Renderer/Resources/Mesh.h"
 
 namespace renderer
 {

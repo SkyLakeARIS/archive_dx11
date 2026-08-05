@@ -33,7 +33,7 @@
     <ClInclude Include="ModelViewerDx11.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Resources\ModelData.h">
+    <ClInclude Include="Renderer\Resources\Mesh.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Resources\RenderTypes.h">
