@@ -70,8 +70,6 @@ namespace renderer
         Renderer();
         ~Renderer();
 
-        // MEMO: BlendState의 다양한 옵션을 대응하기 위해 비트 슬라이싱을 통해 해시 계산
-        static inline HashID GetBlendStateHash(D3D11_BLEND_DESC& desc);
 
         void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager);
 
@@ -105,9 +103,6 @@ namespace renderer
         void    Cleanup();
         bool CheckDeviceLost(bool& outIsReInitialize) const;
 
-        // Debug
-        // TODO: static 메서드들은 따로 섹션 분리하기.
-        static void    CheckLiveObjects();
 
         // COM
         ULONG   AddRef() override;
@@ -152,7 +147,11 @@ namespace renderer
 
         void GetCurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY& outTopology) const;
         BufferManager* const GetBufferManager() const;
-
+    public:
+        // MEMO: BlendState의 다양한 옵션을 대응하기 위해 비트 슬라이싱을 통해 해시 계산
+        static inline HashID GetBlendStateHash(D3D11_BLEND_DESC& desc);
+        // Debug
+        static void CheckLiveObjects();
     private:
         // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
         void registerShadowTexture();
