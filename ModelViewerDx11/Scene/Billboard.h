@@ -16,7 +16,6 @@ namespace scene
     class Billboard
     {
     public:
-        // TODO: 나중에 각 billboard 개체들 구분을 위한 이름같은 식별자 추가 필요
         Billboard();
         ~Billboard();
 

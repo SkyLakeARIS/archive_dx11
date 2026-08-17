@@ -20,12 +20,10 @@ namespace scene
 
     Billboard::~Billboard()
     {
-        // TODO: 추가한 MeshData 처리할 수 있는 로직이 필요함. - (종료될 떄 처리되기 때문에 당장 문제는 없음)
     }
 
     void Billboard::Initialize(renderer::Renderer& renderer)
     {
-        // TODO: improve - 엄밀히 Material 정보에 포함되어야 할 것 같다. 
         D3D11_BLEND_DESC blendDesc = {};
         blendDesc.RenderTarget[0].BlendEnable = true;
         blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
@@ -38,8 +36,6 @@ namespace scene
         renderer.CreateBlendState(blendDesc, mBlendHash);
 
         renderer::MeshGenerator::CreatePlane(mMesh);
-
-        // TODO: improve - Generator로 생성하는 경우에는 Material 을 어디서 설정해 줄지? 이런 동적 생성 Mesh는 Material을 뭘로 설정할지?
     }
 
     void Billboard::Draw(std::vector<renderer::RenderPacket>& commandList)

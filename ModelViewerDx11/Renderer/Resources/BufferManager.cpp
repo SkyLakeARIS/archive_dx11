@@ -189,7 +189,6 @@ namespace renderer
         auto chunkIt = mVertexBuffers.find(stride);
 
         const auto& subChunkIt = chunkIt->second.SubChunks.find(hash);
-        // TODO: 나중에 <파일 명 - 해시> Map을 만들어서 같은 데이터를 중복 삽입하는 건지 해시함수 충돌 발생인지 구분할 필요가 있음.
         if(subChunkIt != chunkIt->second.SubChunks.end())
         {
             // MEMO: in vertex count (not bytes). convert bytes -> stride
@@ -466,7 +465,6 @@ namespace renderer
 
         const auto& chunkIt = mVertexBuffers.find(stride);
         const auto& subChunkIt = chunkIt->second.SubChunks.find(hash);
-        // TODO: RefCount를 통해서 바로 제거되지 않도록 작업해야 한다. (Add 함수도 마찬가지로 중복 데이터가 삽입되면 RefUp)
         if(subChunkIt != chunkIt->second.SubChunks.end())
         {
             --subChunkIt->second.RefCount;
@@ -476,7 +474,6 @@ namespace renderer
                 removedRangeIt->second.push_back(subChunkIt->second.Ranges);
 
                 chunkIt->second.SubChunks.erase(subChunkIt);
-                // TODO: 나중에 별도 Merge 함수로 분리하여, 정한 기준에 따라서 주기적으로 병합을 시도하는 것이 필요함.
                 // MEMO: 연속된 빈공간 병합 시도
                 if (removedRangeIt->second.size() >= 2)
                 {
@@ -490,11 +487,7 @@ namespace renderer
                         if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
                         {
                             cursorIt->Count += nextRangeIt->Count;
-                            // TODO: optimize - 현재 로직 구조로는 제거를 빠르게 할 수 없는 것 같다.
-                            // 다른 좋은 방안 찾는게 필요
                             removedRangeIt->second.erase(nextRangeIt);
-                            // TODO: optimize - 이렇게하면 항상 처음으로 돌아가므로 중간에 병합된 경우
-                            // 다시 처음부터 순회해야하는 비효율 존재. 빠른 구현을 위해 우선 이렇게 함.
                             // RemoveIndexData도 마찬가지로 작업
                             cursorIt = removedRangeIt->second.begin();
                         }

@@ -23,7 +23,6 @@ namespace scene
         Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, Camera* camera, float nearPlane, float farPlane);
         ~Light();
 
-        // TODO: 별도 함수보다 GUI 추가되면 Debug모드 추가하여 on/off 방식으로 처리
         void DrawDebug(std::vector<renderer::RenderPacket>& commandList);
 
         void SetupCascade(renderer::Renderer& renderer);

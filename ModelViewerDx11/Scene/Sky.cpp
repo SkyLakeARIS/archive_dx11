@@ -16,7 +16,6 @@ namespace scene
     Sky::~Sky()
     {
         mCamera = nullptr;
-        // TODO: 추가한 BufferData 처리할 수 있는 로직이 필요함. - (종료될 떄 처리되기 때문에 당장 문제는 없음)
     }
 
     HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines, renderer::TextureManager* const texManager)

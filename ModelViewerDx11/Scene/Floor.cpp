@@ -21,7 +21,6 @@ namespace scene
 
     Floor::~Floor()
     {
-        // TODO: 추가한 BufferData 처리할 수 있는 로직이 필요함. - (종료될 떄 처리되기 때문에 당장 문제는 없음)
     }
 
     void Floor::Draw(std::vector<renderer::RenderPacket>& commandList)

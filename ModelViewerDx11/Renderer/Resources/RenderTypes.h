@@ -79,7 +79,6 @@ namespace renderer
     {
         XMFLOAT3    Float3;
         float       Reserve;
-        // TODO: improve - outlineProperty는 왜 float3로 했는지? -> CbFloat으로 분리하기
     } CbCameraPosition, CbOutlineProperty, CbColor;
 
     typedef struct CbTwoVec4
@@ -88,7 +87,6 @@ namespace renderer
         XMFLOAT4    Second;
     }CbLightProperty;
 
-    // TODO: cleanup - 관련 코드들 ShaderManager로 이동
     enum class eCbType : uint8_t
     {
         CbWorld,
@@ -177,7 +175,6 @@ namespace renderer
         eSamplerType SamplerType;
         ePrimitiveTopology TopologyType;
         HashID BlendHash;
-        // TODO: improve - 현재 옵션이 Skybox 전용으로만 존재하므로 확장이 필요함.
         eDepthStencilUsage DepthStencilUsage;
         eShadowMapUsage UseShadowMapUsage;
         bool bClearDepthStencilBuffer;

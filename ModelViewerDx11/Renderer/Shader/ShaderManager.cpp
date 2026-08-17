@@ -131,7 +131,7 @@ namespace renderer
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox},
             { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
+            {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture},
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
             {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
         };

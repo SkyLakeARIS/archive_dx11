@@ -28,7 +28,6 @@ namespace renderer
             mBufferManager->RemoveVertexData(stride, subMesh.SubMeshHash);
             mBufferManager->RemoveIndexData(strideIndex, subMesh.SubMeshHash);
         }
-        // TODO: BufferManager를 받지 않고, BufferData 처리할 수 있는 로직이 필요함.
         mBufferManager = nullptr;
     }
 

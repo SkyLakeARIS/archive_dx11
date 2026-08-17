@@ -96,7 +96,6 @@ namespace scene
         XMStoreFloat3(&eye, mvEye);
         XMStoreFloat3(&lookAt, mvLookAtCenter);
 
-        // TODO 현재 타겟으로 하는 물체의 최대/최소 높이를 구해서 제한 걸어야 함.
         eye.y += height;
         lookAt.y += height;
 

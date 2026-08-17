@@ -49,7 +49,6 @@ namespace renderer
         // init - program
         bool initialize(HWND handleWindow, int16_t width, int16_t height, int16_t frameRate);
 
-        // TODO: API 의존성을 완전히 분리하려면 desc 조차도 분리하는 게 좋을 것 같다. 일단은 이대로 사용
         HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
@@ -81,7 +80,6 @@ namespace renderer
         void BindSamplerToPsByType(uint32_t slot, eSamplerType type) const;
         void BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask);
         void BindTextureToPs(uint32_t slot, HashID textureHash) const;
-        // TODO: improve - eTextureType과 충돌이 없으면서 preset을 쓸 방법을 나중에 고민해 보자(default/shadow). 우선은 texture분리를 위해 이렇게
         void BindShadowTextureToPs(uint32_t slot) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;

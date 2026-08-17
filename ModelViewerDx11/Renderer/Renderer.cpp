@@ -106,7 +106,6 @@ namespace renderer
         // 아웃라인용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_FRONT;
       //  rasterDesc.CullMode = D3D11_CULL_BACK;
-        // TODO: msdn 읽어보고 설정.
         rasterDesc.DepthBias = 1;
         result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
         if(FAILED(result))
@@ -337,7 +336,6 @@ namespace renderer
     {
         HRESULT result = S_OK;
 
-        // TODO: 개선 경고 메세지 관련하여 조사하고 개선 필요 함
         DXGI_SWAP_CHAIN_DESC swapDesc;
         ZeroMemory(&swapDesc, sizeof(swapDesc));
         swapDesc.BufferCount = 1;
@@ -540,7 +538,7 @@ namespace renderer
         mViewportTex.TopLeftY = 0;
         // 렌더링될 영역을 지정. s가 붙으니까 여러개 지정가능.(모델링 프로그램을 생각)
         // rasterizer stage
-        mDeviceContext->RSSetViewports(1, &mViewportTex); // mViewportForTex TODO: 이렇게되면 기존 viewport도 변수화 해야한다.
+        mDeviceContext->RSSetViewports(1, &mViewportTex); // mViewportForTex 
      
         depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;

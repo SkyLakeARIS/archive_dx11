@@ -14,7 +14,6 @@ namespace renderer
 
         bool InitDefaultTexture();
 
-        // TODO: 중복 로직 깔끔하게 처리하는 것이 필요
         void AddTexture(const int8_t* const filePath, HashID& outTexHash);
         void AddTextureDDS(const int8_t* const filePath, HashID& outTexHash);
         // MEMO: 사실상 렌더러를 위한 함수

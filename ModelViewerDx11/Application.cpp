@@ -200,7 +200,6 @@ bool Application::initializeScene()
 
 
     const int8_t* const modelFilePath = reinterpret_cast<int8_t*>("/AssetData/models/unagi.fbx");
-    // TODO: 나중에 Object List를 만들어서 관리하도록 변경(성공하면 drawable 리스트에 추가)
     mCharacter = new renderer::Model(mCamera, mBufferManager);
 
     mResourceManager->LoadModel(modelFilePath, mCharacter);
@@ -381,7 +380,6 @@ void Application::updateScene(double deltaTime)
     cbLightProperty.Second = XMFLOAT4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
     mShaderManager->UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
 
-    // TODO: improve - 이후에 창 크기 말고 viewport 사이즈로 바꾸는 것으로 검토(급하진 않음)
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
     renderer::CbScreenSpaceMatrix cbScreenSpaceMatrix = {};
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
@@ -413,7 +411,6 @@ void Application::updateScene(double deltaTime)
 
 void Application::renderScene()
 {
-    // TODO: 이부분도 렌더링 전에 깔끔하게 세팅 될 수 있도록 해보자.
     mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Shadow);
     mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Default);
 
@@ -425,7 +422,6 @@ void Application::renderScene()
             mCommandCache.RenderTargetType = command.RenderTargetType;
 
             // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
-            // TODO: 생각해보면 이게 Viewport인데 렌더 패킷에 고려하지 못한 것 같다. 현재 큰 문제는 없으나, 해당 부분은 천천히 작업 필요
             mRenderer->SetViewport(command.RenderTargetType == renderer::eRenderTarget::Default);
         }
 
@@ -507,7 +503,6 @@ void Application::renderScene()
         }
         
 
-        // TODO: 렌더큐 끝나면 이것도 좀 더 명확하게 개선해 봐야 할 항목.
         // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
         if(mCommandCache.DepthStencilUsage != command.RenderState.DepthStencilUsage)
         {
@@ -556,7 +551,6 @@ void Application::renderScene()
             mRenderer->Draw(command.VertexRange.Count, command.VertexRange.StartIndex);
         }
 
-        // TODO: 자주 호출될 것 같은데, 확인해 보고 최대한 Bind-UnBind를 덜할 수 있는 방법을 다시 고민해보자.
         // MEMO: Shadow RenderTarget으로 써야 하므로 다시 Texture Slot에서 제거.
         if (static_cast<bool>(command.RenderState.UseShadowMapUsage))
         {

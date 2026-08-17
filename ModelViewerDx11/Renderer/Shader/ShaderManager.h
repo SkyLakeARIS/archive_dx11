@@ -29,7 +29,6 @@ namespace renderer
             PsOutline,
             PsShadow,
             PsSkybox,
-            // TODO: improve - PsTexture 정도가 적당한 네이밍일 듯하다. - 후순위로 작업
             PsRenderToTexture,
             PsColor,
             PixelShaderCount
@@ -61,7 +60,6 @@ namespace renderer
         ShaderManager(ID3D11Device& device, ID3D11DeviceContext& deviceContext);
         ~ShaderManager();
 
-        // TODO: improve - Renderer에서 해당 클래스로 실제 셰이더 컴파일 및 구성하는 코드 이동해야 함.
         bool SetupShaders();
         bool CreatePresetConstantBuffers();
 

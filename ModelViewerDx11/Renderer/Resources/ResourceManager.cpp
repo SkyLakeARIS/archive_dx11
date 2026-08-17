@@ -37,7 +37,6 @@ namespace renderer
 
         HashID modelHash = 0;
         ImportedModelContainer modelContainer;
-        // TODO: IndexList가 비어있을 수 있지 않을까 생각하면 Importer에서 좀 더 로직을 엄격하게 체크해야 할 것으로 보임.
         mModelImporter->LoadFbxModel(filePath, modelHash, modelContainer);
 
         Mesh newMesh = {};

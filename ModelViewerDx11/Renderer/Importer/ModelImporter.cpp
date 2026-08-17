@@ -265,7 +265,6 @@ namespace renderer
                                 vertexInfo.TexCoord.x = uv[0];
                                 vertexInfo.TexCoord.y = 1.0f - uv[1];
                             }
-                            // TODO: improve - 이 부분은 개선하거나 데이터 구조를 좀 더 다듬는 게 좋아보인다. 메모해 두지 않으면 코드 다듬다가 실수하기 좋음.
                             // indexlist 구성을 위한 vertexCount와 통합 버퍼로 인한 CursorIndex 가 다르게 동작해야 하는 문제.
                             indexMap.insert(std::make_pair(indexOfVertex, newMeshData.VertexCount));
                             newMeshData.VertexBuffer[newMeshData.VertexCount] = vertexInfo;
@@ -311,7 +310,6 @@ namespace renderer
     {
         OutputDebugStringA("========== Texture Info Extraction start ==========\n");
 
-        // TODO: nodeIndex와 ImportedModelContainer의 mesh가 짝이 맞다고 보장 할 수 있는지? - 나중에 mesh와 짝지을 수 있는 수단으로 개선하면 좋을 것.
         for (size_t nodeIndex = 0; nodeIndex < outNodes.size(); ++nodeIndex)
         {
             FbxNode* const currentNode = outNodes[nodeIndex];

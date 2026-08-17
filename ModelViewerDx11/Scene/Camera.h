@@ -3,7 +3,6 @@
 
 namespace scene
 {
-    // TODO: 그림자 효과 추가하면 FPS로 동작하는 Camera를 분리하는것이 Light클래스 관리에 도움이 될 듯 함.
     class Camera final
     {
     public:

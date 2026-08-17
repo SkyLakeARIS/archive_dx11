@@ -44,7 +44,6 @@ namespace renderer
 
     bool TextureManager::InitDefaultTexture()
     {
-        // TODO: HRESULT를 에러 메세지로 변환하여 출력해주는 로그 클래스도 만드는 게 좋을 것 같다.(그래야 result를 받는 의미가 있을 듯)
         const int8_t* const DEFAULT_TEXTURE_FILE_PATH = reinterpret_cast <const int8_t* const>("AssetData/textures/default.png");
         const HashID defaultTextureHash = util::GetDjb2Hash(DEFAULT_TEXTURE_FILE_PATH);
 
@@ -84,7 +83,6 @@ namespace renderer
         const auto& texIt = mTextures.find(texHash);
         if(texIt == mTextures.end())
         {
-            // TODO: improve - io는 나중에 분리하도록 하자.
             wchar_t texFilePath[util::MAX_PATH_LENGTH];
             const uint32_t filePathLength = strlen(reinterpret_cast<char const*>(filePath));
             size_t  numConverted = 0;

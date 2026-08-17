@@ -295,13 +295,11 @@ namespace scene
             mMeshDebug.VertexFormat = renderer::eVertexFormat::P;
         }
 
-        // TODO: Dynamic Mesh는 SubMesh와 Material을 어떻게 처리하는 게 좋을지? - 우선은 바로 확장하지 않고 현재 구조 기준으로 수작업.
         if (mMeshDebug.SubMeshes.empty())
         {
             // no Sampler, Blend
             renderer::SubMesh newSubMesh = {};
 
-            // TODO: 단일 메시의 경우 서브메시와 해시를 같게하는게 맞을지? .subMesh로 구분을 하는게 나을지? - 어떻게 처리하는 게 더 나을지 자료 조사하기
             (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
             newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
             newSubMesh.Material.Factors.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);

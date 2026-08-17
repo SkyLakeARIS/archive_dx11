@@ -73,8 +73,6 @@ namespace renderer
             // MEMO: 추후에 작업하면서 필요에 따라 Bit 수, 순서 조정하면서 정답을 찾아가기.
 
             // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
-            // TODO: DebugPanel은 같은 렌더타깃이긴 하지만 엄연히 UI/HUD 패스에 속하므로 RenderTarget == Pass 가정은 깨지는 게 맞아보인다.
-            // TODO: 별도 Pass 열거형 추가해서 SortKey로 추가하고, z-order 값도 추가해야 한다.
             // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
             // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
             // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
@@ -84,18 +82,11 @@ namespace renderer
             // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
 
 
-            // TODO: improve - 값을 보고 총 몇비트가 필요한지 자동으로 계산하도록 하면 좋을 것 같다. 나중에 한번 고민해보기(컴파일 타임에도 가능한가?)
             constexpr uint64_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
             {
                 0,
                 1,
             };
-
-
-            // TODO: 머티리얼은 같은지 다른지 구분할 식별자가 필요하다. 우선은 구분하지 않아도 되므로 무시하되, 렌더큐 구조 완료 후 바로 작업이 필요함.
-            // MaterialFactors
-            // TODO: 해시라서 Bit에 할당하기 애매한 상태. BlendState를 여러 개 대표적으로 쓸 것들만 뽑아서 열거형으로 만들어 사용하는 것으로 변경한다.
-            // BlendHash
 
             uint64_t sortKey = 0;
             // MEMO: 상위 비트 영역
