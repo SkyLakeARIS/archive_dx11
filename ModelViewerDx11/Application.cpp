@@ -209,7 +209,7 @@ bool Application::initializeScene()
     mSkybox->Initialize(10, 10, mTextureManager);
 
     mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    mCamera->ChangeFocus(mCharacter->GetCenterPoint(), *mShaderManager);
+    mCamera->ChangeFocus(mCharacter->GetCenterPoint());
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
@@ -292,28 +292,28 @@ void Application::updateScene(double deltaTime)
         mDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
         if (!(mouseX == 0 && mouseY == 0))
         {
-            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed, *mShaderManager);
+            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed);
         }
     }
     else
     {
         if (gKeyboard[DIK_W] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)), *mShaderManager);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)));
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime), *mShaderManager);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime));
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f, *mShaderManager);
+            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f, *mShaderManager);
+            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f);
         }
     }
 
@@ -321,12 +321,12 @@ void Application::updateScene(double deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        mCamera->AddRadiusSphere(deltaTime, *mShaderManager);
+        mCamera->AddRadiusSphere(deltaTime);
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        mCamera->AddRadiusSphere(-deltaTime, *mShaderManager);
+        mCamera->AddRadiusSphere(-deltaTime);
     }
 
     // 키보드<-> 마우스 조작 전환
@@ -348,12 +348,12 @@ void Application::updateScene(double deltaTime)
 
     if (gKeyboard[DIK_Z] & 0x80)
     {
-        mCamera->AddHeight(-deltaTime, *mShaderManager);
+        mCamera->AddHeight(-deltaTime);
     }
 
     if (gKeyboard[DIK_X] & 0x80)
     {
-        mCamera->AddHeight(deltaTime, *mShaderManager);
+        mCamera->AddHeight(deltaTime);
     }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
@@ -365,6 +365,10 @@ void Application::updateScene(double deltaTime)
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());
     mShaderManager->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
+
+    renderer::CbCameraPosition cbCameraPos = {};
+    cbCameraPos.Float3 = mCamera->GetEye();
+    mShaderManager->UpdateCB(renderer::eCbType::CbCameraPosition, &cbCameraPos);
 
     mLight->SetupCascade(*mRenderer);
     renderer::CbLightViewProjMatrix cbLightVpMat;

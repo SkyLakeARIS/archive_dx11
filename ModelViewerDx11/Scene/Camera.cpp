@@ -1,6 +1,4 @@
 #include "Camera.h"
-#include "../Renderer/Renderer.h"
-#include "../Renderer/Shader/ShaderManager.h"
 
 namespace scene
 {
@@ -37,7 +35,7 @@ namespace scene
     {
     }
 
-    void Camera::RotateAxis(float yawRad, float pitchRad, renderer::ShaderManager& shaderManager)
+    void Camera::RotateAxis(float yawRad, float pitchRad)
     {
         mAnglesRad.x += yawRad;         // pi, yaw
         mAnglesRad.y += pitchRad;       // theta, pitch
@@ -64,12 +62,12 @@ namespace scene
         }
 
         // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
-        calcCameraPosition(shaderManager);
+        calcCameraPosition();
 
         makeViewMatrix();
     }
 
-    void Camera::AddRadiusSphere(float scaleFactor, renderer::ShaderManager& ShaderManager)
+    void Camera::AddRadiusSphere(float scaleFactor)
     {
         constexpr float MAX_RADIUS = 10.0f;
         constexpr float MIN_RADIUS = 0.1f;
@@ -86,12 +84,12 @@ namespace scene
         }
 
         // 변경된 거리를 적용한다.
-        calcCameraPosition(ShaderManager);
+        calcCameraPosition();
 
         makeViewMatrix();
     }
 
-    void Camera::AddHeight(float height, renderer::ShaderManager& shaderManager)
+    void Camera::AddHeight(float height)
     {
         XMFLOAT3 eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
         XMFLOAT3 lookAt = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -105,17 +103,17 @@ namespace scene
         mvEye = XMLoadFloat3(&eye);
         mvLookAtCenter = XMLoadFloat3(&lookAt);
 
-        calcCameraPosition(shaderManager);
+        calcCameraPosition();
 
         makeViewMatrix();
     }
 
-    void Camera::ChangeFocus(XMFLOAT3 newFocus, renderer::ShaderManager& shaderManager)
+    void Camera::ChangeFocus(XMFLOAT3 newFocus)
     {
         mvLookAtCenter = XMLoadFloat3(&newFocus);
 
         // 중심이 변경되었으므로 카메라 위치를 다시 계산한다.
-        calcCameraPosition(shaderManager);
+        calcCameraPosition();
 
         makeViewMatrix();
     }
@@ -142,7 +140,14 @@ namespace scene
         return position;
     }
 
-    void Camera::calcCameraPosition(renderer::ShaderManager& shaderManager)
+    XMFLOAT3 Camera::GetEye() const
+    {
+        XMFLOAT3 eye;
+        XMStoreFloat3(&eye, mvEye);
+        return eye;
+    }
+
+    void Camera::calcCameraPosition()
     {
         // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
         XMFLOAT3 positionInSphere;
@@ -153,12 +158,6 @@ namespace scene
         const XMVECTOR newPositionInOrbit = XMVectorScale(XMLoadFloat3(&positionInSphere), mRadiusOfSphere);
         // 가상의 구체를 통해 얻은 좌표로 실제 위치인 mvLookAtCenter를 중심으로 하는 궤도로 이동
         mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
-
-        XMFLOAT3 position;
-        XMStoreFloat3(&position, mvEye);
-        renderer::CbCameraPosition cbCameraPos = {};
-        cbCameraPos.Float3 = position;
-        shaderManager.UpdateCB(renderer::eCbType::CbCameraPosition, &cbCameraPos);
     }
 
     void Camera::makeViewMatrix()
