@@ -52,7 +52,7 @@ namespace renderer
                     mMatWorld,
                     renderer::eShader::Outline,
                     renderer::eRasterType::CullBack,
-                    renderer::eSamplerType::AnisotropicWrap,
+                    renderer::eSamplerType::SamplerCount,
                     0,
                     renderer::ePrimitiveTopology::Triangles,
                     false,
