@@ -8,7 +8,7 @@
 
 namespace scene
 {
-    Light::Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, Camera* camera, float nearPlane, float farPlane, renderer::ShaderManager& shaderManager)
+    Light::Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, Camera* camera, float nearPlane, float farPlane)
         : mPosition(pos)
         , mDirection(dir)
         , mColor(color)
@@ -27,8 +27,7 @@ namespace scene
         mCascadePlaneDistances[4] = farPlane / 10.0f; // 50
         mCascadePlaneDistances[5] = farPlane; // 500
 
-        updateLightPropertyCB(shaderManager);
-        updateMatrices(shaderManager);
+        updateMatrices();
     }
 
     Light::~Light()
@@ -63,12 +62,12 @@ namespace scene
         }
     }
 
-    void Light::SetupCascade(renderer::Renderer& renderer, renderer::ShaderManager& shaderManager)
+    void Light::SetupCascade(renderer::Renderer& renderer)
     {
         mLines.clear();
         for (uint32_t i = 0; i < eCascadeLevel::Level_4 - 1; ++i)
         {
-            getPointsFromMatrix(&(mCamera->GetViewMatrix()), mCascadePlaneDistances[i], mCascadePlaneDistances[i + 1], &mMatLightViews[i], &mMatLightProjs[i], renderer, shaderManager);
+            getPointsFromMatrix(&(mCamera->GetViewMatrix()), mCascadePlaneDistances[i], mCascadePlaneDistances[i + 1], &mMatLightViews[i], &mMatLightProjs[i], renderer);
         }
         // int32_t index = 0;
        //  mMatViewProj = mMatLightViews[index] * mMatLightProjs[index];
@@ -100,7 +99,7 @@ namespace scene
             //deviceContext->Unmap(mLinesBuffer, 0);
         }
 
-        updateMatrices(shaderManager);
+        updateMatrices();
     }
 
     XMFLOAT4 Light::GetDirection() const
@@ -110,7 +109,7 @@ namespace scene
 
     XMFLOAT3 Light::GetPosition() const
     {
-        return XMFLOAT3(mPosition.x, mPosition.y, mPosition.z);
+        return mPosition;
     }
 
     XMFLOAT4 Light::GetColor() const
@@ -118,12 +117,12 @@ namespace scene
         return XMFLOAT4(mColor.x, mColor.y, mColor.z, 1.0f);
     }
 
-    const XMMATRIX* const Light::GetViewProjMatrix() const
+    XMMATRIX Light::GetViewProjMatrix() const
     {
-        return &mMatViewProj;
+        return mMatViewProj;
     }
 
-    void Light::updateMatrices(renderer::ShaderManager& shaderManager)
+    void Light::updateMatrices()
     {
         mMatView = XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&mDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
         //mMatProj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1.0, 69.0f, 120.0f);
@@ -133,22 +132,9 @@ namespace scene
         // cascade test
         int32_t index = 0;
         mMatViewProj = mMatLightViews[index] * mMatLightProjs[index];
-
-        renderer::CbLightViewProjMatrix cbLightVpMat;
-        cbLightVpMat.Matrix = XMMatrixTranspose(mMatViewProj);
-        //deviceContext->UpdateSubresource(mCB, 0, nullptr, &cbWvp, 0U, 0U);
-        shaderManager.UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
     }
 
-    void Light::updateLightPropertyCB(renderer::ShaderManager& shaderManager)
-    {
-        renderer::CbLightProperty cbLightProperty;
-        cbLightProperty.First = XMFLOAT4(mColor.x, mColor.y, mColor.z, 0.0f);
-        cbLightProperty.Second = XMFLOAT4(mPosition.x, mPosition.y, mPosition.z, 0.0f);
-        shaderManager.UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
-    }
-
-    void Light::getPointsFromMatrix(XMMATRIX* matView, float nearPlane, float farPlane, XMMATRIX* const outMatLightView, XMMATRIX* const outMatLightProj, renderer::Renderer& renderer, renderer::ShaderManager& shaderManager)
+    void Light::getPointsFromMatrix(XMMATRIX* matView, float nearPlane, float farPlane, XMMATRIX* const outMatLightView, XMMATRIX* const outMatLightProj, renderer::Renderer& renderer)
     {
         XMMATRIX matLightProj = XMMatrixPerspectiveFovLH(mCamera->GetFov(), mCamera->GetAspectRatio(), nearPlane, farPlane);
         matLightProj = mCamera->GetViewMatrix() * matLightProj;

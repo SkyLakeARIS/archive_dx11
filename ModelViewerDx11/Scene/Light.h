@@ -4,7 +4,6 @@
 
 namespace renderer
 {
-    class ShaderManager;
     struct RenderPacket;
     class Renderer;
 }
@@ -21,26 +20,25 @@ namespace scene
             Level_4 = 5 // near - 1 - 2- 3- 4 - far
         };
     public:
-        Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, Camera* camera, float nearPlane, float farPlane, renderer::ShaderManager& shaderManager);
+        Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, Camera* camera, float nearPlane, float farPlane);
         ~Light();
 
         // TODO: 별도 함수보다 GUI 추가되면 Debug모드 추가하여 on/off 방식으로 처리
         void DrawDebug(std::vector<renderer::RenderPacket>& commandList);
 
-        void SetupCascade(renderer::Renderer& renderer, renderer::ShaderManager& shaderManager);
+        void SetupCascade(renderer::Renderer& renderer);
 
         XMFLOAT4 GetDirection() const;
         XMFLOAT3 GetPosition() const;
         XMFLOAT4 GetColor() const;
-        const XMMATRIX* const GetViewProjMatrix() const;
+        XMMATRIX GetViewProjMatrix() const;
 
     private:
 
-        void updateMatrices(renderer::ShaderManager& shaderManager);
-        void updateLightPropertyCB(renderer::ShaderManager& shaderManager);
+        void updateMatrices();
 
 
-        void getPointsFromMatrix(XMMATRIX* matView, float nearPlane, float farPlane, XMMATRIX* const outMatLightView, XMMATRIX* const outMatLightProj, renderer::Renderer& renderer, renderer::ShaderManager& shaderManager);
+        void getPointsFromMatrix(XMMATRIX* matView, float nearPlane, float farPlane, XMMATRIX* const outMatLightView, XMMATRIX* const outMatLightProj, renderer::Renderer& renderer);
     private:
 
         XMFLOAT3 mPosition;

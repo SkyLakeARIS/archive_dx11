@@ -213,8 +213,8 @@ bool Application::initializeScene()
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f, *mShaderManager);
-    mLight->SetupCascade(*mRenderer, *mShaderManager);
+    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f);
+    mLight->SetupCascade(*mRenderer);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
 
@@ -361,20 +361,29 @@ void Application::updateScene(double deltaTime)
         SendMessage(mWindow->GetHandle(), WM_DESTROY, 0, 0);
     }
 
-
+    // MEMO: Renderer가 예약한 CB들 업로드
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());
     mShaderManager->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
 
+    mLight->SetupCascade(*mRenderer);
+    renderer::CbLightViewProjMatrix cbLightVpMat;
+    cbLightVpMat.Matrix = XMMatrixTranspose(mLight->GetViewProjMatrix());
+    mShaderManager->UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
 
-    mLight->SetupCascade(*mRenderer, *mShaderManager);
+    const XMFLOAT3 lightPosition(mLight->GetPosition());
+    renderer::CbLightProperty cbLightProperty;
+    cbLightProperty.First = mLight->GetColor();
+    cbLightProperty.Second = XMFLOAT4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
+    mShaderManager->UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
+
     // TODO: improve - 이후에 창 크기 말고 viewport 사이즈로 바꾸는 것으로 검토(급하진 않음)
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
     renderer::CbScreenSpaceMatrix cbScreenSpaceMatrix = {};
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
     mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
-    mLightIcon->SetPosition(mLight->GetPosition());
+    mLightIcon->SetPosition(lightPosition);
     mLightIcon->UpdateScaleMatrix(*mCamera);
 
     mSkybox->Update();
