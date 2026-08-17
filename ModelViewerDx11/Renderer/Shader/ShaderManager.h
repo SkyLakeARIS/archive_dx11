@@ -9,14 +9,68 @@ namespace renderer
 
     class ShaderManager
     {
+    private:
+
+        enum class eVertexShader : uint32_t
+        {
+            VsBasicWithShadow,
+            VsOutline,
+            VsRenderToTexture,
+            VsSimple,
+            VsSkybox,
+            VsScreen,
+            VsShadow,
+            VertexShaderCount
+        };
+
+        enum class ePixelShader : uint32_t
+        {
+            PsBasicWithShadow,
+            PsOutline,
+            PsShadow,
+            PsSkybox,
+            // TODO: improve - PsTexture 정도가 적당한 네이밍일 듯하다. - 후순위로 작업
+            PsRenderToTexture,
+            PsColor,
+            PixelShaderCount
+        };
+
+        struct ShaderMap
+        {
+            eShader Type;
+            eVertexShader VsIndex;
+            ePixelShader PsIndex;
+        };
+
+        struct ConstantBufferEntry
+        {
+            ID3D11Buffer* Buffer;
+            uint32_t ByteWidth;
+            D3D11_USAGE Usage;
+        };
+
+        struct ConstantBufferMap
+        {
+            eCbType Index; // added for easy to see.
+            uint32_t ByteWidth;
+            D3D11_USAGE Usage;
+        };
+
     public:
-        ShaderManager(ID3D11Device& device, Renderer& renderer);
+
+        ShaderManager(ID3D11Device& device, ID3D11DeviceContext& deviceContext);
         ~ShaderManager();
 
         // TODO: improve - Renderer에서 해당 클래스로 실제 셰이더 컴파일 및 구성하는 코드 이동해야 함.
+        bool SetupShaders();
+        bool CreatePresetConstantBuffers();
 
-        void UpdateMaterial(eCbType type, const SemiMaterial& material);
-
+        void UpdateCB(eCbType type, const void* const data) const;
+        void               UpdateMaterial(eCbType type, const SemiMaterial& material);
+        void               GetShadersByType(eShader type, ID3D11VertexShader** vs, ID3D11PixelShader** ps) const;
+        ID3D11InputLayout* GetInputLayoutByType(eVertexFormat type) const;
+        ID3D11Buffer* GetConstantBufferByType(eCbType type) const;
+    public:
         // 1. Renderer가 예약한 Cb는 ShaderManager가 관리하지 않고 앱 내부적으로 혹은 Renderer가 업데이트/바인드 처리
         // 2. Material만 구조가 잡히기 전까지 ShaderManager에게 바인딩 정보와 업데이트를 맡김. (수작업을 대신함)
         // MEMO: 머티리얼당 셰이더라는 가정이므로, 동일 셰이더에 다른 머티리얼은 대응이 안되는 문제는 나중에 해결해야 함.
@@ -26,9 +80,28 @@ namespace renderer
         static void GetMaterialSamplerBindSlot(eShader type, int8_t& outBindingSlot);
 
     private:
+        bool createInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
+            uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
+
+
+        bool createVertexShader(const WCHAR* const path, ID3D11VertexShader** const outVertexShader);
+
+        bool createPixelShader(const WCHAR* const path, ID3D11PixelShader** const outPixelShader);
+
+        bool compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
+
+    private:
 
         ID3D11Device* mDevice;
-        Renderer* mRenderer;
+        ID3D11DeviceContext* mDeviceContext;
+
+        // CB
+        ConstantBufferEntry mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
+
+        ShaderMap           mShaderMapTable[static_cast<uint32_t>(eShader::ShaderCount)]; // combine vs-ps pairs
+        ID3D11VertexShader* mVertexShadersList[static_cast<uint32_t>(eVertexShader::VertexShaderCount)];
+        ID3D11PixelShader* mPixelShaderList[static_cast<uint32_t>(ePixelShader::PixelShaderCount)];
+        ID3D11InputLayout* mInputLayoutList[static_cast<uint32_t>(eVertexFormat::FormatCount)];
     };
 }
 

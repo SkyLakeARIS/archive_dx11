@@ -4,6 +4,7 @@
 namespace renderer
 {
     class Renderer;
+    class ShaderManager;
 }
 
 namespace scene
@@ -15,12 +16,12 @@ namespace scene
         Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp, int16_t windowWidth, int16_t windowHeight);
         ~Camera();
 
-        void RotateAxis(float yawRad, float pitchRad, renderer::Renderer& renderer);
+        void RotateAxis(float yawRad, float pitchRad, renderer::ShaderManager& shaderManager);
 
-        void AddRadiusSphere(float scaleFactor, renderer::Renderer& renderer);
-        void AddHeight(float height, renderer::Renderer& renderer);
+        void AddRadiusSphere(float scaleFactor, renderer::ShaderManager& ShaderManager);
+        void AddHeight(float height, renderer::ShaderManager& shaderManager);
 
-        void ChangeFocus(XMFLOAT3 newFocus, renderer::Renderer& renderer);
+        void ChangeFocus(XMFLOAT3 newFocus, renderer::ShaderManager& shaderManager);
 
         float GetFov() const;
         float GetAspectRatio() const;
@@ -32,7 +33,7 @@ namespace scene
         inline XMMATRIX GetProjectionMatrix() const;
     private:
 
-        void calcCameraPosition(renderer::Renderer& renderer);
+        void calcCameraPosition(renderer::ShaderManager& shaderManager);
 
         void makeViewMatrix();
         void makeProjectionMatrix();

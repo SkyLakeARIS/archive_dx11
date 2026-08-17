@@ -209,12 +209,12 @@ bool Application::initializeScene()
     mSkybox->Initialize(10, 10, mTextureManager);
 
     mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    mCamera->ChangeFocus(mCharacter->GetCenterPoint(), *mRenderer);
+    mCamera->ChangeFocus(mCharacter->GetCenterPoint(), *mShaderManager);
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f, *mRenderer);
-    mLight->SetupCascade(*mRenderer);
+    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f, *mShaderManager);
+    mLight->SetupCascade(*mRenderer, *mShaderManager);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
 
@@ -243,7 +243,19 @@ bool Application::initializeManagers()
     ID3D11Device* device = mRenderer->GetDevice();
     ID3D11DeviceContext* deviceContext = mRenderer->GetDeviceContext();
 
-    mShaderManager = new renderer::ShaderManager(*device, *mRenderer);
+    mShaderManager = new renderer::ShaderManager(*device, *deviceContext);
+    if (!mShaderManager->CreatePresetConstantBuffers())
+    {
+        ASSERT(false, "CB 초기화 실패")
+        return false;
+    }
+
+    if (!mShaderManager->SetupShaders())
+    {
+        ASSERT(false, "셰이더 초기화 실패")
+        return false;
+    }
+
 
     mBufferManager = new renderer::BufferManager(device, deviceContext, renderer::BufferManager::eIndexListFormat::UInt32);
     if (!mBufferManager->Initialize(renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize, renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize))
@@ -257,7 +269,7 @@ bool Application::initializeManagers()
 
     mResourceManager = new renderer::ResourceManager(device, mTextureManager, mImporter, mBufferManager);
 
-    mRenderer->SetManagers(mBufferManager, mTextureManager);
+    mRenderer->SetManagers(mBufferManager, mTextureManager, mShaderManager);
     renderer::MeshGenerator::Initialize(mBufferManager);
     return true;
 }
@@ -280,28 +292,28 @@ void Application::updateScene(double deltaTime)
         mDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
         if (!(mouseX == 0 && mouseY == 0))
         {
-            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed, *mRenderer);
+            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed, *mShaderManager);
         }
     }
     else
     {
         if (gKeyboard[DIK_W] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)), *mRenderer);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)), *mShaderManager);
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime), *mRenderer);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime), *mShaderManager);
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f, *mRenderer);
+            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f, *mShaderManager);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f, *mRenderer);
+            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f, *mShaderManager);
         }
     }
 
@@ -309,12 +321,12 @@ void Application::updateScene(double deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        mCamera->AddRadiusSphere(deltaTime, *mRenderer);
+        mCamera->AddRadiusSphere(deltaTime, *mShaderManager);
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        mCamera->AddRadiusSphere(-deltaTime, *mRenderer);
+        mCamera->AddRadiusSphere(-deltaTime, *mShaderManager);
     }
 
     // 키보드<-> 마우스 조작 전환
@@ -336,12 +348,12 @@ void Application::updateScene(double deltaTime)
 
     if (gKeyboard[DIK_Z] & 0x80)
     {
-        mCamera->AddHeight(-deltaTime, *mRenderer);
+        mCamera->AddHeight(-deltaTime, *mShaderManager);
     }
 
     if (gKeyboard[DIK_X] & 0x80)
     {
-        mCamera->AddHeight(deltaTime, *mRenderer);
+        mCamera->AddHeight(deltaTime, *mShaderManager);
     }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
@@ -352,15 +364,15 @@ void Application::updateScene(double deltaTime)
 
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());
-    mRenderer->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
+    mShaderManager->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
 
 
-    mLight->SetupCascade(*mRenderer);
+    mLight->SetupCascade(*mRenderer, *mShaderManager);
     // TODO: improve - 이후에 창 크기 말고 viewport 사이즈로 바꾸는 것으로 검토(급하진 않음)
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
     renderer::CbScreenSpaceMatrix cbScreenSpaceMatrix = {};
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
-    mRenderer->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
+    mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
     mLightIcon->SetPosition(mLight->GetPosition());
     mLightIcon->UpdateScaleMatrix(*mCamera);
@@ -520,7 +532,7 @@ void Application::renderScene()
         }
 
         const renderer::CbWorld cbMatWorld = { command.MatWorld };
-        mRenderer->UpdateCB(renderer::eCbType::CbWorld, &cbMatWorld);
+        mShaderManager->UpdateCB(renderer::eCbType::CbWorld, &cbMatWorld);
 
         if(command.IndexRange.Count)
         {

@@ -4,6 +4,7 @@
 
 namespace renderer
 {
+    class ShaderManager;
     struct RenderPacket;
 }
 
@@ -15,38 +16,6 @@ namespace renderer
     class Renderer final : IUnknown
     {
     private:
-
-        enum class eVertexShader : uint32_t
-        {
-            VsBasicWithShadow,
-            VsOutline,
-            VsRenderToTexture,
-            VsSimple,
-            VsSkybox,
-            VsScreen,
-            VsShadow,
-            VertexShaderCount
-        };
-
-        enum class ePixelShader : uint32_t
-        {
-            PsBasicWithShadow,
-            PsOutline,
-            PsShadow,
-            PsSkybox,
-            // TODO: improve - PsTexture 정도가 적당한 네이밍일 듯하다. - 후순위로 작업
-            PsRenderToTexture,
-            PsColor,
-            PixelShaderCount
-        };
-
-        struct ShaderMap
-        {
-            eShader Type;
-            eVertexShader VsIndex;
-            ePixelShader PsIndex;
-        };
-
         struct RenderTargetDepthStencilMap
         {
             uint32_t RenderTargetIndex;
@@ -55,37 +24,23 @@ namespace renderer
         };
         typedef RenderTargetDepthStencilMap RtvDsMap;
 
-        struct ConstantBufferMap
-        {
-            eCbType Index; // added for easy to see.
-            uint32_t ByteWidth;
-            D3D11_USAGE Usage;
-        };
-
         struct PrimitiveTopologyMap
         {
             ePrimitiveTopology UserType;
             D3D11_PRIMITIVE_TOPOLOGY ApiType;
         };
 
-        struct ConstantBufferEntry
-        {
-            ID3D11Buffer* Buffer;
-            uint32_t ByteWidth;
-            D3D11_USAGE Usage;
-        };
     public:
         Renderer();
         ~Renderer();
 
 
-        void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager);
+        void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager);
 
         // D3D
         HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32 width, uint32 height, bool bDebugMode);
         HRESULT CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc, ID3D11RenderTargetView** outRtv, const char* const debugTag = "NO_INFO") const;
         HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO") const;
-        HRESULT CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const;
 
         // 그림자 매핑을 위한 설계
         void    SetViewport(bool bFullScreen) const;
@@ -94,10 +49,6 @@ namespace renderer
         // init - program
         bool initialize(HWND handleWindow, int16_t width, int16_t height, int16_t frameRate);
 
-        // Cate : shader
-        HRESULT CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc, uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
-        HRESULT CreateVertexShader(const WCHAR* const path, ID3D11VertexShader** const outVertexShader);
-        HRESULT CreatePixelShader(const WCHAR* const path, ID3D11PixelShader** const outPixelShader);
         // TODO: API 의존성을 완전히 분리하려면 desc 조차도 분리하는 게 좋을 것 같다. 일단은 이대로 사용
         HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
@@ -118,7 +69,6 @@ namespace renderer
         HRESULT QueryInterface(const IID& riid, void** ppvObject) override;
 
         //  D3D state
-        void UpdateCB(eCbType type, const void* const data) const;
 
         void BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const;
         void BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const;
@@ -164,12 +114,9 @@ namespace renderer
         // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
         void registerShadowTexture();
 
-        HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
         bool    createRasterState();
         HRESULT createSamplerState();
-        HRESULT createPresetConstantBuffers();
-        HRESULT setupShaders();
 
     private:
 
@@ -179,12 +126,6 @@ namespace renderer
         // D3D Device
         ID3D11Device*               mDevice;
         ID3D11DeviceContext*        mDeviceContext;
-
-        // shader
-        ShaderMap           mShaderMapTable[static_cast<uint32_t>(eShader::ShaderCount)]; // combine vs-ps pairs
-        ID3D11VertexShader* mVertexShadersList[static_cast<uint32_t>(eVertexShader::VertexShaderCount)];
-        ID3D11PixelShader*  mPixelShaderList[static_cast<uint32_t>(ePixelShader::PixelShaderCount)];
-        ID3D11InputLayout*  mInputLayoutList[static_cast<uint32_t>(eVertexFormat::FormatCount)];
 
         // 
         IDXGISwapChain*             mSwapChain;
@@ -214,12 +155,11 @@ namespace renderer
         // blend state
         // MEMO: option이 많고, 블렌드 하는데 조합이 많을 것 같으니 Hash로 관리하는 게 나을 것 같다.
         std::unordered_map<HashID, ID3D11BlendState*> mBlendStateMap;
-        // CB
-        ConstantBufferEntry mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
         // topology
         PrimitiveTopologyMap mPrimitiveTopologies[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)];
         // Managers
         BufferManager* mBufferManager;
         TextureManager* mTextureManager;
+        ShaderManager* mShaderManager;
     };
 }

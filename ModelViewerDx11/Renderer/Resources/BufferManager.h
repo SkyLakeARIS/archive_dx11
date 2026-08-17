@@ -87,7 +87,8 @@ namespace renderer
         eIndexListFormat mIndexFormat;
 
         // TODO: FlatMap은 일단 구조를 잡고나서 도입하자.
-        // MEMO: 0 offset bind를 하려면 버퍼 내에 서로 다른 stride를 가진 데이터가 존재하면 안될 것으로 생각되어 Buffer들을 분리한다.
+        // MEMO: 0 offset bind를 하려면 버퍼 내에 서로 다른 stride를 가진 데이터가 존재하면
+        // 안될 것으로 생각되어 Buffer들을 분리한다.
         // MEMO: pair<vertex stride, Buffer> - stride 크기 별로 개별 버퍼를 관리
         std::unordered_map<int16_t, BufferChunk> mVertexBuffers;
         std::unordered_map<int16_t, BufferChunk> mIndexBuffers;

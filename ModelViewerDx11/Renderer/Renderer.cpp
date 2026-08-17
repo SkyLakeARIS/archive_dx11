@@ -3,6 +3,7 @@
 #include "Resources/BufferManager.h"
 #include "Resources/Material.h"
 #include "Resources/TextureManager.h"
+#include "Shader/ShaderManager.h"
 
 namespace renderer
 {
@@ -58,10 +59,6 @@ namespace renderer
         : mRefCount(1)
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
-        , mShaderMapTable{}
-        , mVertexShadersList{}
-        , mPixelShaderList{}
-        , mInputLayoutList{}
         , mSwapChain(nullptr)
         , mDepthStencilTexture(nullptr)
         , mSkyboxDepthStencil(nullptr)
@@ -76,54 +73,18 @@ namespace renderer
         , mViewportTex()
         , mRasterStates{nullptr}
         , mSamplerState{}
-        , mCbList{}
         , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
+        , mShaderManager(nullptr)
     {}
 
     Renderer::~Renderer()
     {
         Cleanup();
-    }
-
-    HRESULT Renderer::compileShaderFromFile(
-        const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
-    {
-        HRESULT result = S_OK;
-
-        DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-    #ifdef _DEBUG
-        // Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
-        // Setting this flag improves the shader debugging experience, but still allows 
-        // the shaders to be optimized and to run exactly the way they will run in 
-        // the release configuration of this program.
-        dwShaderFlags |= D3DCOMPILE_DEBUG;
-
-        // Disable optimizations to further improve shader debugging
-        dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
-    #endif
-
-        ID3DBlob* pErrorBlob = nullptr;
-        result = D3DCompileFromFile(szFileName, nullptr, nullptr, szEntryPoint, szShaderModel,
-            dwShaderFlags, 0, ppBlobOut, &pErrorBlob);
-
-        if (FAILED(result))
-        {
-            if (pErrorBlob)
-            {
-                OutputDebugStringA(reinterpret_cast<const char*>(pErrorBlob->GetBufferPointer()));
-                pErrorBlob->Release();
-            }
-            return result;
-        }
-
-        if (pErrorBlob)
-        {
-            pErrorBlob->Release();
-        }
-
-        return S_OK;
+        mBufferManager = nullptr;
+        mTextureManager = nullptr;
+        mShaderManager = nullptr;
     }
 
     bool Renderer::createRasterState()
@@ -194,41 +155,6 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::createPresetConstantBuffers()
-    {
-        constexpr ConstantBufferMap cbMapTable[static_cast<uint8_t>(eCbType::ConstantBufferCount)] =
-            {
-                {eCbType::CbWorld, sizeof(CbWorld), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbViewProj, sizeof(CbViewProj), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbLightViewProjMatrix, sizeof(CbLightViewProjMatrix), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbCameraPosition, sizeof(CbCameraPosition), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty), D3D11_USAGE_DEFAULT},
-                {eCbType::CbLightProperty, sizeof(CbLightProperty), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbMaterialFactors, sizeof(CbMaterialFactors), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbColor, sizeof(CbColor), D3D11_USAGE_DYNAMIC},
-                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix), D3D11_USAGE_DYNAMIC},
-            };
-        static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
-        D3D11_BUFFER_DESC desc = {};
-        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-   
-        HRESULT result = {};
-        for (uint8_t index = 0; index < static_cast<uint8_t>(eCbType::ConstantBufferCount); ++index)
-        {
-            desc.Usage = cbMapTable[index].Usage;
-            desc.CPUAccessFlags = (cbMapTable[index].Usage == D3D11_USAGE_DYNAMIC) ? D3D11_CPU_ACCESS_WRITE : 0;
-            desc.ByteWidth = cbMapTable[index].ByteWidth;
-            result = CreateConstantBuffer(desc, &mCbList[index].Buffer);
-            if (FAILED(result))
-            {
-                break;
-            }
-            mCbList[index].Usage = desc.Usage;
-            mCbList[index].ByteWidth = desc.ByteWidth;
-        }
-        return result;
-    }
-
     HashID Renderer::GetBlendStateHash(D3D11_BLEND_DESC& desc)
     {
         HashID hash = 0;
@@ -244,12 +170,14 @@ namespace renderer
         return hash;
     }
 
-    void Renderer::SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager)
+    void Renderer::SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager)
     {
         ASSERT(bufferManager, "bufferManager is nullptr");
         ASSERT(textureManager, "textureManager is nullptr");
+        ASSERT(shaderManager, "shaderManager is nullptr");
         mBufferManager = bufferManager;
         mTextureManager = textureManager;
+        mShaderManager = shaderManager;
 
         registerShadowTexture();
     }
@@ -440,24 +368,10 @@ namespace renderer
             return false;
         }
 
-        result = setupShaders();
-        if (FAILED(result))
-        {
-            ASSERT(false, "FAIL : FAIL : setupShaders");
-            return false;
-        }
-
         result = createSamplerState();
         if (FAILED(result))
         {
             ASSERT(false, "FAIL : FAIL : createSamplerState");
-            return false;
-        }
-
-        result = createPresetConstantBuffers();
-        if (FAILED(result))
-        {
-            ASSERT(false, "FAIL : FAIL : createPresetConstantBuffers");
             return false;
         }
 
@@ -477,89 +391,6 @@ namespace renderer
         (void)memcpy(mPrimitiveTopologies, TopologyMap, sizeof(TopologyMap));
 
         return true;
-    }
-
-    HRESULT Renderer::CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-        uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
-    {
-
-        ASSERT(outInputLayout != nullptr, "do not pass nullptr");
-        ID3D11VertexShader* dummyShader = nullptr;
-        ID3DBlob* blob = nullptr;
-        HRESULT result = compileShaderFromFile(path, "main", "vs_5_0", &blob);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to compile vertex shader : compileShaderFromFile");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &dummyShader);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreateInputLayout(desc, numDescElements, blob->GetBufferPointer(), blob->GetBufferSize(), &(*outInputLayout));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
-
-        blob->Release();
-        SAFETY_RELEASE(dummyShader);
-
-        return result;
-    }
-
-    HRESULT Renderer::CreateVertexShader(
-        const WCHAR* const path, ID3D11VertexShader** const outVertexShader)
-    {
-        ASSERT(outVertexShader != nullptr, "do not pass nullptr");
-
-        ID3DBlob* blob = nullptr;
-        HRESULT result = compileShaderFromFile(path, "main", "vs_5_0", &blob);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to compile vertex shader : compileShaderFromFile");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &(*outVertexShader));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
-
-        blob->Release();
-
-        return result;
-    }
-
-    HRESULT Renderer::CreatePixelShader(
-        const WCHAR* const path, ID3D11PixelShader** const outPixelShader)
-    {
-        ASSERT(outPixelShader != nullptr, "do not pass nullptr");
-
-        ID3DBlob* blob = nullptr;
-        // PS_Lighting
-        HRESULT result = compileShaderFromFile(path, "main", "ps_5_0", &blob);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to compile pixel shader : compileShaderFromFile");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &(*outPixelShader));
-        blob->Release();
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        return result;
     }
 
     HRESULT Renderer::CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash)
@@ -617,16 +448,6 @@ namespace renderer
         return result;
     }
 
-    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const
-    {
-        ASSERT(desc.BindFlags & static_cast<uint32_t>(D3D11_BIND_CONSTANT_BUFFER), "desc.BindFlags not bind as Constant-buffer");
-        ASSERT(desc.ByteWidth != 0, "desc.ByteWidth is zero");
-
-        HRESULT result = mDevice->CreateBuffer(&desc, nullptr, outCb);
-
-        return result;
-    }
-
     void Renderer::BindRenderTargetTo(eRenderTarget type)
     {
         RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
@@ -636,14 +457,17 @@ namespace renderer
 
     void Renderer::BindInputLayoutTo(eVertexFormat type) const
     {
-        mDeviceContext->IASetInputLayout(mInputLayoutList[static_cast<uint32>(type)]);
+        ID3D11InputLayout* const intputLayout = mShaderManager->GetInputLayoutByType(type);
+        mDeviceContext->IASetInputLayout(intputLayout);
     }
 
     void Renderer::BindShaderTo(eShader type) const
     {
-        const ShaderMap& shaderMap = mShaderMapTable[static_cast<uint32_t>(type)];
-        mDeviceContext->VSSetShader(mVertexShadersList[static_cast<uint32_t>(shaderMap.VsIndex)], nullptr, 0U);
-        mDeviceContext->PSSetShader(mPixelShaderList[static_cast<uint32_t>(shaderMap.PsIndex)], nullptr, 0U);
+        ID3D11VertexShader* vs = nullptr;
+        ID3D11PixelShader* ps = nullptr;
+        mShaderManager->GetShadersByType(type, &vs, &ps);
+        mDeviceContext->VSSetShader(vs, nullptr, 0U);
+        mDeviceContext->PSSetShader(ps, nullptr, 0U);
     }
 
     void Renderer::Draw(uint32_t vertexCount, uint32_t startVertexLocation) const
@@ -903,146 +727,6 @@ namespace renderer
         mSwapChain->Present(0, 0);
     }
 
-    HRESULT Renderer::setupShaders()
-    {
-
-        D3D11_INPUT_ELEMENT_DESC layoutPTNDesc[] =
-        {
-            { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-            { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-            { "NORMAL", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 20U, D3D11_INPUT_PER_VERTEX_DATA, 0U}
-        };
-
-        const wchar_t* InputLayoutSourceList[] =
-        {
-            L"Renderer/Shaders/LayoutPTN.hlsl",
-            L"Renderer/Shaders/LayoutPT.hlsl",
-            L"Renderer/Shaders/LayoutP.hlsl",
-        };
-
-        const wchar_t* VertexShaderSourceList[] =
-        {
-            L"Renderer/Shaders/VsOutline.hlsl",
-            L"Renderer/Shaders/VsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/VsSimple.hlsl",
-            L"Renderer/Shaders/VsSkybox.hlsl",
-            L"Renderer/Shaders/VsRenderToTexture.hlsl",
-            L"Renderer/Shaders/VsScreen.hlsl",
-            L"Renderer/Shaders/VsShadow.hlsl",
-        };
-        const wchar_t* PixelShaderSourceList[] =
-        {
-            L"Renderer/Shaders/PsOutline.hlsl",
-            L"Renderer/Shaders/PsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/PsShadow.hlsl",
-            L"Renderer/Shaders/PsRenderToTexture.hlsl",
-            L"Renderer/Shaders/PsSkybox.hlsl",
-            L"Renderer/Shaders/PsColor.hlsl"
-        };
-
-        struct PixelShaderContainer
-        {
-            ePixelShader ListIndex;
-            uint32_t     SourceIndex;
-        };
-        struct VertexShaderContainer
-        {
-            eVertexShader ListIndex;
-            uint32_t      SourceIndex;
-        };
-
-        struct InputLayoutContainer
-        {
-            eVertexFormat ListIndex;
-            uint32_t      SourceIndex;
-            D3D11_INPUT_ELEMENT_DESC* Desc;
-            uint32_t numDescElements;
-        };
-
-        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
-        {
-            { eVertexFormat::PTN, 0U, layoutPTNDesc, 3},
-            { eVertexFormat::PT, 1U, layoutPTNDesc, 2},
-            {eVertexFormat::P, 2U, layoutPTNDesc, 1},
-        };
-
-        constexpr VertexShaderContainer VertexShaderListMapTable[static_cast<uint32_t>(eVertexShader::VertexShaderCount)] =
-        {
-            {eVertexShader::VsBasicWithShadow, 1U},
-            { eVertexShader::VsOutline, 0U},
-            {eVertexShader::VsSimple, 2U},
-            {eVertexShader::VsRenderToTexture, 4U}, // ?
-            {eVertexShader::VsSkybox, 3U},
-            {eVertexShader::VsScreen, 5U},
-            {eVertexShader::VsShadow, 6U},
-        };
-
-        constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
-        {
-            {ePixelShader::PsBasicWithShadow, 1U},
-            {ePixelShader::PsOutline, 0U},
-            {ePixelShader::PsRenderToTexture, 3U},
-            {ePixelShader::PsShadow, 2U},
-            {ePixelShader::PsSkybox, 4U},
-            {ePixelShader::PsColor, 5U},
-        };
-
-
-        // construct shader mapping table
-        constexpr ShaderMap ShaderMapTable[] =
-        {
-            {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline}, 
-            {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox}, 
-            { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
-            {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
-            {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
-            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
-        };
-
-        static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
-        memcpy(mShaderMapTable, ShaderMapTable, sizeof(mShaderMapTable));
-
-
-        HRESULT result = S_OK;
-
-        // input layout
-        for (const InputLayoutContainer& layout : InputLayoutListMapTable)
-        {
-            ASSERT(mInputLayoutList[static_cast<uint32_t>(layout.ListIndex)] == nullptr, "The InputLayout-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreateInputLayout(InputLayoutSourceList[layout.SourceIndex], layout.Desc, layout.numDescElements, layout.ListIndex, &mInputLayoutList[static_cast<uint32_t>(layout.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Create InputLayout FAILED");
-            }
-        }
-
-        for (const VertexShaderContainer& vs : VertexShaderListMapTable)
-        {
-            ASSERT(mVertexShadersList[static_cast<uint32_t>(vs.ListIndex)] == nullptr, "The VS-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreateVertexShader(VertexShaderSourceList[vs.SourceIndex], &mVertexShadersList[static_cast<uint32_t>(vs.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Compile Vertex Shader FAILED");
-            }
-        }
-
-        for (const PixelShaderContainer& ps : PixelShaderListMapTable)
-        {
-            ASSERT(mPixelShaderList[static_cast<uint32_t>(ps.ListIndex)] == nullptr, "The PS-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreatePixelShader(PixelShaderSourceList[ps.SourceIndex], &mPixelShaderList[static_cast<uint32_t>(ps.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Compile Pixel Shader FAILED");
-            }
-        }
-
-        return result;
-    }
-
     bool Renderer::CheckDeviceLost(bool& outIsReInitialize) const
     {
         bool bTerminateProgram = false;
@@ -1079,10 +763,6 @@ namespace renderer
 
     void Renderer::Cleanup()
     {
-        for (uint32 i = 0; i < static_cast<uint32>(eCbType::ConstantBufferCount); ++i)
-        {
-            SAFETY_RELEASE(mCbList[i].Buffer);
-        }
 
         for (uint32 i = 0; i < static_cast<uint32>(eRasterType::RasterCount); ++i)
         {
@@ -1099,21 +779,6 @@ namespace renderer
             SAFETY_RELEASE(it.second);
         }
         mBlendStateMap.clear();
-
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexShader::VertexShaderCount); ++i)
-        {
-            SAFETY_RELEASE(mVertexShadersList[i]);
-        }
-
-        for (uint32 i = 0; i < static_cast<uint32>(ePixelShader::PixelShaderCount); ++i)
-        {
-            SAFETY_RELEASE(mPixelShaderList[i]);
-        }
-
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexFormat::FormatCount); ++i)
-        {
-            SAFETY_RELEASE(mInputLayoutList[i]);
-        }
 
         for (uint32 i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
         {
@@ -1152,33 +817,16 @@ namespace renderer
         return E_FAIL;
     }
 
-    void Renderer::UpdateCB(eCbType type, const void* const data) const
-    {
-        if (mCbList[static_cast<uint32_t>(type)].Usage == D3D11_USAGE_DYNAMIC)
-        {
-            // MEMO: Discard하거나, 4-5개 사이즈 여유를 두고 NoOverWrite해도 괜찮을지도.
-            D3D11_MAPPED_SUBRESOURCE mappedRes = {};
-            mDeviceContext->Map(mCbList[static_cast<uint32_t>(type)].Buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedRes);
-
-            (void)memcpy(mappedRes.pData, data, mCbList[static_cast<uint32_t>(type)].ByteWidth);
-
-            mDeviceContext->Unmap(mCbList[static_cast<uint32_t>(type)].Buffer, 0);
-        }
-        else
-        {
-            mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)].Buffer, 0U, nullptr, data, 0U, 0U);
-        }
-    }
-
-
     void Renderer::BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)].Buffer);
+        ID3D11Buffer* const cBuffer = mShaderManager->GetConstantBufferByType(type);
+        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &cBuffer);
     }
 
 
     void Renderer::BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)].Buffer);
+        ID3D11Buffer* const cBuffer = mShaderManager->GetConstantBufferByType(type);
+        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &cBuffer);
     }
 }

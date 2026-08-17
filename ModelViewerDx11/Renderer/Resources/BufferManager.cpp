@@ -490,9 +490,11 @@ namespace renderer
                         if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
                         {
                             cursorIt->Count += nextRangeIt->Count;
-                            // TODO: optimize - 현재 로직 구조로는 제거를 빠르게 할 수 없는 것 같다. 다른 좋은 방안 찾는게 필요
+                            // TODO: optimize - 현재 로직 구조로는 제거를 빠르게 할 수 없는 것 같다.
+                            // 다른 좋은 방안 찾는게 필요
                             removedRangeIt->second.erase(nextRangeIt);
-                            // TODO: optimize - 이렇게하면 항상 처음으로 돌아가므로 중간에 병합된 경우 다시 처음부터 순회해야하는 비효율 존재. 빠른 구현을 위해 우선 이렇게 함.
+                            // TODO: optimize - 이렇게하면 항상 처음으로 돌아가므로 중간에 병합된 경우
+                            // 다시 처음부터 순회해야하는 비효율 존재. 빠른 구현을 위해 우선 이렇게 함.
                             // RemoveIndexData도 마찬가지로 작업
                             cursorIt = removedRangeIt->second.begin();
                         }
