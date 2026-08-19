@@ -1,5 +1,4 @@
 #pragma once
-#include "../framework.h"
 #include "Define.h"
 
 namespace util
