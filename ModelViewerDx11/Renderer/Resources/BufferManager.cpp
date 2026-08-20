@@ -519,6 +519,7 @@ namespace renderer
                 chunkIt->second.SubChunks.erase(subChunkIt);
                 if (removedRangeIt->second.size() >= 2)
                 {
+                    std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
                     auto cursorIt = removedRangeIt->second.begin();
 
                     while ((cursorIt + 1) != removedRangeIt->second.end())
