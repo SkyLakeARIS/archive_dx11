@@ -432,7 +432,7 @@ namespace renderer
 
         if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
         {
-            resizeVertexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
+            resizeIndexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
 
