@@ -200,7 +200,7 @@ namespace renderer
 
         // MEMO: 적절한 공간을 가진 빈공간 탐색
         const auto& removedRangeIt = mVertexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.begin();
+        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
         int32_t minRemainSpace = INT32_MAX;
         for(int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
         {
@@ -220,6 +220,7 @@ namespace renderer
         int32_t writeCursorInBuffer  = chunkIt->second.CursorBytes;
         if(bestFitSpaceIt != removedRangeIt->second.end())
         {
+            ASSERT(dataByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", dataByteSize, bestFitSpaceIt->Count);
             // MEMO: 빈공간 재활용
             if(minRemainSpace == 0)
             {
@@ -290,7 +291,7 @@ namespace renderer
 
         // MEMO: 적절한 공간을 가진 빈공간 탐색
         const auto& removedRangeIt = mIndexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.begin();
+        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
         int32_t minRemainSpace = INT32_MAX;
         for (int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
         {
@@ -310,6 +311,7 @@ namespace renderer
         int32_t writeCursorInBuffer = chunkIt->second.CursorBytes;
         if (bestFitSpaceIt != removedRangeIt->second.end())
         {
+            ASSERT(dataByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", dataByteSize, bestFitSpaceIt->Count);
             // MEMO: 빈공간 재활용
             if (minRemainSpace == 0)
             {
