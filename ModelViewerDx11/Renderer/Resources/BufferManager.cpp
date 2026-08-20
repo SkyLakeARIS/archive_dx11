@@ -202,17 +202,16 @@ namespace renderer
         const auto& removedRangeIt = mVertexRemovedRanges.find(stride);
         std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
         int32_t minRemainSpace = INT32_MAX;
-        for(int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
+        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
         {
-            const std::vector<BufferRange>::iterator& element = (removedRangeIt->second.begin() + rangeIndex);
-            const int32_t remainSpace = element->Count - dataByteSize;
-            if(remainSpace >= 0)
+            const int32_t remainSpace = rangeIt->Count - dataByteSize;
+            if (remainSpace >= 0)
             {
                 // MEMO: save best-fit.
                 if (remainSpace < minRemainSpace)
                 {
                     minRemainSpace = remainSpace;
-                    bestFitSpaceIt = element;
+                    bestFitSpaceIt = rangeIt;
                 }
             }
         }
@@ -293,17 +292,16 @@ namespace renderer
         const auto& removedRangeIt = mIndexRemovedRanges.find(stride);
         std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
         int32_t minRemainSpace = INT32_MAX;
-        for (int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
+        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
         {
-            const std::vector<BufferRange>::iterator& element = (removedRangeIt->second.begin() + rangeIndex);
-            const int32_t remainSpace = element->Count - dataByteSize;
+            const int32_t remainSpace = rangeIt->Count - dataByteSize;
             if (remainSpace >= 0)
             {
                 // MEMO: save best-fit.
                 if (remainSpace < minRemainSpace)
                 {
                     minRemainSpace = remainSpace;
-                    bestFitSpaceIt = element;
+                    bestFitSpaceIt = rangeIt;
                 }
             }
         }
