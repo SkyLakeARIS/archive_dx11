@@ -488,7 +488,6 @@ namespace renderer
                         {
                             cursorIt->Count += nextRangeIt->Count;
                             removedRangeIt->second.erase(nextRangeIt);
-                            // RemoveIndexData도 마찬가지로 작업
                             cursorIt = removedRangeIt->second.begin();
                         }
                         else
