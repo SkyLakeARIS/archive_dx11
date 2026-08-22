@@ -478,40 +478,7 @@ namespace renderer
                 // MEMO: 연속된 빈공간 병합 시도
                 if (removedRangeIt->second.size() >= 2)
                 {
-                    std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
-                    // 1. 병합되고 나서 vector size가 1개 일 때.
-                    // 2. nextRangeIt이 end 일 때.
-                    // MEMO: 병합검출과 병합된 공간 제거 과정은 병합될 수 있는 케이스에 따라서 제거 시 문제가 될 수 있음.
-                    // 1. 연속되지 않은 서로 다른 공간
-                    // 2. 중간에 연속되지 않은 공간이 끼어있고, 앞 뒤로 연속된 공간이 있는 경우 <- 제거를 따로 하면 문제 생김
-                    // 3. 연속된 공간만 존재하는 경우
-                    // 4. 빈경우
-                    std::stack<int32_t> removeIndices;
-                    int32_t pivot = 0;
-                    // MEMO: 앞에서 2개 이상을 보장하니 괜찮음.
-                    int32_t cursor = 1;
-                    while(cursor < static_cast<int32_t>(removedRangeIt->second.size()))
-                    {
-                        if ((removedRangeIt->second[pivot].StartIndex + removedRangeIt->second[pivot].Count) == removedRangeIt->second[cursor].StartIndex)
-                        {
-                            removedRangeIt->second[pivot].Count += removedRangeIt->second[cursor].Count;
-                            removeIndices.push(cursor);
-                        }
-                        else
-                        {
-                            pivot = cursor;
-                        }
-                        ++cursor;
-                    }
-                    // MEMO: 병합이 끝나고 필요 없어진 요소들 제거 (거꾸로 순회하면 제거할 때 문제될 수 있는 부분을 해결)
-                    while(removeIndices.empty() == false)
-                    {
-                        const int32_t removeIndex = removeIndices.top();
-                        removeIndices.pop();
-
-                        removedRangeIt->second[removeIndex] = removedRangeIt->second.back();
-                        removedRangeIt->second.pop_back();
-                    }
+                    mergeRemovedSpace(removedRangeIt);
                 }
             }
         }
@@ -535,32 +502,7 @@ namespace renderer
                 chunkIt->second.SubChunks.erase(subChunkIt);
                 if (removedRangeIt->second.size() >= 2)
                 {
-                    std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
-                    std::stack<int32_t> removeIndices;
-                    int32_t pivot = 0;
-                    int32_t cursor = 1;
-                    while (cursor < static_cast<int32_t>(removedRangeIt->second.size()))
-                    {
-                        if ((removedRangeIt->second[pivot].StartIndex + removedRangeIt->second[pivot].Count) == removedRangeIt->second[cursor].StartIndex)
-                        {
-                            removedRangeIt->second[pivot].Count += removedRangeIt->second[cursor].Count;
-                            removeIndices.push(cursor);
-                        }
-                        else
-                        {
-                            pivot = cursor;
-                        }
-                        ++cursor;
-                    }
-
-                    while (removeIndices.empty() == false)
-                    {
-                        const int32_t removeIndex = removeIndices.top();
-                        removeIndices.pop();
-
-                        removedRangeIt->second[removeIndex] = removedRangeIt->second.back();
-                        removedRangeIt->second.pop_back();
-                    }
+                    mergeRemovedSpace(removedRangeIt);
                 }
             }
         }
@@ -792,5 +734,44 @@ namespace renderer
         std::swap(chunkIt->second.Buffer, resizedBuffer);
         SAFETY_RELEASE(resizedBuffer);
         chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
+    }
+
+    void BufferManager::mergeRemovedSpace(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedBufferIt)
+    {
+        ASSERT(removedBufferIt->second.size() >= 2, "병합 선조건은 벡터 사이즈가 2개 이상이어야 합니다. size(%d)", static_cast<int32_t>(removedBufferIt->second.size()));
+        std::sort(removedBufferIt->second.begin(), removedBufferIt->second.end(), BufferRangeIncrCompare);
+        // 1. 병합되고 나서 vector size가 1개 일 때.
+        // 2. nextRangeIt이 end 일 때.
+        // MEMO: 병합검출과 병합된 공간 제거 과정은 병합될 수 있는 케이스에 따라서 제거 시 문제가 될 수 있음.
+        // 1. 연속되지 않은 서로 다른 공간
+        // 2. 중간에 연속되지 않은 공간이 끼어있고, 앞 뒤로 연속된 공간이 있는 경우 <- 제거를 따로 하면 문제 생김
+        // 3. 연속된 공간만 존재하는 경우
+        // 4. 빈경우
+        std::stack<int32_t> removeIndices;
+        int32_t pivot = 0;
+        // MEMO: 앞에서 2개 이상을 보장하니 괜찮음.
+        int32_t cursor = 1;
+        while (cursor < static_cast<int32_t>(removedBufferIt->second.size()))
+        {
+            if ((removedBufferIt->second[pivot].StartIndex + removedBufferIt->second[pivot].Count) == removedBufferIt->second[cursor].StartIndex)
+            {
+                removedBufferIt->second[pivot].Count += removedBufferIt->second[cursor].Count;
+                removeIndices.push(cursor);
+            }
+            else
+            {
+                pivot = cursor;
+            }
+            ++cursor;
+        }
+        // MEMO: 병합이 끝나고 필요 없어진 요소들 제거 (거꾸로 순회하면 제거할 때 문제될 수 있는 부분을 해결)
+        while (removeIndices.empty() == false)
+        {
+            const int32_t removeIndex = removeIndices.top();
+            removeIndices.pop();
+
+            removedBufferIt->second[removeIndex] = removedBufferIt->second.back();
+            removedBufferIt->second.pop_back();
+        }
     }
 }
