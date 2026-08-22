@@ -328,7 +328,7 @@ namespace renderer
 
         if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
         {
-            resizeVertexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
+            resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
         const D3D11_MAP mapType = mbNeedDiscardDynamicVertex ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
@@ -379,7 +379,7 @@ namespace renderer
 
         if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
         {
-            resizeIndexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
+            resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
 
@@ -620,68 +620,6 @@ namespace renderer
     DXGI_FORMAT BufferManager::GetIndexFormat() const
     {
         return sIndexFormatMap[static_cast<int8_t>(mIndexFormat)].Format;
-    }
-
-    void BufferManager::resizeVertexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
-    {
-        ID3D11Buffer* resizedBuffer = nullptr;
-        D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-        bufferDesc.Usage = usageType;
-        bufferDesc.ByteWidth = newSize * 2;
-        bufferDesc.CPUAccessFlags = cpuAccessFlag;
-        if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
-        {
-            ASSERT(false, "vertex buffer creation failed while resizing. check the options. tried buffer type (%d)", bufferDesc.BindFlags);
-            return;
-        }
-
-        if (chunkIt->second.CursorBytes > 0)
-        {
-            D3D11_BOX updateRange = {};
-            updateRange.front = 0;
-            updateRange.back = 1;
-            updateRange.top = 0;
-            updateRange.bottom = 1;
-            updateRange.left = 0;
-            updateRange.right = chunkIt->second.CursorBytes;
-            mDeviceContext->CopySubresourceRegion(resizedBuffer, 0, 0, 0, 0, chunkIt->second.Buffer, 0, &updateRange);
-        }
-
-        std::swap(chunkIt->second.Buffer, resizedBuffer);
-        SAFETY_RELEASE(resizedBuffer);
-        chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
-    }
-
-    void BufferManager::resizeIndexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
-    {
-        ID3D11Buffer* resizedBuffer = nullptr;
-        D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-        bufferDesc.Usage = usageType;
-        bufferDesc.ByteWidth = newSize * 2;
-        bufferDesc.CPUAccessFlags = cpuAccessFlag;
-        if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
-        {
-            ASSERT(false, "index buffer creation failed while resizing. check the options. tried buffer type (%d)", bufferDesc.BindFlags);
-            return;
-        }
-
-        if (chunkIt->second.CursorBytes > 0)
-        {
-            D3D11_BOX updateRange = {};
-            updateRange.front = 0;
-            updateRange.back = 1;
-            updateRange.top = 0;
-            updateRange.bottom = 1;
-            updateRange.left = 0;
-            updateRange.right = chunkIt->second.CursorBytes;
-            mDeviceContext->CopySubresourceRegion(resizedBuffer, 0, 0, 0, 0, chunkIt->second.Buffer, 0, &updateRange);
-        }
-
-        std::swap(chunkIt->second.Buffer, resizedBuffer);
-        SAFETY_RELEASE(resizedBuffer);
-        chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
     }
 
     void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,
