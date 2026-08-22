@@ -15,7 +15,7 @@ namespace renderer
         {
             VsBasicWithShadow,
             VsOutline,
-            VsRenderToTexture,
+            VsTexture,
             VsSimple,
             VsSkybox,
             VsScreen,
@@ -29,7 +29,7 @@ namespace renderer
             PsOutline,
             PsShadow,
             PsSkybox,
-            PsRenderToTexture,
+            PsTexture,
             PsColor,
             PixelShaderCount
         };

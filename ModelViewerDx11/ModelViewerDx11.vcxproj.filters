@@ -200,14 +200,14 @@
     <FxCompile Include="Renderer\Shaders\PsBasicWithShadow.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsColor.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsOutline.hlsl" />
-    <FxCompile Include="Renderer\Shaders\PsRenderToTexture.hlsl" />
+    <FxCompile Include="Renderer\Shaders\PsTexture.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsShadow.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsSkybox.hlsl" />
     <FxCompile Include="Renderer\Shaders\LayoutPTN.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsBasicWithShadow.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsOutline.hlsl" />
     <FxCompile Include="Renderer\Shaders\LayoutPT.hlsl" />
-    <FxCompile Include="Renderer\Shaders\VsRenderToTexture.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsTexture.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsSimple.hlsl" />
     <FxCompile Include="Renderer\Shaders\LayoutP.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsSkybox.hlsl" />

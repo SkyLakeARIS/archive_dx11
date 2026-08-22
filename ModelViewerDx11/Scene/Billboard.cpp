@@ -55,7 +55,7 @@ namespace scene
                 subMesh.Material,
                 renderer::eRenderTarget::Default,
                 XMMatrixTranspose(matWorld),
-                renderer::eShader::RenderToTexture,
+                renderer::eShader::Texture,
                 renderer::eRasterType::Basic,
                 renderer::eSamplerType::AnisotropicWrap,
                 mBlendHash,

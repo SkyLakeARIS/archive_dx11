@@ -123,7 +123,7 @@ namespace renderer
         Skybox,
         Shadow,
         BasicWithShadow,
-        RenderToTexture,
+        Texture,
         Color,
         DebugHUD,
         ShaderCount

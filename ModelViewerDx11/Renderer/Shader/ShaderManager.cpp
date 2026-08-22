@@ -62,7 +62,7 @@ namespace renderer
             L"Renderer/Shaders/VsBasicWithShadow.hlsl",
             L"Renderer/Shaders/VsSimple.hlsl",
             L"Renderer/Shaders/VsSkybox.hlsl",
-            L"Renderer/Shaders/VsRenderToTexture.hlsl",
+            L"Renderer/Shaders/VsTexture.hlsl",
             L"Renderer/Shaders/VsScreen.hlsl",
             L"Renderer/Shaders/VsShadow.hlsl",
         };
@@ -71,7 +71,7 @@ namespace renderer
             L"Renderer/Shaders/PsOutline.hlsl",
             L"Renderer/Shaders/PsBasicWithShadow.hlsl",
             L"Renderer/Shaders/PsShadow.hlsl",
-            L"Renderer/Shaders/PsRenderToTexture.hlsl",
+            L"Renderer/Shaders/PsTexture.hlsl",
             L"Renderer/Shaders/PsSkybox.hlsl",
             L"Renderer/Shaders/PsColor.hlsl"
         };
@@ -107,7 +107,7 @@ namespace renderer
             {eVertexShader::VsBasicWithShadow, 1U},
             { eVertexShader::VsOutline, 0U},
             {eVertexShader::VsSimple, 2U},
-            {eVertexShader::VsRenderToTexture, 4U}, // ?
+            {eVertexShader::VsTexture, 4U}, // ?
             {eVertexShader::VsSkybox, 3U},
             {eVertexShader::VsScreen, 5U},
             {eVertexShader::VsShadow, 6U},
@@ -117,7 +117,7 @@ namespace renderer
         {
             {ePixelShader::PsBasicWithShadow, 1U},
             {ePixelShader::PsOutline, 0U},
-            {ePixelShader::PsRenderToTexture, 3U},
+            {ePixelShader::PsTexture, 3U},
             {ePixelShader::PsShadow, 2U},
             {ePixelShader::PsSkybox, 4U},
             {ePixelShader::PsColor, 5U},
@@ -131,9 +131,9 @@ namespace renderer
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox},
             { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture},
+            {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTexture},
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
-            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
+            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsTexture},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -268,7 +268,7 @@ namespace renderer
             { eCbType::ConstantBufferCount, false, -1 }, // Skybox
             { eCbType::ConstantBufferCount, false, -1 }, // Shadow
             { eCbType::CbMaterialFactors,          true,   0 }, // BasicWithShadow
-            { eCbType::ConstantBufferCount, false, -1 }, // RenderToTexture
+            { eCbType::ConstantBufferCount, false, -1 }, // Texture
             { eCbType::CbColor,             true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD
         };
@@ -285,7 +285,7 @@ namespace renderer
             {  0, -1, -1 }, // Skybox
             { -1, -1, -1 }, // Shadow
             {  0,  1,  2 }, // BasicWithShadow
-            {  0, -1, -1 }, // RenderToTexture
+            {  0, -1, -1 }, // Texture
             { -1, -1, -1 }, // Color
             {  0, -1, -1 }, // DebugHUD
         };
@@ -304,7 +304,7 @@ namespace renderer
             {  0 }, // Skybox
             { -1 }, // Shadow
             {  0 }, // BasicWithShadow
-            {  0 }, // RenderToTexture
+            {  0 }, // Texture
             { -1 }, // Color
             {  0 }, // DebugHUD
         };
