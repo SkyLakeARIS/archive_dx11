@@ -620,7 +620,7 @@ namespace renderer
     }
 
     void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,
-        std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
+                                     std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
     {
         ID3D11Buffer* resizedBuffer = nullptr;
         D3D11_BUFFER_DESC bufferDesc = {};
