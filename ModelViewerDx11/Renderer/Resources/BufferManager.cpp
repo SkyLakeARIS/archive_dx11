@@ -240,7 +240,7 @@ namespace renderer
             // MEMO: 재활용할 공간이 없음
             if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
             {
-                resizeVertexBuffer(writeCursorInBuffer + dataByteSize, D3D11_USAGE_DEFAULT, 0, chunkIt);
+                resizeBuffer(writeCursorInBuffer + dataByteSize, D3D11_BIND_VERTEX_BUFFER,  D3D11_USAGE_DEFAULT, 0, chunkIt);
             }
 
             chunkIt->second.CursorBytes += dataByteSize;
@@ -330,7 +330,7 @@ namespace renderer
             // MEMO: 재활용할 공간이 없음
             if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
             {
-                resizeIndexBuffer(writeCursorInBuffer + dataByteSize, D3D11_USAGE_DEFAULT, 0, chunkIt);
+                resizeBuffer(writeCursorInBuffer + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
             }
 
             chunkIt->second.CursorBytes += dataByteSize;
@@ -716,6 +716,38 @@ namespace renderer
         if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
         {
             ASSERT(false, "index buffer creation failed while resizing. check the options. tried buffer type (%d)", bufferDesc.BindFlags);
+            return;
+        }
+
+        if (chunkIt->second.CursorBytes > 0)
+        {
+            D3D11_BOX updateRange = {};
+            updateRange.front = 0;
+            updateRange.back = 1;
+            updateRange.top = 0;
+            updateRange.bottom = 1;
+            updateRange.left = 0;
+            updateRange.right = chunkIt->second.CursorBytes;
+            mDeviceContext->CopySubresourceRegion(resizedBuffer, 0, 0, 0, 0, chunkIt->second.Buffer, 0, &updateRange);
+        }
+
+        std::swap(chunkIt->second.Buffer, resizedBuffer);
+        SAFETY_RELEASE(resizedBuffer);
+        chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
+    }
+
+    void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,
+        std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
+    {
+        ID3D11Buffer* resizedBuffer = nullptr;
+        D3D11_BUFFER_DESC bufferDesc = {};
+        bufferDesc.BindFlags = bindFlag;
+        bufferDesc.Usage = usageType;
+        bufferDesc.ByteWidth = newSize * 2;
+        bufferDesc.CPUAccessFlags = cpuAccessFlag;
+        if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
+        {
+            ASSERT(false, "buffer creation failed while resizing. check the options. tried buffer type (%d), BufferUsage(%d), size(%d), cpuFlag(%d)", bufferDesc.BindFlags, bufferDesc.Usage, bufferDesc.ByteWidth, bufferDesc.CPUAccessFlags);
             return;
         }
 
