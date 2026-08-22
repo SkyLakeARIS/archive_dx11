@@ -220,14 +220,7 @@ namespace renderer
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
-        D3D11_BOX updateRange = {};
-        updateRange.front = 0;
-        updateRange.back = 1;
-        updateRange.top = 0;
-        updateRange.bottom = 1;
-        updateRange.left = writeIndex;
-        updateRange.right = writeIndex + dataByteSize;
-        mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
+        uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
         SubChunk subChunk = {};
         subChunk.Ranges.StartIndex = writeIndex;
@@ -284,14 +277,7 @@ namespace renderer
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
-        D3D11_BOX updateRange = {};
-        updateRange.front = 0;
-        updateRange.back = 1;
-        updateRange.top = 0;
-        updateRange.bottom = 1;
-        updateRange.left = writeIndex;
-        updateRange.right = writeIndex + dataByteSize;
-        mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
+        uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
         SubChunk subChunk = {};
         subChunk.Ranges.StartIndex = writeIndex;
@@ -331,16 +317,8 @@ namespace renderer
             resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
-        const D3D11_MAP mapType = mbNeedDiscardDynamicVertex ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+        uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicVertex);
         mbNeedDiscardDynamicVertex = false;
-
-        D3D11_MAPPED_SUBRESOURCE mappedRes = {};
-        mDeviceContext->Map(chunkIt->second.Buffer, 0, mapType, 0, &mappedRes);
-
-        int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
-        memcpy(gpuBuffer + chunkIt->second.CursorBytes, pData, dataByteSize);
-
-        mDeviceContext->Unmap(chunkIt->second.Buffer, 0);
 
         SubChunk subChunk = {};
         subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
@@ -382,17 +360,8 @@ namespace renderer
             resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
-
-        const D3D11_MAP mapType = mbNeedDiscardDynamicIndex ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+        uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicIndex);
         mbNeedDiscardDynamicIndex = false;
-
-        D3D11_MAPPED_SUBRESOURCE mappedRes = {};
-        mDeviceContext->Map(chunkIt->second.Buffer, 0, mapType, 0, &mappedRes);
-
-        int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
-        memcpy(gpuBuffer + subChunkIt->second.Ranges.StartIndex, pData, dataByteSize);
-
-        mDeviceContext->Unmap(chunkIt->second.Buffer, 0);
 
         SubChunk subChunk = {};
         subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
@@ -620,6 +589,34 @@ namespace renderer
     DXGI_FORMAT BufferManager::GetIndexFormat() const
     {
         return sIndexFormatMap[static_cast<int8_t>(mIndexFormat)].Format;
+    }
+
+    void BufferManager::uploadResource(eBufferUsage usage, ID3D11Buffer* const buffer, const int8_t* const pData, int32_t startIndex, int32_t count, bool bIsDiscardDynamicBuffer)
+    {
+        ASSERT(usage != eBufferUsage::UsageCount, "업로드할 버퍼는 static/dynamic 중 하나여야 합니다 ");
+        if(usage == eBufferUsage::Static)
+        {
+            D3D11_BOX updateRange = {};
+            updateRange.front = 0;
+            updateRange.back = 1;
+            updateRange.top = 0;
+            updateRange.bottom = 1;
+            updateRange.left = startIndex;
+            updateRange.right = startIndex + count;
+            mDeviceContext->UpdateSubresource(buffer, 0, &updateRange, pData, 0, 0);
+        }
+        else
+        {
+            const D3D11_MAP mapType = bIsDiscardDynamicBuffer ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+
+            D3D11_MAPPED_SUBRESOURCE mappedRes = {};
+            mDeviceContext->Map(buffer, 0, mapType, 0, &mappedRes);
+
+            int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
+            memcpy(gpuBuffer + startIndex, pData, count);
+
+            mDeviceContext->Unmap(buffer, 0);
+        }
     }
 
     void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,

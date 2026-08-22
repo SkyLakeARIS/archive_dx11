@@ -73,6 +73,7 @@ namespace renderer
         int16_t GetIndexStrideSize() const;
         DXGI_FORMAT GetIndexFormat() const;
     private:
+        void uploadResource(eBufferUsage usage, ID3D11Buffer* const buffer, const int8_t* const pData, int32_t startIndex, int32_t count, bool bIsDiscardDynamicBuffer);
         void resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt);
 
         void tryGetRecycleSpaceBestFit(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedRangeIt, int32_t tryByteSize, int32_t& outWriteStartIndex, std::vector<BufferRange>::iterator& outRecycledSpace);
