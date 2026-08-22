@@ -199,50 +199,24 @@ namespace renderer
             return;
         }
 
-        // MEMO: 적절한 공간을 가진 빈공간 탐색
+        // MEMO: 재활용 공간 탐색
         const auto& removedRangeIt = mVertexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
-        int32_t minRemainSpace = INT32_MAX;
-        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
-        {
-            const int32_t remainSpace = rangeIt->Count - dataByteSize;
-            if (remainSpace >= 0)
-            {
-                // MEMO: save best-fit.
-                if (remainSpace < minRemainSpace)
-                {
-                    minRemainSpace = remainSpace;
-                    bestFitSpaceIt = rangeIt;
-                }
-            }
-        }
+        int32_t writeIndex = 0;
+        std::vector<BufferRange>::iterator recycledSpaceIt = removedRangeIt->second.end();
 
-        int32_t writeCursorInBuffer  = chunkIt->second.CursorBytes;
-        if(bestFitSpaceIt != removedRangeIt->second.end())
-        {
-            ASSERT(dataByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", dataByteSize, bestFitSpaceIt->Count);
-            // MEMO: 빈공간 재활용
-            if(minRemainSpace == 0)
-            {
-                *bestFitSpaceIt = removedRangeIt->second.back();
-                removedRangeIt->second.pop_back();
-            }
-            else
-            {
-                writeCursorInBuffer = bestFitSpaceIt->StartIndex;
-                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
-                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + dataByteSize;
-                bestFitSpaceIt->Count = minRemainSpace;
-            }
-        }
-        else
-        {
-            // MEMO: 재활용할 공간이 없음
-            if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
-            {
-                resizeBuffer(writeCursorInBuffer + dataByteSize, D3D11_BIND_VERTEX_BUFFER,  D3D11_USAGE_DEFAULT, 0, chunkIt);
-            }
+        tryGetRecycleSpaceBestFit(removedRangeIt, dataByteSize, writeIndex, recycledSpaceIt);
 
+        // MEMO: 재활용할 공간이 없음
+        if (recycledSpaceIt == removedRangeIt->second.end())
+        {
+            // MEMO: 남은 공간도 없음
+            if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
+            {
+                resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
+            }
+            // MEMO: 재활용 공간이 없을 시에만 커서에 write. 
+            writeIndex = chunkIt->second.CursorBytes;
+            // MEMO: 이곳에서 미리 커서 이동시키고, 위에서 저장했으므로 아래 로직 문제없음.
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
@@ -251,12 +225,12 @@ namespace renderer
         updateRange.back = 1;
         updateRange.top = 0;
         updateRange.bottom = 1;
-        updateRange.left = writeCursorInBuffer;
-        updateRange.right = writeCursorInBuffer + dataByteSize;
+        updateRange.left = writeIndex;
+        updateRange.right = writeIndex + dataByteSize;
         mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
 
         SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeCursorInBuffer;
+        subChunk.Ranges.StartIndex = writeIndex;
         subChunk.Ranges.Count = dataByteSize;
         subChunk.RefCount = 1;
 
@@ -291,48 +265,22 @@ namespace renderer
 
         // MEMO: 적절한 공간을 가진 빈공간 탐색
         const auto& removedRangeIt = mIndexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
-        int32_t minRemainSpace = INT32_MAX;
-        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
-        {
-            const int32_t remainSpace = rangeIt->Count - dataByteSize;
-            if (remainSpace >= 0)
-            {
-                // MEMO: save best-fit.
-                if (remainSpace < minRemainSpace)
-                {
-                    minRemainSpace = remainSpace;
-                    bestFitSpaceIt = rangeIt;
-                }
-            }
-        }
+        int32_t writeIndex = 0;
+        std::vector<BufferRange>::iterator recycledSpaceIt = removedRangeIt->second.end();
 
-        int32_t writeCursorInBuffer = chunkIt->second.CursorBytes;
-        if (bestFitSpaceIt != removedRangeIt->second.end())
-        {
-            ASSERT(dataByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", dataByteSize, bestFitSpaceIt->Count);
-            // MEMO: 빈공간 재활용
-            if (minRemainSpace == 0)
-            {
-                *bestFitSpaceIt = removedRangeIt->second.back();
-                removedRangeIt->second.pop_back();
-            }
-            else
-            {
-                writeCursorInBuffer = bestFitSpaceIt->StartIndex;
-                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
-                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + dataByteSize;
-                bestFitSpaceIt->Count = minRemainSpace;
-            }
-        }
-        else
-        {
-            // MEMO: 재활용할 공간이 없음
-            if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
-            {
-                resizeBuffer(writeCursorInBuffer + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
-            }
+        tryGetRecycleSpaceBestFit(removedRangeIt, dataByteSize, writeIndex, recycledSpaceIt);
 
+        // MEMO: 재활용할 공간이 없음
+        if (recycledSpaceIt == removedRangeIt->second.end())
+        {
+            // MEMO: 남은 공간도 없음
+            if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
+            {
+                resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
+            }
+            // MEMO: 재활용 공간이 없을 시에만 커서에 write. 
+            writeIndex = chunkIt->second.CursorBytes;
+            // MEMO: 이곳에서 미리 커서 이동시키고, 위에서 저장했으므로 아래 로직 문제없음.
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
@@ -341,12 +289,12 @@ namespace renderer
         updateRange.back = 1;
         updateRange.top = 0;
         updateRange.bottom = 1;
-        updateRange.left = writeCursorInBuffer;
-        updateRange.right = writeCursorInBuffer + dataByteSize;
+        updateRange.left = writeIndex;
+        updateRange.right = writeIndex + dataByteSize;
         mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
 
         SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeCursorInBuffer;
+        subChunk.Ranges.StartIndex = writeIndex;
         subChunk.Ranges.Count = dataByteSize;
         subChunk.RefCount = 1;
 
@@ -766,6 +714,48 @@ namespace renderer
         std::swap(chunkIt->second.Buffer, resizedBuffer);
         SAFETY_RELEASE(resizedBuffer);
         chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
+    }
+
+    void BufferManager::tryGetRecycleSpaceBestFit(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedRangeIt, int32_t tryByteSize, int32_t& outWriteStartIndex, std::vector<BufferRange>::iterator& outRecycledSpace)
+    {
+        // MEMO: 적절한 공간을 가진 빈공간 탐색.
+        // 넣어봤을 때 빈공간이 가장 작으면 best fit.
+        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
+        int32_t minRemainSpace = INT32_MAX;
+        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
+        {
+            const int32_t remainSpace = rangeIt->Count - tryByteSize;
+            if (remainSpace >= 0)
+            {
+                // MEMO: save best-fit.
+                if (remainSpace < minRemainSpace)
+                {
+                    minRemainSpace = remainSpace;
+                    bestFitSpaceIt = rangeIt;
+                }
+            }
+        }
+
+        int32_t cursorStartIndex = 0;
+        if (bestFitSpaceIt != removedRangeIt->second.end())
+        {
+            ASSERT(tryByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", tryByteSize, bestFitSpaceIt->Count);
+            cursorStartIndex = bestFitSpaceIt->StartIndex;
+            if (minRemainSpace == 0)
+            {
+                // MEMO: 딱맞는 공간이므로 제거
+                *bestFitSpaceIt = removedRangeIt->second.back();
+                removedRangeIt->second.pop_back();
+            }
+            else
+            {
+                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
+                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + tryByteSize;
+                bestFitSpaceIt->Count = minRemainSpace;
+            }
+        }
+        outWriteStartIndex = cursorStartIndex;
+        outRecycledSpace = bestFitSpaceIt;
     }
 
     void BufferManager::mergeRemovedSpace(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedBufferIt)
