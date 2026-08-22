@@ -1,5 +1,6 @@
 #include "BufferManager.h"
 #include <algorithm>
+#include <stack>
 #include "RenderTypes.h"
 #include "../../Util/Macro.h"
 
@@ -478,22 +479,38 @@ namespace renderer
                 if (removedRangeIt->second.size() >= 2)
                 {
                     std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
-                    auto cursorIt = removedRangeIt->second.begin();
                     // 1. 병합되고 나서 vector size가 1개 일 때.
                     // 2. nextRangeIt이 end 일 때.
-                    while ((cursorIt + 1) != removedRangeIt->second.end())
+                    // MEMO: 병합검출과 병합된 공간 제거 과정은 병합될 수 있는 케이스에 따라서 제거 시 문제가 될 수 있음.
+                    // 1. 연속되지 않은 서로 다른 공간
+                    // 2. 중간에 연속되지 않은 공간이 끼어있고, 앞 뒤로 연속된 공간이 있는 경우 <- 제거를 따로 하면 문제 생김
+                    // 3. 연속된 공간만 존재하는 경우
+                    // 4. 빈경우
+                    std::stack<int32_t> removeIndices;
+                    int32_t pivot = 0;
+                    // MEMO: 앞에서 2개 이상을 보장하니 괜찮음.
+                    int32_t cursor = 1;
+                    while(cursor < static_cast<int32_t>(removedRangeIt->second.size()))
                     {
-                        const auto nextRangeIt = cursorIt + 1;
-                        if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
+                        if ((removedRangeIt->second[pivot].StartIndex + removedRangeIt->second[pivot].Count) == removedRangeIt->second[cursor].StartIndex)
                         {
-                            cursorIt->Count += nextRangeIt->Count;
-                            removedRangeIt->second.erase(nextRangeIt);
-                            cursorIt = removedRangeIt->second.begin();
+                            removedRangeIt->second[pivot].Count += removedRangeIt->second[cursor].Count;
+                            removeIndices.push(cursor);
                         }
                         else
                         {
-                            ++cursorIt;
+                            pivot = cursor;
                         }
+                        ++cursor;
+                    }
+                    // MEMO: 병합이 끝나고 필요 없어진 요소들 제거 (거꾸로 순회하면 제거할 때 문제될 수 있는 부분을 해결)
+                    while(removeIndices.empty() == false)
+                    {
+                        const int32_t removeIndex = removeIndices.top();
+                        removeIndices.pop();
+
+                        removedRangeIt->second[removeIndex] = removedRangeIt->second.back();
+                        removedRangeIt->second.pop_back();
                     }
                 }
             }
@@ -519,21 +536,30 @@ namespace renderer
                 if (removedRangeIt->second.size() >= 2)
                 {
                     std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
-                    auto cursorIt = removedRangeIt->second.begin();
-
-                    while ((cursorIt + 1) != removedRangeIt->second.end())
+                    std::stack<int32_t> removeIndices;
+                    int32_t pivot = 0;
+                    int32_t cursor = 1;
+                    while (cursor < static_cast<int32_t>(removedRangeIt->second.size()))
                     {
-                        const auto nextRangeIt = cursorIt + 1;
-                        if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
+                        if ((removedRangeIt->second[pivot].StartIndex + removedRangeIt->second[pivot].Count) == removedRangeIt->second[cursor].StartIndex)
                         {
-                            cursorIt->Count += nextRangeIt->Count;
-                            removedRangeIt->second.erase(nextRangeIt);
-                            cursorIt = removedRangeIt->second.begin();
+                            removedRangeIt->second[pivot].Count += removedRangeIt->second[cursor].Count;
+                            removeIndices.push(cursor);
                         }
                         else
                         {
-                            ++cursorIt;
+                            pivot = cursor;
                         }
+                        ++cursor;
+                    }
+
+                    while (removeIndices.empty() == false)
+                    {
+                        const int32_t removeIndex = removeIndices.top();
+                        removeIndices.pop();
+
+                        removedRangeIt->second[removeIndex] = removedRangeIt->second.back();
+                        removedRangeIt->second.pop_back();
                     }
                 }
             }
