@@ -44,6 +44,10 @@ namespace renderer
         newMesh.VertexFormat = eVertexFormat::PTN;
         const int16_t strideVertex = GetVertexStrideSize(newMesh.VertexFormat);
         const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
+        const int16_t filePathLength = static_cast<int16_t>(strlen(reinterpret_cast<char const*>(filePath)));
+        ASSERT(filePathLength + 1 <= util::MAX_NAME_LENGTH, "str이 버퍼 사이즈보다 큼. 입력 문자열을 검점하거나, util의 Length 상수 조정 필요. str(%d)", filePathLength + 1);
+        (void)memcpy(newMesh.MeshName, filePath, filePathLength + 1);
+        newMesh.MeshHash = modelHash;
 
         int32_t totalVertexCount = 0;
         int32_t totalIndexCount = 0;
@@ -51,7 +55,7 @@ namespace renderer
         {
             SubMesh newSubMesh = {};
 
-            newSubMesh.SubMeshHash = util::GetDjb2Hash(subMesh.MeshName);
+            newSubMesh.SubMeshHash = util::GetDjb2Hash(subMesh.MeshName, modelHash);
             mBufferManager->AddVertex(reinterpret_cast<int8_t*>(subMesh.VertexBuffer.get()), strideVertex * subMesh.VertexCount, newSubMesh.SubMeshHash, strideVertex, newSubMesh.VertexRange);
 
             mBufferManager->AddIndex(reinterpret_cast<int8_t*>(subMesh.IndexBuffer.get()), strideIndex * subMesh.IndexCount, newSubMesh.SubMeshHash, strideIndex, newSubMesh.IndexRange);
