@@ -222,16 +222,8 @@ namespace renderer
 
         uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeIndex;
-        subChunk.Ranges.Count = dataByteSize;
-        subChunk.RefCount = 1;
 
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Static, chunkIt->first, chunkIt->second, hash, writeIndex, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddIndex(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride, BufferRange& outRangeInBuffer)
@@ -279,16 +271,7 @@ namespace renderer
 
         uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeIndex;
-        subChunk.Ranges.Count = dataByteSize;
-        subChunk.RefCount = 1;
-
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Static, chunkIt->first, chunkIt->second, hash, writeIndex, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddVertexDynamic(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride, BufferRange& outRangeInBuffer)
@@ -320,17 +303,7 @@ namespace renderer
         uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicVertex);
         mbNeedDiscardDynamicVertex = false;
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
-        subChunk.Ranges.Count = dataByteSize;
-        // MEMO: 동적 데이터에는 필요 없음.
-
-        chunkIt->second.CursorBytes += dataByteSize;
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Dynamic, chunkIt->first, chunkIt->second, hash, chunkIt->second.CursorBytes, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddIndexDynamic(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride,
@@ -363,17 +336,7 @@ namespace renderer
         uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicIndex);
         mbNeedDiscardDynamicIndex = false;
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
-        subChunk.Ranges.Count = dataByteSize;
-        // MEMO: 동적 데이터에는 필요 없음.
-
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-        chunkIt->second.CursorBytes += dataByteSize;
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Dynamic, chunkIt->first, chunkIt->second, hash, chunkIt->second.CursorBytes, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::RemoveVertexData(int16_t stride, HashID hash)
@@ -617,6 +580,35 @@ namespace renderer
 
             mDeviceContext->Unmap(buffer, 0);
         }
+    }
+
+    void BufferManager::addSubChunkToBuffer(eBufferUsage usage, int16_t stride, BufferChunk& bufferChunk, HashID hash, int32_t startIndex, int32_t count, int32_t& outStartIndexInElement, int32_t& outCountInElement)
+    {
+        ASSERT(usage != eBufferUsage::UsageCount, "업로드할 버퍼는 static/dynamic 중 하나여야 합니다 ");
+        if (usage == eBufferUsage::Static)
+        {
+            SubChunk subChunk = {};
+            subChunk.Ranges.StartIndex = startIndex;
+            subChunk.Ranges.Count = count;
+            subChunk.RefCount = 1;
+
+            bufferChunk.SubChunks.insert(std::make_pair(hash, subChunk));
+        }
+        else
+        {
+            SubChunk subChunk = {};
+            subChunk.Ranges.StartIndex = startIndex;
+            subChunk.Ranges.Count = count;
+            // MEMO: 동적 데이터에는 프레임마다 초기화하니 RefCount 필요 없음.
+
+            bufferChunk.SubChunks.insert(std::make_pair(hash, subChunk));
+            bufferChunk.CursorBytes += count;
+        }
+
+        // MEMO: in vertex count (not bytes). convert bytes -> stride
+        // MEMO: Draw함수에 사용할 index/count 정보(요소 갯수)
+        outStartIndexInElement = startIndex / stride;
+        outCountInElement = count / stride;
     }
 
     void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,
