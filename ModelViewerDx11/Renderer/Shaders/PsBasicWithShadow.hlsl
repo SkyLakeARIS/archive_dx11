@@ -45,7 +45,7 @@ float4 main(PS_INPUT input) : SV_TARGET
     float depthShadow = texShadow.Sample(samLinear, shadowCoord.xy).r;
 
    // if (depth < depthShadow - 0.0001)
-    if (depth < depthShadow - 0.0001)
+    if (depth < depthShadow + 0.00001)
     {
         normal.z = sqrt(1.0 - (normal.x * normal.x + normal.y * normal.y));
 

@@ -212,8 +212,8 @@ bool Application::initializeScene()
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f);
-    mLight->SetupCascade(*mRenderer);
+    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
+    mLight->Update(*mRenderer);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
 
@@ -369,7 +369,7 @@ void Application::updateScene(double deltaTime)
     cbCameraPos.Float3 = mCamera->GetEye();
     mShaderManager->UpdateCB(renderer::eCbType::CbCameraPosition, &cbCameraPos);
 
-    mLight->SetupCascade(*mRenderer);
+    mLight->Update(*mRenderer);
     renderer::CbLightViewProjMatrix cbLightVpMat;
     cbLightVpMat.Matrix = XMMatrixTranspose(mLight->GetViewProjMatrix());
     mShaderManager->UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
