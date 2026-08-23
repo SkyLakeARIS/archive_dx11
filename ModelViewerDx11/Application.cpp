@@ -283,7 +283,7 @@ void Application::processInput(double deltaTime)
 
     unsigned char* gKeyboard = mDirectInput->GetKeyboardPress();
 
-    if (!(mDirectInput->GetControlMode() & (uint32)core::eControlFlags::KEYBOARD_MOVEMENT_MODE))
+    if (!(mDirectInput->GetControlMode() & static_cast<uint32>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE)))
     {
         int mouseX = 0;
         int mouseY = 0;
@@ -291,28 +291,28 @@ void Application::processInput(double deltaTime)
         mDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
         if (!(mouseX == 0 && mouseY == 0))
         {
-            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed);
+            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * static_cast<float>(deltaTime) * speed, XMConvertToRadians(static_cast<float>(mouseY)) * static_cast<float>(deltaTime) * speed);
         }
     }
     else
     {
         if (gKeyboard[DIK_W] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)));
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * static_cast<float>(deltaTime))));
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime));
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * static_cast<float>(deltaTime)));
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f);
+            mCamera->RotateAxis(XMConvertToRadians(-(speed * static_cast<float>(deltaTime))), 0.0f);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f);
+            mCamera->RotateAxis(XMConvertToRadians(speed * static_cast<float>(deltaTime)), 0.0f);
         }
     }
 
@@ -320,19 +320,19 @@ void Application::processInput(double deltaTime)
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        mCamera->AddRadiusSphere(deltaTime);
+        mCamera->AddRadiusSphere(static_cast<float>(deltaTime));
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        mCamera->AddRadiusSphere(-deltaTime);
+        mCamera->AddRadiusSphere(static_cast<float>(-deltaTime));
     }
 
     // 키보드<-> 마우스 조작 전환
     static bool bPressKey = false;
     if (!(gKeyboard[DIK_C] & 0x80) && bPressKey)
     {
-        mDirectInput->SetControlMode((uint32)core::eControlFlags::KEYBOARD_MOVEMENT_MODE);
+        mDirectInput->SetControlMode(static_cast<uint32>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE));
     }
     bPressKey = gKeyboard[DIK_C] & 0x80;
 
@@ -347,12 +347,12 @@ void Application::processInput(double deltaTime)
 
     if (gKeyboard[DIK_Z] & 0x80)
     {
-        mCamera->AddHeight(-deltaTime);
+        mCamera->AddHeight(static_cast<float>(-deltaTime));
     }
 
     if (gKeyboard[DIK_X] & 0x80)
     {
-        mCamera->AddHeight(deltaTime);
+        mCamera->AddHeight(static_cast<float>(deltaTime));
     }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
