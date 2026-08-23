@@ -17,7 +17,9 @@ namespace renderer
         BufferRange VertexRange;
         BufferRange IndexRange;
         HashID SubMeshHash;
-
+        // For Orbit Camera
+        XMFLOAT3 MinBound;
+        XMFLOAT3 MaxBound;
         // for debugging
         int8_t SubMeshName[util::MAX_NAME_LENGTH];
     };

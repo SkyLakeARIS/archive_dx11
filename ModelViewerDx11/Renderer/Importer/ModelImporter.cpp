@@ -85,16 +85,7 @@ namespace renderer
 
         modelContainer.SubMeshes.reserve(nodes.size());
 
-        FbxVector4 minBound = {};
-        FbxVector4 maxBound = {};
-        FbxVector4 modelCenterPoint = {};
-        parseMesh(nodes, modelContainer, minBound, maxBound);
-
-        modelCenterPoint = (minBound + maxBound) * 0.5;
-        modelContainer.CenterPoint.x = static_cast<float>(modelCenterPoint.mData[0]);
-        modelContainer.CenterPoint.y = static_cast<float>(modelCenterPoint.mData[1]);
-        modelContainer.CenterPoint.z = static_cast<float>(modelCenterPoint.mData[2]);
-        modelContainer.CenterPoint.w = static_cast<float>(modelCenterPoint.mData[3]);
+        parseMesh(nodes, modelContainer);
 
         modelContainer.ModelHash = modelHash;
 
@@ -138,7 +129,7 @@ namespace renderer
         }
     }
 
-    void ModelImporter::parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer, FbxVector4& outMinBound, FbxVector4& outMaxBound)
+    void ModelImporter::parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer)
     {
         std::set<int> vertexDuplicationCheck;
         std::map<int, int> indexMap;
@@ -300,10 +291,11 @@ namespace renderer
                     }
                 }
             }
+
+            newMeshData.MinBound = XMFLOAT3(minBound.mData[0], minBound.mData[1], minBound.mData[2]);
+            newMeshData.MaxBound = XMFLOAT3(maxBound.mData[0], maxBound.mData[1], maxBound.mData[2]);
             outModelContainer.SubMeshes.emplace_back(std::move(newMeshData));
         }
-        outMinBound = minBound;
-        outMaxBound = maxBound;
     }
 
     void ModelImporter::parseTextureInfo(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer)

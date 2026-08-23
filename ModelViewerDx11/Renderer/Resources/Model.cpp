@@ -8,7 +8,6 @@ namespace renderer
     Model::Model(scene::Camera* camera, BufferManager* bufferManager)
         : mBufferManager(bufferManager)
         , mMesh()
-        , mCenterPosition(0.0f, 0.0f, 0.0f)
         , mMatRotation(XMMatrixIdentity())
         , mMatScale(XMMatrixIdentity())
         , mbHighlight(false)
@@ -140,20 +139,25 @@ namespace renderer
         mMesh = std::move(mesh);
     }
 
-    void Model::SetCenterPoint(XMFLOAT4& centerPoint)
-    {
-        mCenterPosition = XMFLOAT3(centerPoint.x, centerPoint.y, centerPoint.z);
-    }
-
     void Model::SetHighlight(bool bSelection)
     {
         mbHighlight = bSelection;
     }
 
-    XMFLOAT3 Model::GetCenterPoint() const
+    int32_t Model::GetSubMeshCount() const
     {
-        XMFLOAT3 pos = mCenterPosition;
-        pos.y += 1.0f;
-        return pos;
+        return mMesh.SubMeshes.size();
+    }
+
+    XMFLOAT3 Model::GetCenterPoint(int32_t subMeshIndex) const
+    {
+        ASSERT((subMeshIndex >= 0 && subMeshIndex < mMesh.SubMeshes.size()), "유효하지 않은 SubMeshIndex. pass(%d), validSubMeshCount(%d)", subMeshIndex, mMesh.SubMeshes.size());
+
+        const XMVECTOR minBound = XMLoadFloat3(&mMesh.SubMeshes[subMeshIndex].MinBound);
+        const XMVECTOR maxBound = XMLoadFloat3(&mMesh.SubMeshes[subMeshIndex].MaxBound);
+        const XMVECTOR mid = (minBound + maxBound) * 0.5f;
+        XMFLOAT3 centerPosition;
+        XMStoreFloat3(&centerPosition, mid);
+        return centerPosition;
     }
 }

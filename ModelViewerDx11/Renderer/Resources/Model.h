@@ -24,18 +24,16 @@ namespace renderer
         void Update();
 
         void SetMesh(const Mesh& mesh);
-        void SetCenterPoint(XMFLOAT4& centerPoint);
-
         void SetHighlight(bool bSelection);
 
-        XMFLOAT3 GetCenterPoint() const;
+        int32_t  GetSubMeshCount() const;
+        XMFLOAT3 GetCenterPoint(int32_t subMeshIndex) const;
 
     private:
         BufferManager* mBufferManager;
 
         Mesh mMesh;
 
-        XMFLOAT3 mCenterPosition;
         XMMATRIX mMatWorld;
         XMMATRIX mMatRotation;
         XMMATRIX mMatScale;

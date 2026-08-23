@@ -22,13 +22,14 @@ namespace renderer
         std::unique_ptr<uint32_t[]> IndexBuffer;
         uint32_t IndexCount;
         MaterialFactors MaterialParam;
+        XMFLOAT3 MinBound;
+        XMFLOAT3 MaxBound;
         ImportedTextureData Textures[static_cast<int32_t>(eTextureType::TextureTypeCount)];
     };
 
     struct ImportedModelContainer
     {
         HashID ModelHash;
-        XMFLOAT4 CenterPoint;
         std::vector<ImportedMeshData> SubMeshes;
     };
 }

@@ -64,6 +64,9 @@ namespace renderer
             totalIndexCount += newSubMesh.IndexRange.Count;
             (void)memcpy(newSubMesh.SubMeshName, subMesh.MeshName, util::MAX_NAME_LENGTH);
 
+            newSubMesh.MinBound = std::move(subMesh.MinBound);
+            newSubMesh.MaxBound = std::move(subMesh.MaxBound);
+
             newSubMesh.Material.Factors = std::move(subMesh.MaterialParam);
 
 
@@ -87,7 +90,6 @@ namespace renderer
         newMesh.IndexRange.Count = totalIndexCount;
 
         outModel->SetMesh(newMesh);
-        outModel->SetCenterPoint(modelContainer.CenterPoint);
     }
 
 }
