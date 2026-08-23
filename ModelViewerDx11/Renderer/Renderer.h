@@ -30,6 +30,11 @@ namespace renderer
             D3D11_PRIMITIVE_TOPOLOGY ApiType;
         };
 
+        struct DepthStencilStateMap
+        {
+            eDepthStencilState Type;
+            D3D11_DEPTH_STENCIL_DESC Desc;
+        };
     public:
         Renderer();
         ~Renderer();
@@ -83,7 +88,7 @@ namespace renderer
         void BindShadowTextureToPs(uint32_t slot) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;
-        void BindDepthStencilState(bool bSkybox) const; // 현재는 스카이박스만 사용하므로
+        void BindDepthStencilState(eDepthStencilState type) const;
 
         void UnbindTexturePs(uint32_t slot) const;
 
@@ -129,7 +134,7 @@ namespace renderer
         IDXGISwapChain*             mSwapChain;
 
         ID3D11Texture2D*            mDepthStencilTexture;
-        ID3D11DepthStencilState*    mSkyboxDepthStencil;
+        ID3D11DepthStencilState*    mDepthStencilStates[static_cast<uint8_t>(eDepthStencilState::StateCount)];
 
         // render target, depthStencil
         // 일단은 쉽게 무조건 1:1매핑으로 (nullptr 처리는 나중에 최적화)

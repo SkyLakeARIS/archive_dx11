@@ -13,24 +13,24 @@ namespace renderer
         // MEMO: 렌더패킷 생성 시 실수로 놓치는 필드가 없도록 하게끔 강제하기 위한 수단으로 팩토리 함수 사용
         // MEMO: DepthStencil, ShadowMap은 쓸지 안쓸지만 결정하므로 생성할 때에는 기존처럼 bool 타입 유지 (열거형은 상태 캐시용이므로)
         static RenderPacket MakeCommand(
-            const eVertexFormat vertexFormat,
-            const int16_t stride,
-            const eBufferUsage bufferUsage,
-            const bool bTransparency,
-            const BufferRange& vertexRange,
-            const BufferRange& indexRange,
-            const SemiMaterial& material,
-            const eRenderTarget renderTargetType,
-            const XMMATRIX& matWorld,
-            const eShader shader,
-            const eRasterType rasterState,
-            const eSamplerType sampler,
-            const HashID& blendHash,
+            const eVertexFormat      vertexFormat,
+            const int16_t            stride,
+            const eBufferUsage       bufferUsage,
+            const bool               bTransparency,
+            const BufferRange&       vertexRange,
+            const BufferRange&       indexRange,
+            const SemiMaterial&      material,
+            const eRenderTarget      renderTargetType,
+            const XMMATRIX&          matWorld,
+            const eShader            shader,
+            const eRasterType        rasterState,
+            const eSamplerType       sampler,
+            const HashID&            blendHash,
             const ePrimitiveTopology topology,
-            const bool bUseShadowMap,
-            const bool bUseDepthStencil,
-            const bool bClearDepthStencilBuffer
-        )
+            const bool               bUseShadowMap,
+            eDepthStencilState       depthStencilState,
+            const bool               bClearDepthStencilBuffer
+            )
         {
             ASSERT(vertexFormat != eVertexFormat::FormatCount, "vertexFormat 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(vertexFormat));
             ASSERT(stride > 0 , "stride 값이 올바르지 않음. stride > 0 이어야 합니다. passed(%d)", stride);
@@ -40,6 +40,7 @@ namespace renderer
             ASSERT(rasterState != eRasterType::RasterCount, "rasterState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(rasterState));
             // MEMO: sampler는 텍스처 여부에 따라 다르므로 우선 대상 제외
             ASSERT(topology != ePrimitiveTopology::TopologyCount, "topology 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(topology));
+            ASSERT(depthStencilState != eDepthStencilState::StateCount, "depthStencilState 값이 설정되지 않음. 사용하지 않으려면 DepthOff를 지정해야 합니다. passed(%d)", static_cast<uint8_t>(depthStencilState));
             RenderPacket command;
             command.VertexFormat = vertexFormat;
             command.Stride = stride;
@@ -59,7 +60,7 @@ namespace renderer
             command.RenderState.BlendHash = blendHash;
             command.RenderState.TopologyType = topology;
             command.RenderState.UseShadowMapUsage = static_cast<eShadowMapUsage>(bUseShadowMap);
-            command.RenderState.DepthStencilUsage = static_cast<eDepthStencilUsage>(bUseDepthStencil);
+            command.RenderState.DepthStencilState = depthStencilState;
             command.RenderState.bClearDepthStencilBuffer = bClearDepthStencilBuffer;
 
             // MEMO: 잘못된 조합 체크. MaterialCb, Texture는 -1이면 사용 안함으로 간주
@@ -97,7 +98,7 @@ namespace renderer
             sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 20;
             // MEMO: 하위 비트 영역
             sortKey |= static_cast<uint64_t>(command.BufferUsage) << 18;
-            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilUsage) << 17;
+            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 17;
             sortKey |= static_cast<uint64_t>(command.RenderState.bClearDepthStencilBuffer) << 16;
             sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 15;
             sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 11;
@@ -138,7 +139,7 @@ namespace renderer
         eRasterType RasterType = renderer::eRasterType::RasterCount;
         eSamplerType SamplerType = renderer::eSamplerType::SamplerCount;
         ePrimitiveTopology TopologyType = renderer::ePrimitiveTopology::TopologyCount;
-        eDepthStencilUsage DepthStencilUsage = eDepthStencilUsage::UsageCount;
+        eDepthStencilState DepthStencilUsage = eDepthStencilState::StateCount;
         eShadowMapUsage ShadowMapUsage = eShadowMapUsage::UsageCount;
         int8_t SamplerBindingSlot = -1;
         HashID BlendHash = 0;

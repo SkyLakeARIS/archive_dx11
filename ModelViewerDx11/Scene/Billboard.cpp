@@ -61,7 +61,7 @@ namespace scene
                 mBlendHash,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 false,
-                false,
+                renderer::eDepthStencilState::DepthOffStencilOff,
                 false
             );
             commandList.push_back(command);

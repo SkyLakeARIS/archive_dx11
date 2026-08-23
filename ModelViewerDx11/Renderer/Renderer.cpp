@@ -61,7 +61,7 @@ namespace renderer
         , mDeviceContext(nullptr)
         , mSwapChain(nullptr)
         , mDepthStencilTexture(nullptr)
-        , mSkyboxDepthStencil(nullptr)
+        , mDepthStencilStates{}
         , mRenderTargetViewList{nullptr}
         , mDepthStencilViewList{nullptr}
         , mRtvDsMapTable{}
@@ -311,17 +311,31 @@ namespace renderer
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].DepthStencilIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].NumViews = 1U;
 
-
-        D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-        ZeroMemory(&depthStencilDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
-
-        depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-        depthStencilDesc.DepthEnable = true;
-        depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-        result = mDevice->CreateDepthStencilState(&depthStencilDesc, &mSkyboxDepthStencil);
-        if (FAILED(result))
+        // MEMO: 쓰는 것들만 Preset으로 지정한다. 없으면 동적 생성은 굳이 필요하지 않음
+        constexpr DepthStencilStateMap DepthStencilStateMap[] =
         {
-            return E_FAIL;
+            // MEMO: DepthOffStencilOff는 unbind용
+            {
+                eDepthStencilState::DepthOffStencilOff,
+                {}
+            },
+            {
+                eDepthStencilState::DepthOnMaskAllCompLessEqual,
+                {true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0, 0, {}, {}}
+            }
+        };
+
+        for(auto& dssMapEntry : DepthStencilStateMap)
+        {
+            if(dssMapEntry.Type == eDepthStencilState::DepthOffStencilOff)
+            {
+                continue;
+            }
+            result = mDevice->CreateDepthStencilState(&dssMapEntry.Desc, &mDepthStencilStates[static_cast<uint8_t>(dssMapEntry.Type)]);
+            if (FAILED(result))
+            {
+                return E_FAIL;
+            }
         }
 
         if(!createRasterState())
@@ -694,16 +708,10 @@ namespace renderer
         mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
     }
 
-    void Renderer::BindDepthStencilState(bool bSkybox) const
+    void Renderer::BindDepthStencilState(eDepthStencilState type) const
     {
-        if(bSkybox)
-        {
-            mDeviceContext->OMSetDepthStencilState(mSkyboxDepthStencil, 0);
-        }
-        else
-        {
-            mDeviceContext->OMSetDepthStencilState(nullptr, 0);
-        }
+        ASSERT(type != eDepthStencilState::StateCount, "올바르지 않은 eDepthStencilState 유형. 쓰지 않으려면 DepthOff를 지정해야 합니다. type(%d)", static_cast<int8_t>(type))
+        mDeviceContext->OMSetDepthStencilState(mDepthStencilStates[static_cast<uint8_t>(type)], 0);
     }
 
     void Renderer::ClearScreenAndDepth(eRenderTarget type) const
@@ -788,7 +796,10 @@ namespace renderer
         SAFETY_RELEASE(mTexColor);
         SAFETY_RELEASE(mShadowSrv);
         SAFETY_RELEASE(mDepthStencilTexture);
-        SAFETY_RELEASE(mSkyboxDepthStencil);
+        for (uint32 state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
+        {
+            SAFETY_RELEASE(mDepthStencilStates[state]);
+        }
         SAFETY_RELEASE(mSwapChain);
         SAFETY_RELEASE(mDeviceContext);
         SAFETY_RELEASE(mDevice);

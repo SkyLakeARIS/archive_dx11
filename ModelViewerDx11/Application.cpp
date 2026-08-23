@@ -507,11 +507,10 @@ void Application::renderScene()
         }
         
 
-        // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
-        if(mCommandCache.DepthStencilUsage != command.RenderState.DepthStencilUsage)
+        if(mCommandCache.DepthStencilUsage != command.RenderState.DepthStencilState)
         {
-            mRenderer->BindDepthStencilState(static_cast<bool>(command.RenderState.DepthStencilUsage));
-            mCommandCache.DepthStencilUsage = command.RenderState.DepthStencilUsage;
+            mRenderer->BindDepthStencilState(command.RenderState.DepthStencilState);
+            mCommandCache.DepthStencilUsage = command.RenderState.DepthStencilState;
         }
 
         if (mCommandCache.SamplerType != command.RenderState.SamplerType || mCommandCache.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)

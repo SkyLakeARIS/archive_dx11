@@ -44,7 +44,7 @@ namespace scene
                 0,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 false,
-                false,
+                renderer::eDepthStencilState::DepthOffStencilOff,
                 false
             );
 

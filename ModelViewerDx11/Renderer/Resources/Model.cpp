@@ -55,7 +55,7 @@ namespace renderer
                     0,
                     renderer::ePrimitiveTopology::Triangles,
                     false,
-                    true,
+                    eDepthStencilState::DepthOnMaskAllCompLessEqual,
                     true
                 );
 
@@ -87,7 +87,7 @@ namespace renderer
                 0,
                 renderer::ePrimitiveTopology::Triangles,
                 true,
-                false,
+                eDepthStencilState::DepthOffStencilOff,
                 false
             );
 
@@ -121,7 +121,7 @@ namespace renderer
                 0,
                 renderer::ePrimitiveTopology::Triangles,
                 false,
-                false,
+                eDepthStencilState::DepthOffStencilOff,
                 false
             );
 

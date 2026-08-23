@@ -52,7 +52,7 @@ namespace scene
                 0,
                 renderer::ePrimitiveTopology::Triangles,
                 false,
-                true,
+                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual,
                 false
             );
 

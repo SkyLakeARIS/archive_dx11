@@ -138,11 +138,12 @@ namespace renderer
     };
 
     // MEMO: 우선은 캐시 변수가 unbind 상태로 초기화 될 수 있도록 열거형으로 변경
-    enum class eDepthStencilUsage
+    enum class eDepthStencilState
     {
-        Off,
-        On,
-        UsageCount
+        // MEMO: DepthOffStencilOff는 unbind용이나 다름 없음.
+        DepthOffStencilOff,
+        DepthOnMaskAllCompLessEqual,
+        StateCount
     };
 
     enum class eShadowMapUsage
@@ -175,7 +176,7 @@ namespace renderer
         eSamplerType SamplerType;
         ePrimitiveTopology TopologyType;
         HashID BlendHash;
-        eDepthStencilUsage DepthStencilUsage;
+        eDepthStencilState DepthStencilState;
         eShadowMapUsage UseShadowMapUsage;
         bool bClearDepthStencilBuffer;
     };
