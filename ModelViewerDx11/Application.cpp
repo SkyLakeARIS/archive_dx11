@@ -158,9 +158,8 @@ void Application::Run()
 
         lastFrameTime = startTime;
 
-        mDirectInput->UpdateInput();
-
-        updateScene(deltaTime);
+        processInput(deltaTime);
+        updateScene();
 
         renderScene();
         mRenderer->Present();
@@ -273,8 +272,9 @@ bool Application::initializeManagers()
     return true;
 }
 
-void Application::updateScene(double deltaTime)
+void Application::processInput(double deltaTime)
 {
+    mDirectInput->UpdateInput();
     float speed = 10.0f;
 
     /*
@@ -359,7 +359,10 @@ void Application::updateScene(double deltaTime)
     {
         SendMessage(mWindow->GetHandle(), WM_DESTROY, 0, 0);
     }
+}
 
+void Application::updateScene()
+{
     // MEMO: Renderer가 예약한 CB들 업로드
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());

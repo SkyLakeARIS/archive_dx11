@@ -45,7 +45,8 @@ private:
     bool initializeScene();
     bool initializeManagers();
 
-    void updateScene(double deltaTime);
+    void processInput(double deltaTime);
+    void updateScene();
 
     void renderScene();
 
