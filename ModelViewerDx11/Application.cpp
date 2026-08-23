@@ -345,12 +345,12 @@ void Application::processInput(double deltaTime)
     }
 
     // 키보드<-> 마우스 조작 전환
-    static bool bPressKey = false;
-    if (!(gKeyboard[DIK_C] & 0x80) && bPressKey)
+    static bool bPressCKey = false;
+    if (!(gKeyboard[DIK_C] & 0x80) && bPressCKey)
     {
         mDirectInput->SetControlMode(static_cast<uint32>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE));
     }
-    bPressKey = gKeyboard[DIK_C] & 0x80;
+    bPressCKey = gKeyboard[DIK_C] & 0x80;
 
     static bool bPressHKey = false;
     static bool bHightlight = false;
