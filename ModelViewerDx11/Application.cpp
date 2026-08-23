@@ -275,7 +275,6 @@ bool Application::initializeManagers()
 void Application::processInput(double deltaTime)
 {
     mDirectInput->UpdateInput();
-    float speed = 10.0f;
 
     /*
      *  direct input ver
@@ -287,45 +286,47 @@ void Application::processInput(double deltaTime)
     {
         int mouseX = 0;
         int mouseY = 0;
-        speed = 0.5f;
         mDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
         if (!(mouseX == 0 && mouseY == 0))
         {
-            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * static_cast<float>(deltaTime) * speed, XMConvertToRadians(static_cast<float>(mouseY)) * static_cast<float>(deltaTime) * speed);
+            constexpr float KEYBOARD_SPEED = 0.1f;
+            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * static_cast<float>(deltaTime) * KEYBOARD_SPEED, XMConvertToRadians(static_cast<float>(mouseY)) * static_cast<float>(deltaTime) * KEYBOARD_SPEED);
         }
     }
     else
     {
+        constexpr float MOUSE_SPEED = 10.0f;
         if (gKeyboard[DIK_W] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * static_cast<float>(deltaTime))));
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(MOUSE_SPEED * static_cast<float>(deltaTime))));
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * static_cast<float>(deltaTime)));
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(MOUSE_SPEED * static_cast<float>(deltaTime)));
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(-(speed * static_cast<float>(deltaTime))), 0.0f);
+            mCamera->RotateAxis(XMConvertToRadians(-(MOUSE_SPEED * static_cast<float>(deltaTime))), 0.0f);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(speed * static_cast<float>(deltaTime)), 0.0f);
+            mCamera->RotateAxis(XMConvertToRadians(MOUSE_SPEED * static_cast<float>(deltaTime)), 0.0f);
         }
     }
 
     // 마우스 휠 처리 이전에 임시용.
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
+    constexpr float MOVEMENT_SPEED = 0.01f;
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        mCamera->AddRadiusSphere(static_cast<float>(deltaTime));
+        mCamera->AddRadiusSphere(static_cast<float>(deltaTime * MOVEMENT_SPEED));
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        mCamera->AddRadiusSphere(static_cast<float>(-deltaTime));
+        mCamera->AddRadiusSphere(static_cast<float>(-deltaTime * MOVEMENT_SPEED));
     }
 
     // 키보드<-> 마우스 조작 전환
@@ -347,12 +348,12 @@ void Application::processInput(double deltaTime)
 
     if (gKeyboard[DIK_Z] & 0x80)
     {
-        mCamera->AddHeight(static_cast<float>(-deltaTime));
+        mCamera->AddHeight(static_cast<float>(-deltaTime) * MOVEMENT_SPEED);
     }
 
     if (gKeyboard[DIK_X] & 0x80)
     {
-        mCamera->AddHeight(static_cast<float>(deltaTime));
+        mCamera->AddHeight(static_cast<float>(deltaTime) * MOVEMENT_SPEED);
     }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
