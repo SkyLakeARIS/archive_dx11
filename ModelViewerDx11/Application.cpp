@@ -25,6 +25,7 @@ Application::Application()
     , mWindowHeight(720)
     , mAppFrameRate(120)
     , mWindow(nullptr)
+    , mCurSubMeshIndexFocusModel(0)
     , mCommandCache()
     , mRenderer(nullptr)
     , mImporter(nullptr)
@@ -315,6 +316,20 @@ void Application::processInput(double deltaTime)
             mCamera->RotateAxis(XMConvertToRadians(MOUSE_SPEED * static_cast<float>(deltaTime)), 0.0f);
         }
     }
+
+    static bool bPressFKey = false;
+    if (!(gKeyboard[DIK_F] & 0x80 )&& bPressFKey)
+    {
+        // MEMO: 시스템을 어떻게 짜둘까? 매니저를 빨리 만들어야 할듯하다.
+        const int32_t curSubMeshCountFocusModel = mCharacter->GetSubMeshCount();
+        if(curSubMeshCountFocusModel > 0)
+        {
+            mCurSubMeshIndexFocusModel = (mCurSubMeshIndexFocusModel + 1) % curSubMeshCountFocusModel;
+        }
+        const XMFLOAT3 centerPoint = mCharacter->GetCenterPoint(mCurSubMeshIndexFocusModel);
+        mCamera->ChangeFocus(centerPoint);
+    }
+    bPressFKey = gKeyboard[DIK_F] & 0x80;
 
     // 마우스 휠 처리 이전에 임시용.
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)

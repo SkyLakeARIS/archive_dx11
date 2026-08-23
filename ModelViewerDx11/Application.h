@@ -58,6 +58,7 @@ private:
 
     Window* mWindow;
 
+    int32_t mCurSubMeshIndexFocusModel;
     std::vector<renderer::RenderPacket> mCommandList;
     renderer::RenderPacketCache mCommandCache;
     renderer::Renderer* mRenderer;
