@@ -1,5 +1,6 @@
 #pragma once
-#include "../framework.h"
+#include "../Core/MathPrerequisites.h"
+#include "../Util/Type.h"
 
 namespace scene
 {

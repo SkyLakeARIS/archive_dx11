@@ -3,6 +3,11 @@
 #include "Renderer/Resources/RenderPacket.h"
 
 
+namespace core
+{
+    class DirectInput;
+}
+
 namespace ui
 {
     class DebugPanel;

@@ -1,4 +1,5 @@
 #pragma once
+#include <crtdbg.h>
 
 namespace util
 {
@@ -17,17 +18,4 @@ namespace util
         __debugbreak();                                                                 \
     }                                                                                   \
 
-    #ifdef _DEBUG
-    #define SET_PRIVATE_DATA(obj, objectNameStr)         \
-        if(obj != nullptr)                               \
-        {                                                \
-            obj->SetPrivateData(                         \
-                WKPDID_D3DDebugObjectName,               \
-                sizeof(objectNameStr)-1,                 \
-                objectNameStr);                          \
-        }                                                \
-
-    #else
-    #define SET_PRIVATE_DATA(obj, objectNameStr)
-    #endif
 }

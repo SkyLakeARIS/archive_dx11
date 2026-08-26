@@ -1,5 +1,5 @@
 #pragma once
-#include "../../framework.h"
+#include "FbxPrerequisites.h"
 #include "../Resources/Mesh.h"
 
 namespace renderer

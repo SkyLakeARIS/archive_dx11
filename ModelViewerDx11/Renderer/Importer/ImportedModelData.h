@@ -1,12 +1,9 @@
 #pragma once
-#include "../../framework.h"
 #include "../../Util/Define.h"
 #include "../Resources/Material.h"
 
 namespace renderer
 {
-    struct VertexPTN;
-
     struct ImportedTextureData
     {
         int8_t FilePath[util::MAX_PATH_LENGTH];

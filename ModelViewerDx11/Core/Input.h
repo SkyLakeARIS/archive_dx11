@@ -1,5 +1,6 @@
 #pragma once
-#include "../framework.h"
+#include "InputPrerequisites.h"
+#include "../Util/Type.h"
 
 namespace core
 {

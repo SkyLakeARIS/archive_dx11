@@ -176,9 +176,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Core\InputPrerequisites.h" />
+    <ClInclude Include="Core\MathPrerequisites.h" />
+    <ClInclude Include="Renderer\GfxPrerequisites.h" />
+    <ClInclude Include="Renderer\Importer\FbxPrerequisites.h" />
+    <ClInclude Include="Renderer\Resources\VertexType.h" />
     <ClInclude Include="Renderer\Resources\Material.h" />
     <ClInclude Include="Renderer\Resources\RenderPacket.h" />
     <ClInclude Include="Renderer\Shader\ShaderManager.h" />
+    <ClInclude Include="Renderer\Shader\ShaderType.h" />
     <ClInclude Include="Scene\Billboard.h" />
     <ClInclude Include="UI\DebugPanel.h" />
     <ClInclude Include="Renderer\Importer\ImportedModelData.h" />

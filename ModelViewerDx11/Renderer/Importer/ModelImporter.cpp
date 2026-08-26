@@ -6,6 +6,7 @@
 #include "../../Util/Define.h"
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
+#include "../Resources/VertexType.h"
 
 namespace renderer
 {

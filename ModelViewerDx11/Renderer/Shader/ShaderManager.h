@@ -1,6 +1,8 @@
 #pragma once
-#include "../../framework.h"
-#include "../Resources/RenderTypes.h"
+#include "ShaderType.h"
+#include "../GfxPrerequisites.h"
+#include "../../Util/Type.h"
+#include "../Resources/VertexType.h"
 
 namespace renderer
 {

@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <string>
 #include "Window.h"
+#include "Core/Input.h"
+#include "Core/Timer.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Importer/ModelImporter.h"
 #include "Renderer/Primitive/MeshGenerator.h"
