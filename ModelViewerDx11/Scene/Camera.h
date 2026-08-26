@@ -49,8 +49,8 @@ namespace scene
         XMVECTOR    mvRight;            // 필요없음.
 
         float       mFov;
-        uint32      mScreenWidth;
-        uint32      mScreenHeight;
+        uint32_t      mScreenWidth;
+        uint32_t      mScreenHeight;
 
         XMMATRIX    mMatView;
         XMMATRIX    mMatProjection;

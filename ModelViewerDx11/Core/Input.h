@@ -7,7 +7,7 @@ namespace core
     /*
      * DirectInput 사용 클래스
      */
-    enum class eControlFlags : uint32
+    enum class eControlFlags : uint32_t
     {
         KEYBOARD_MOVEMENT_MODE = 1, // 1 == keyboard control, 0 == mouse control
     };
@@ -26,12 +26,12 @@ namespace core
 
         HRESULT     UpdateInput();
 
-        void        SetControlMode(uint32 flag);
+        void        SetControlMode(uint32_t flag);
 
         void                GetMousePosition(int& mouseX, int& mouseY) const;
         void                GetMouseDeltaPosition(int& deltaX, int& deltaY) const;
         unsigned char* GetKeyboardPress();
-        uint32              GetControlMode() const;
+        uint32_t              GetControlMode() const;
 
     private:
         IDirectInput8* mDirectInput;
@@ -41,7 +41,7 @@ namespace core
         HINSTANCE               mhInstance;
         HWND                    mhWnd;
 
-        uint32                  mMouseInputFlag;
+        uint32_t                  mMouseInputFlag;
 
         unsigned char           mKeyboardState[256];
         DIMOUSESTATE            mMouseState;

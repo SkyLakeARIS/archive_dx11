@@ -285,7 +285,7 @@ void Application::processInput(double deltaTime)
 
     unsigned char* gKeyboard = mDirectInput->GetKeyboardPress();
 
-    if (!(mDirectInput->GetControlMode() & static_cast<uint32>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE)))
+    if (!(mDirectInput->GetControlMode() & static_cast<uint32_t>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE)))
     {
         int mouseX = 0;
         int mouseY = 0;
@@ -350,7 +350,7 @@ void Application::processInput(double deltaTime)
     static bool bPressCKey = false;
     if (!(gKeyboard[DIK_C] & 0x80) && bPressCKey)
     {
-        mDirectInput->SetControlMode(static_cast<uint32>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE));
+        mDirectInput->SetControlMode(static_cast<uint32_t>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE));
     }
     bPressCKey = gKeyboard[DIK_C] & 0x80;
 

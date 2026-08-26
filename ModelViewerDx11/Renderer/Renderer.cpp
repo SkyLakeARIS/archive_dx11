@@ -97,7 +97,7 @@ namespace renderer
         rasterDesc.FillMode = D3D11_FILL_SOLID;
         // MEMO: CW winding으로 통일 
         rasterDesc.FrontCounterClockwise = false;
-        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Basic)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for basic");
@@ -107,7 +107,7 @@ namespace renderer
         rasterDesc.CullMode = D3D11_CULL_FRONT;
       //  rasterDesc.CullMode = D3D11_CULL_BACK;
         rasterDesc.DepthBias = 1;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Outline)]);
         if(FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for outline");
@@ -116,7 +116,7 @@ namespace renderer
 
         // 스카이박스용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_BACK;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Skybox)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Skybox)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for Skybox");
@@ -125,7 +125,7 @@ namespace renderer
 
         // back-culling 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_BACK;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::CullBack)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::CullBack)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for back face culling");
@@ -183,8 +183,8 @@ namespace renderer
 
     HRESULT Renderer::CreateDeviceAndSetup(
         DXGI_SWAP_CHAIN_DESC& swapChainDesc
-        , uint32              width
-        , uint32              height
+        , uint32_t              width
+        , uint32_t              height
         , bool                bDebugMode)
     {
 
@@ -306,7 +306,7 @@ namespace renderer
         }
         SET_PRIVATE_DATA(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], "eRenderTarget::Default");
 
-        uint8 index = static_cast<uint8_t>(eRenderTarget::Default);
+        uint32_t index = static_cast<uint8_t>(eRenderTarget::Default);
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].RenderTargetIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].DepthStencilIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].NumViews = 1U;
@@ -705,7 +705,7 @@ namespace renderer
 
     void Renderer::BindRasterStateByType(eRasterType type) const
     {
-        mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
+        mDeviceContext->RSSetState(mRasterStates[static_cast<uint32_t>(type)]);
     }
 
     void Renderer::BindDepthStencilState(eDepthStencilState type) const
@@ -770,12 +770,12 @@ namespace renderer
     void Renderer::Cleanup()
     {
 
-        for (uint32 i = 0; i < static_cast<uint32>(eRasterType::RasterCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eRasterType::RasterCount); ++i)
         {
             SAFETY_RELEASE(mRasterStates[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eSamplerType::SamplerCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eSamplerType::SamplerCount); ++i)
         {
             SAFETY_RELEASE(mSamplerState[i]);
         }
@@ -786,7 +786,7 @@ namespace renderer
         }
         mBlendStateMap.clear();
 
-        for (uint32 i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
         {
             SAFETY_RELEASE(mRenderTargetViewList[i]);
             SAFETY_RELEASE(mDepthStencilViewList[i]);
@@ -796,7 +796,7 @@ namespace renderer
         SAFETY_RELEASE(mTexColor);
         SAFETY_RELEASE(mShadowSrv);
         SAFETY_RELEASE(mDepthStencilTexture);
-        for (uint32 state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
+        for (uint32_t state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
         {
             SAFETY_RELEASE(mDepthStencilStates[state]);
         }

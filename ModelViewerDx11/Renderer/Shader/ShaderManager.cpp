@@ -16,22 +16,22 @@ namespace renderer
 
     ShaderManager::~ShaderManager()
     {
-        for (uint32 i = 0; i < static_cast<uint32>(eCbType::ConstantBufferCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eCbType::ConstantBufferCount); ++i)
         {
             SAFETY_RELEASE(mCbList[i].Buffer);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexShader::VertexShaderCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eVertexShader::VertexShaderCount); ++i)
         {
             SAFETY_RELEASE(mVertexShadersList[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(ePixelShader::PixelShaderCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(ePixelShader::PixelShaderCount); ++i)
         {
             SAFETY_RELEASE(mPixelShaderList[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexFormat::FormatCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eVertexFormat::FormatCount); ++i)
         {
             SAFETY_RELEASE(mInputLayoutList[i]);
         }
@@ -315,7 +315,7 @@ namespace renderer
     }
 
     bool ShaderManager::createInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-        uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
+        uint32_t numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
     {
 
         ASSERT(outInputLayout != nullptr, "do not pass nullptr");

@@ -43,7 +43,7 @@ namespace renderer
         void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager);
 
         // D3D
-        HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32 width, uint32 height, bool bDebugMode);
+        HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32_t width, uint32_t height, bool bDebugMode);
         HRESULT CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc, ID3D11RenderTargetView** outRtv, const char* const debugTag = "NO_INFO") const;
         HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO") const;
 
@@ -151,7 +151,7 @@ namespace renderer
         D3D11_VIEWPORT             mViewportTex;
 
         // raster state
-        ID3D11RasterizerState*      mRasterStates[static_cast<uint32>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull
+        ID3D11RasterizerState*      mRasterStates[static_cast<uint32_t>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull
 
         // sampler state
         ID3D11SamplerState* mSamplerState[static_cast<uint8_t>(eSamplerType::SamplerCount)];

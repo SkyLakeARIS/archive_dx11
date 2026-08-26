@@ -18,7 +18,7 @@ namespace scene
         mCamera = nullptr;
     }
 
-    HRESULT Sky::Initialize(uint32 latLines, uint32 lonLines, renderer::TextureManager* const texManager)
+    HRESULT Sky::Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager)
     {
         renderer::MeshGenerator::CreateSphere(latLines, lonLines, mMesh);
 

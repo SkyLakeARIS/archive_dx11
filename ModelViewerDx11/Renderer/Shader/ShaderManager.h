@@ -81,7 +81,7 @@ namespace renderer
 
     private:
         bool createInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-            uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
+            uint32_t numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
 
 
         bool createVertexShader(const WCHAR* const path, ID3D11VertexShader** const outVertexShader);

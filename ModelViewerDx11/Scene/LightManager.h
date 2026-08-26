@@ -8,34 +8,34 @@ namespace scene
     class LightManager final
     {
     private:
-        static const uint32 MAX_LIGHT_NUM = 16;
+        static const uint32_t MAX_LIGHT_NUM = 16;
 
         struct LightContainer
         {
-            LightContainer(Light* const light, uint32 id)
+            LightContainer(Light* const light, uint32_t id)
                 : Light(light)
                 , Id(id)
             {
             }
             Light* Light;
-            uint32 Id;
+            uint32_t Id;
         };
     public:
 
         static LightManager* GetInstance();
         static void             Release();
 
-        void AddLight(Light* const light, uint32& outId);
+        void AddLight(Light* const light, uint32_t& outId);
 
-        void FindLight(uint32 id, Light* outLight);
-        void RemoveLight(uint32 id);
+        void FindLight(uint32_t id, Light* outLight);
+        void RemoveLight(uint32_t id);
     private:
 
         LightManager();
         ~LightManager();
     private:
         static LightManager* mInstance;
-        static uint32       mIdCount;
+        static uint32_t       mIdCount;
 
         LightContainer* mLights[MAX_LIGHT_NUM];
         uint32_t mLightCount;

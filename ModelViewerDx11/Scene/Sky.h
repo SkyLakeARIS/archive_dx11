@@ -19,7 +19,7 @@ namespace scene
         Sky(Camera& camera);
         ~Sky();
 
-        HRESULT Initialize(uint32 latLines, uint32 lonLines, renderer::TextureManager* const texManager);
+        HRESULT Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager);
 
         void Draw(std::vector<renderer::RenderPacket>& commandList);
         void Update();

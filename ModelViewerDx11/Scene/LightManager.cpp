@@ -4,7 +4,7 @@
 namespace scene
 {
     LightManager* LightManager::mInstance = nullptr;
-    uint32 LightManager::mIdCount = 0;
+    uint32_t LightManager::mIdCount = 0;
 
     LightManager* LightManager::GetInstance()
     {
@@ -21,7 +21,7 @@ namespace scene
         mInstance = nullptr;
     }
 
-    void LightManager::AddLight(Light* const light, uint32& outId)
+    void LightManager::AddLight(Light* const light, uint32_t& outId)
     {
         if (mLightCount >= MAX_LIGHT_NUM)
         {
@@ -32,7 +32,7 @@ namespace scene
         mLights[mLightCount++] = newLight;
     }
 
-    void LightManager::FindLight(uint32 id, Light* outLight)
+    void LightManager::FindLight(uint32_t id, Light* outLight)
     {
         for (const LightContainer* const container : mLights)
         {
@@ -44,7 +44,7 @@ namespace scene
         }
     }
 
-    void LightManager::RemoveLight(uint32 id)
+    void LightManager::RemoveLight(uint32_t id)
     {
         for (LightContainer* const container : mLights)
         {

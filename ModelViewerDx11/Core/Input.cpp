@@ -137,7 +137,7 @@ namespace core
             }
         }
 
-        uint32 flag = 0;
+        uint32_t flag = 0;
         if (mKeyboardState[DIK_LALT])
         {
             flag = DISCL_NOWINKEY | DISCL_NONEXCLUSIVE | DISCL_FOREGROUND;
@@ -217,7 +217,7 @@ namespace core
         return result;
     }
 
-    void DirectInput::SetControlMode(uint32 flag)
+    void DirectInput::SetControlMode(uint32_t flag)
     {
         mControlState ^= flag;
     }
@@ -259,7 +259,7 @@ namespace core
         return mKeyboardState;
     }
 
-    uint32 DirectInput::GetControlMode() const
+    uint32_t DirectInput::GetControlMode() const
     {
         return mControlState;
     }
