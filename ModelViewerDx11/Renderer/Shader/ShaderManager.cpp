@@ -1,7 +1,7 @@
 #include "ShaderManager.h"
 #include "../Renderer.h"
-#include "../Resources/Material.h"
 #include "../../Util/Macro.h"
+#include "../Resources/Material.h"
 
 namespace renderer
 {

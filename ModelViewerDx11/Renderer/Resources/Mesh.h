@@ -2,7 +2,6 @@
 #include "Material.h"
 #include "RenderTypes.h"
 #include "../../Util/Define.h"
-#include "../../Util/Type.h"
 
 namespace renderer
 {

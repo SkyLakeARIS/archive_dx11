@@ -1,6 +1,5 @@
 #pragma once
 #include "TextureData.h"
-#include "VertexType.h"
 
 namespace renderer
 {

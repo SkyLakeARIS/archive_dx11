@@ -1,6 +1,8 @@
 #pragma once
+#include <memory>
 #include "../../Util/Define.h"
 #include "../Resources/Material.h"
+#include "../Resources/VertexType.h"
 
 namespace renderer
 {

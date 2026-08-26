@@ -1,9 +1,9 @@
 #include "MeshGenerator.h"
+#include <memory>
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
 #include "../Resources/BufferManager.h"
 #include "../Resources/Mesh.h"
-#include "../Resources/RenderTypes.h"
 
 namespace renderer
 {

@@ -1,11 +1,9 @@
 #pragma once
 #include "TextureData.h"
 #include "VertexType.h"
-#include "../../Util/Type.h"
 #include "../Shader/ShaderType.h"
 
 
-enum class eShader : uint8_t;
 
 namespace renderer
 {

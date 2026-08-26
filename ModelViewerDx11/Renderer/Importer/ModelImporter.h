@@ -1,6 +1,7 @@
 #pragma once
+#include <vector>
 #include "FbxPrerequisites.h"
-#include "../Resources/Mesh.h"
+#include "../../Util/Type.h"
 
 namespace renderer
 {

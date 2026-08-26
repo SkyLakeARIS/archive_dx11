@@ -1,5 +1,4 @@
 #pragma once
-#include "../framework.h"
 #include "./Resources/RenderTypes.h"
 
 namespace renderer

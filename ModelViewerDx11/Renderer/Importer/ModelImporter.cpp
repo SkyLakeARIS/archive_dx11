@@ -3,7 +3,6 @@
 #include <map>
 #include <set>
 #include "ImportedModelData.h"
-#include "../../Util/Define.h"
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
 #include "../Resources/VertexType.h"

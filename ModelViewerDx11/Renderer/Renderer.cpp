@@ -1,7 +1,6 @@
 #include "Renderer.h"
 #include "../Util/Macro.h"
 #include "Resources/BufferManager.h"
-#include "Resources/Material.h"
 #include "Resources/TextureManager.h"
 #include "Shader/ShaderManager.h"
 

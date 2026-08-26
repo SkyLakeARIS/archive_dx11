@@ -1,8 +1,7 @@
 #pragma once
+#include <atomic>
 #include <queue>
-
 #include "TextureData.h"
-#include "../../framework.h"
 
 namespace renderer
 {

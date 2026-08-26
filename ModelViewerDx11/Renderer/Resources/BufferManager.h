@@ -1,7 +1,6 @@
 #pragma once
 #include <unordered_map>
 #include "RenderTypes.h"
-#include "../../framework.h"
 
 namespace renderer
 {
