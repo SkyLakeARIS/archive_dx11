@@ -6,17 +6,14 @@
 
 namespace scene
 {
-    Sky::Sky(Camera& camera)
-        : mCamera(&camera)
-        , mMesh()
+    Sky::Sky()
+        : mMesh()
         , mWorld(XMMatrixIdentity())
     {
     }
 
     Sky::~Sky()
-    {
-        mCamera = nullptr;
-    }
+    {}
 
     HRESULT Sky::Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager)
     {
@@ -60,10 +57,9 @@ namespace scene
         }
     }
 
-    void Sky::Update()
+    void Sky::Update(const XMFLOAT3& cameraPosition)
     {
         // update
-        XMFLOAT3 cameraPosition = mCamera->GetCameraPositionFloat();
         XMMATRIX matTranslate = XMMatrixIdentity();
         XMMATRIX matScale = XMMatrixScaling(100.0f, 100.0f, 100.0f);
 

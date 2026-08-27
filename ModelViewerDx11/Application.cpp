@@ -206,7 +206,7 @@ bool Application::initializeScene()
 
     mResourceManager->LoadModel(modelFilePath, mCharacter);
 
-    mSkybox = new scene::Sky(*mCamera);
+    mSkybox = new scene::Sky();
     mSkybox->Initialize(10, 10, mTextureManager);
 
     mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -409,7 +409,7 @@ void Application::updateScene()
     mLightIcon->SetPosition(lightPosition);
     mLightIcon->UpdateScaleMatrix(mCamera->GetViewMatrix());
 
-    mSkybox->Update();
+    mSkybox->Update(mCamera->GetCameraPositionFloat());
     mCharacter->Update();
 
 
