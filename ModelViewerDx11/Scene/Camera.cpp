@@ -76,8 +76,6 @@ namespace scene
         {
             mAnglesRad.y = PITCH_LIMIT;
         }
-
-
     }
 
     void Camera::AddRadiusSphere(float scaleFactor)
@@ -95,8 +93,6 @@ namespace scene
         {
             mRadiusOfSphere = MIN_RADIUS;
         }
-
-
     }
 
     void Camera::AddHeight(float height)
@@ -111,15 +107,11 @@ namespace scene
 
         mvEye = XMLoadFloat3(&eye);
         mvLookAtCenter = XMLoadFloat3(&lookAt);
-
-
     }
 
     void Camera::ChangeFocus(XMFLOAT3 newFocus)
     {
         mvLookAtCenter = XMLoadFloat3(&newFocus);
-
-
     }
 
     float Camera::GetFov() const
@@ -150,9 +142,6 @@ namespace scene
         XMStoreFloat3(&eye, mvEye);
         return eye;
     }
-
-
-
 
     void Camera::makeProjectionMatrix()
     {

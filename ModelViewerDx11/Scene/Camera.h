@@ -31,7 +31,6 @@ namespace scene
 
     private:
 
-
         void makeProjectionMatrix();
 
     private:
