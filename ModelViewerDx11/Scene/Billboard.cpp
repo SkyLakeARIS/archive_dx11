@@ -1,5 +1,4 @@
 #include "Billboard.h"
-#include "Camera.h"
 #include "../Renderer/Renderer.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
 #include "../Renderer/Resources/RenderPacket.h"
