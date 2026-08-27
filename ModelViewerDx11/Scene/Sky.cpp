@@ -59,10 +59,9 @@ namespace scene
     void Sky::Update(const XMFLOAT3& cameraPosition)
     {
         // update
-        XMMATRIX matTranslate = XMMatrixIdentity();
-        XMMATRIX matScale = XMMatrixScaling(100.0f, 100.0f, 100.0f);
-
-        matTranslate = XMMatrixTranslation(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+        constexpr float SKY_SCALE_SIZE = 100.0f;
+        const XMMATRIX matScale = XMMatrixScaling(SKY_SCALE_SIZE, SKY_SCALE_SIZE, SKY_SCALE_SIZE);
+        const XMMATRIX matTranslate = XMMatrixTranslation(cameraPosition.x, cameraPosition.y, cameraPosition.z);
 
         mWorld = XMMatrixTranspose(matScale * matTranslate);
 
