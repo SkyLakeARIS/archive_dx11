@@ -27,7 +27,8 @@ namespace scene
 
         mFov = XMConvertToRadians(60.0f);
 
-        makeProjectionMatrix();
+        mMatProjection = XMMatrixPerspectiveFovLH(mFov, static_cast<float>(mScreenWidth) / static_cast<float>(mScreenHeight), 0.1f, 500.0f);
+        mMatViewProjection = mMatView * mMatProjection;
     }
 
     Camera::~Camera()
@@ -143,9 +144,4 @@ namespace scene
         return eye;
     }
 
-    void Camera::makeProjectionMatrix()
-    {
-        mMatProjection = XMMatrixPerspectiveFovLH(mFov, static_cast<float>(mScreenWidth) / static_cast<float>(mScreenHeight), 0.1f, 500.0f);
-        mMatViewProjection = mMatView * mMatProjection;
-    }
 }

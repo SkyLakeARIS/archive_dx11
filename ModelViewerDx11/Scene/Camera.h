@@ -29,9 +29,7 @@ namespace scene
         inline XMMATRIX GetProjectionMatrix() const;
         XMFLOAT3 GetEye() const;
 
-    private:
 
-        void makeProjectionMatrix();
 
     private:
 
