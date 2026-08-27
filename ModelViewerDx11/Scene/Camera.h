@@ -10,6 +10,8 @@ namespace scene
         Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp, int16_t windowWidth, int16_t windowHeight);
         ~Camera();
 
+        void Update();
+
         void RotateAxis(float yawRad, float pitchRad);
 
         void AddRadiusSphere(float scaleFactor);
@@ -29,9 +31,7 @@ namespace scene
 
     private:
 
-        void calcCameraPosition();
 
-        void makeViewMatrix();
         void makeProjectionMatrix();
 
     private:

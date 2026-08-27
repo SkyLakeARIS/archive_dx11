@@ -381,6 +381,9 @@ void Application::processInput(double deltaTime)
 
 void Application::updateScene()
 {
+    // MEMO: 이후 작업들이 카메라 정보에 의존하므로 카메라를 먼저 업데이트
+    mCamera->Update();
+
     // MEMO: Renderer가 예약한 CB들 업로드
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());

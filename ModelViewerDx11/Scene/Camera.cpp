@@ -27,12 +27,28 @@ namespace scene
 
         mFov = XMConvertToRadians(60.0f);
 
-        makeViewMatrix();
         makeProjectionMatrix();
     }
 
     Camera::~Camera()
     {
+    }
+
+    void Camera::Update()
+    {
+        // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
+        XMFLOAT3 positionInSphere;
+        positionInSphere.x = sin(mAnglesRad.y) * sin(mAnglesRad.x);
+        positionInSphere.y = cos(mAnglesRad.y);
+        positionInSphere.z = -(sin(mAnglesRad.y) * cos(mAnglesRad.x));
+
+        const XMVECTOR newPositionInOrbit = XMVectorScale(XMLoadFloat3(&positionInSphere), mRadiusOfSphere);
+        // 가상의 구체를 통해 얻은 좌표로 실제 위치인 mvLookAtCenter를 중심으로 하는 궤도로 이동
+        mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
+
+        // MEMO: 업데이트 반영 후 View Matrix 생성.
+        mMatView = XMMatrixLookAtLH(mvEye, mvLookAtCenter, mvUp);
+        mMatViewProjection = mMatView * mMatProjection;
     }
 
     void Camera::RotateAxis(float yawRad, float pitchRad)
@@ -61,10 +77,7 @@ namespace scene
             mAnglesRad.y = PITCH_LIMIT;
         }
 
-        // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
-        calcCameraPosition();
 
-        makeViewMatrix();
     }
 
     void Camera::AddRadiusSphere(float scaleFactor)
@@ -83,10 +96,7 @@ namespace scene
             mRadiusOfSphere = MIN_RADIUS;
         }
 
-        // 변경된 거리를 적용한다.
-        calcCameraPosition();
 
-        makeViewMatrix();
     }
 
     void Camera::AddHeight(float height)
@@ -102,19 +112,14 @@ namespace scene
         mvEye = XMLoadFloat3(&eye);
         mvLookAtCenter = XMLoadFloat3(&lookAt);
 
-        calcCameraPosition();
 
-        makeViewMatrix();
     }
 
     void Camera::ChangeFocus(XMFLOAT3 newFocus)
     {
         mvLookAtCenter = XMLoadFloat3(&newFocus);
 
-        // 중심이 변경되었으므로 카메라 위치를 다시 계산한다.
-        calcCameraPosition();
 
-        makeViewMatrix();
     }
 
     float Camera::GetFov() const
@@ -146,24 +151,8 @@ namespace scene
         return eye;
     }
 
-    void Camera::calcCameraPosition()
-    {
-        // (반지름) r이 1인 단위 구체로 생각하고 계산 후, radius만큼 거리를 조정한다.
-        XMFLOAT3 positionInSphere;
-        positionInSphere.x = sin(mAnglesRad.y) * sin(mAnglesRad.x);
-        positionInSphere.y = cos(mAnglesRad.y);
-        positionInSphere.z = -(sin(mAnglesRad.y) * cos(mAnglesRad.x));
 
-        const XMVECTOR newPositionInOrbit = XMVectorScale(XMLoadFloat3(&positionInSphere), mRadiusOfSphere);
-        // 가상의 구체를 통해 얻은 좌표로 실제 위치인 mvLookAtCenter를 중심으로 하는 궤도로 이동
-        mvEye = XMVectorAdd(newPositionInOrbit, mvLookAtCenter);
-    }
 
-    void Camera::makeViewMatrix()
-    {
-        mMatView = XMMatrixLookAtLH(mvEye, mvLookAtCenter, mvUp);
-        mMatViewProjection = mMatView * mMatProjection;
-    }
 
     void Camera::makeProjectionMatrix()
     {
