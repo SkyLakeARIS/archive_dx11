@@ -29,8 +29,6 @@ namespace scene
         inline XMMATRIX GetProjectionMatrix() const;
         XMFLOAT3 GetEye() const;
 
-
-
     private:
 
         XMFLOAT2    mAnglesRad;         // (가상의) 구면에서의 위치를 계산하기 위한 각, x == pi, y == theta
