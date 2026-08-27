@@ -1,5 +1,4 @@
 #include "Sky.h"
-#include "Camera.h"
 #include "../Renderer/Primitive/MeshGenerator.h"
 #include "../Renderer/Resources/RenderPacket.h"
 #include "../Renderer/Resources/TextureManager.h"

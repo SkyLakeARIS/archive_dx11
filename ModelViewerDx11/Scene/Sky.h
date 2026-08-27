@@ -9,7 +9,6 @@ namespace renderer
 
 namespace scene
 {
-    class Camera;
 
     class Sky
     {
