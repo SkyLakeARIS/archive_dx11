@@ -355,11 +355,11 @@ void Application::processInput(double deltaTime)
     bPressCKey = gKeyboard[DIK_C] & 0x80;
 
     static bool bPressHKey = false;
-    static bool bHightlight = false;
+    static bool bHighlight = false;
     if (!(gKeyboard[DIK_H] & 0x80) && bPressHKey)
     {
-        bHightlight = !bHightlight;
-        mCharacter->SetHighlight(bHightlight);
+        bHighlight = !bHighlight;
+        mCharacter->SetHighlight(bHighlight);
     }
     bPressHKey = gKeyboard[DIK_H] & 0x80;
 
