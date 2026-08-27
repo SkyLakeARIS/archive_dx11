@@ -407,7 +407,7 @@ void Application::updateScene()
     mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
     mLightIcon->SetPosition(lightPosition);
-    mLightIcon->UpdateScaleMatrix(*mCamera);
+    mLightIcon->UpdateScaleMatrix(mCamera->GetViewMatrix());
 
     mSkybox->Update();
     mCharacter->Update();

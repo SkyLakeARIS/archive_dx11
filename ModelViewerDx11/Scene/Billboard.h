@@ -22,7 +22,7 @@ namespace scene
 
         void Draw(std::vector<renderer::RenderPacket>& commandList);
 
-        void UpdateScaleMatrix(Camera& camera);
+        void UpdateScaleMatrix(const XMMATRIX& viewMatrix);
 
         void SetTexture(HashID texHash, int16_t texSerial);
         void SetPosition(const XMFLOAT3& position);

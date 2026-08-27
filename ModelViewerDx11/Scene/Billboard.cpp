@@ -68,13 +68,12 @@ namespace scene
         }
     }
 
-    void Billboard::UpdateScaleMatrix(Camera& camera)
+    void Billboard::UpdateScaleMatrix(const XMMATRIX& viewMatrix)
     {
-        const XMMATRIX& matView = camera.GetViewMatrix();
         // row major
-        (void)memcpy(&mMatWorld.r[0].m128_f32, &matView.r[0].m128_f32, sizeof(XMFLOAT3));
-        (void)memcpy(&mMatWorld.r[1].m128_f32, &matView.r[1].m128_f32, sizeof(XMFLOAT3));
-        (void)memcpy(&mMatWorld.r[2].m128_f32, &matView.r[2].m128_f32, sizeof(XMFLOAT3));
+        (void)memcpy(&mMatWorld.r[0].m128_f32, &viewMatrix.r[0].m128_f32, sizeof(XMFLOAT3));
+        (void)memcpy(&mMatWorld.r[1].m128_f32, &viewMatrix.r[1].m128_f32, sizeof(XMFLOAT3));
+        (void)memcpy(&mMatWorld.r[2].m128_f32, &viewMatrix.r[2].m128_f32, sizeof(XMFLOAT3));
 
         XMVECTOR determinant;
         mMatWorld = XMMatrixInverse(&determinant, mMatWorld);
