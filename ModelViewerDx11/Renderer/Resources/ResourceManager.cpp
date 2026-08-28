@@ -79,6 +79,11 @@ namespace renderer
                     newSubMesh.Material.TextureHashes[tex] = subMesh.Textures[tex].TextureHash;
                     newSubMesh.Material.TextureSerials[tex] = mTextureManager->GetTextureSerial(subMesh.Textures[tex].TextureHash);
                 }
+                else if(static_cast<eTextureType>(tex) == eTextureType::Shadow)
+                {
+                    newSubMesh.Material.TextureHashes[tex] = TextureManager::sShadowTexHash;
+                    newSubMesh.Material.TextureSerials[tex] = TextureManager::sShadowTexSerialID;
+                }
             }
             newMesh.SubMeshes.push_back(std::move(newSubMesh));
         }

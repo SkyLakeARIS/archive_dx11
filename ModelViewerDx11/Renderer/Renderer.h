@@ -84,7 +84,6 @@ namespace renderer
         void BindSamplerToPsByType(uint32_t slot, eSamplerType type) const;
         void BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask);
         void BindTextureToPs(uint32_t slot, HashID textureHash) const;
-        void BindShadowTextureToPs(uint32_t slot) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;
         void BindDepthStencilState(eDepthStencilState type) const;

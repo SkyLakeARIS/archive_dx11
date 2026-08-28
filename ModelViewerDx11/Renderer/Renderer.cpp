@@ -671,11 +671,6 @@ namespace renderer
         }
     }
 
-    void Renderer::BindShadowTextureToPs(uint32_t slot) const
-    {
-        mDeviceContext->PSSetShaderResources(slot, 1, &mShadowSrv);
-    }
-
     void Renderer::BindDefaultTextureToPs(uint32_t slot) const
     {
         HashID hash = 0;

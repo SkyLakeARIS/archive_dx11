@@ -517,12 +517,7 @@ void Application::renderScene()
                 continue;
             }
 
-            if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && static_cast<bool>(command.RenderState.UseShadowMapUsage))
-            {
-                mRenderer->BindShadowTextureToPs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
-                mCommandCache.ShadowMapUsage = command.RenderState.UseShadowMapUsage;
-            }
-            else if (command.Material.TextureHashes[texture])
+            if (command.Material.TextureHashes[texture])
             {
                 mRenderer->BindTextureToPs(command.RenderState.TexBindingSlots[texture], command.Material.TextureHashes[texture]);
             }
