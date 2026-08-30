@@ -1,7 +1,6 @@
 #pragma once
 #include <unordered_map>
 #include "RenderTypes.h"
-#include "../../framework.h"
 
 namespace renderer
 {
@@ -73,8 +72,14 @@ namespace renderer
         int16_t GetIndexStrideSize() const;
         DXGI_FORMAT GetIndexFormat() const;
     private:
-        void resizeVertexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt);
-        void resizeIndexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt);
+        void uploadResource(eBufferUsage usage, ID3D11Buffer* const buffer, const int8_t* const pData, int32_t startIndex, int32_t count, bool bIsDiscardDynamicBuffer);
+        void addSubChunkToBuffer(eBufferUsage usage, int16_t stride, BufferChunk& bufferChunk, HashID hash, int32_t startIndex, int32_t count, int32_t& outStartIndexInElement, int32_t
+                              & outCountInElement);
+        void resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt);
+
+        void tryGetRecycleSpaceBestFit(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedRangeIt, int32_t tryByteSize, int32_t& outWriteStartIndex, std::vector<BufferRange>::iterator& outRecycledSpace);
+
+        void mergeRemovedSpace(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedBufferIt);
     public:
         static constexpr int32_t sVertexBufferDefaultSize = 4096;
         static constexpr int32_t sIndexBufferDefaultSize = 4096;
@@ -86,13 +91,12 @@ namespace renderer
 
         eIndexListFormat mIndexFormat;
 
-        // TODO: FlatMap은 일단 구조를 잡고나서 도입하자.
-        // MEMO: 0 offset bind를 하려면 버퍼 내에 서로 다른 stride를 가진 데이터가 존재하면 안될 것으로 생각되어 Buffer들을 분리한다.
+        // MEMO: 0 offset bind를 하려면 버퍼 내에 서로 다른 stride를 가진 데이터가 존재하면
+        // 안될 것으로 생각되어 Buffer들을 분리한다.
         // MEMO: pair<vertex stride, Buffer> - stride 크기 별로 개별 버퍼를 관리
         std::unordered_map<int16_t, BufferChunk> mVertexBuffers;
         std::unordered_map<int16_t, BufferChunk> mIndexBuffers;
 
-        // TODO: 일단 만들어는 놨으나 Add 함수에서 먼저 추가하기 전에 Ranges 공간을 확인하도록 로직을 수정해야 한다.
         // MEMO: 데이터 제거 시 빈공간에 대한 데이터 범위를 저장하여 데이터 추가시 체크
         std::unordered_map<int16_t, std::vector<BufferRange>> mVertexRemovedRanges;
         std::unordered_map<int16_t, std::vector<BufferRange>> mIndexRemovedRanges;

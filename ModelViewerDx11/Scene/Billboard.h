@@ -1,6 +1,5 @@
 #pragma once
-#include "../framework.h"
-#include "../Renderer/Resources/ModelData.h"
+#include "../Renderer/Resources/Mesh.h"
 
 
 namespace renderer
@@ -16,17 +15,16 @@ namespace scene
     class Billboard
     {
     public:
-        // TODO: 나중에 각 billboard 개체들 구분을 위한 이름같은 식별자 추가 필요
         Billboard();
         ~Billboard();
 
         void Initialize(renderer::Renderer& renderer);
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
 
-        void UpdateScaleMatrix(Camera& camera);
+        void UpdateScaleMatrix(const XMMATRIX& viewMatrix);
 
-        void SetTexture(HashID texHash);
+        void SetTexture(HashID texHash, int16_t texSerial);
         void SetPosition(const XMFLOAT3& position);
     private:
         renderer::Mesh mMesh;

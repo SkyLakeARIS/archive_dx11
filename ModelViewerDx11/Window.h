@@ -1,5 +1,6 @@
 #pragma once
-#include "framework.h"
+#include "Windows.h"
+#include "Util/Type.h"
 
 class Window
 {

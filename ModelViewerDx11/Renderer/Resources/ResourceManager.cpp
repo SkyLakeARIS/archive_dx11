@@ -37,7 +37,6 @@ namespace renderer
 
         HashID modelHash = 0;
         ImportedModelContainer modelContainer;
-        // TODO: IndexList가 비어있을 수 있지 않을까 생각하면 Importer에서 좀 더 로직을 엄격하게 체크해야 할 것으로 보임.
         mModelImporter->LoadFbxModel(filePath, modelHash, modelContainer);
 
         Mesh newMesh = {};
@@ -45,6 +44,10 @@ namespace renderer
         newMesh.VertexFormat = eVertexFormat::PTN;
         const int16_t strideVertex = GetVertexStrideSize(newMesh.VertexFormat);
         const int16_t strideIndex = mBufferManager->GetIndexStrideSize();
+        const int16_t filePathLength = static_cast<int16_t>(strlen(reinterpret_cast<char const*>(filePath)));
+        ASSERT(filePathLength + 1 <= util::MAX_NAME_LENGTH, "str이 버퍼 사이즈보다 큼. 입력 문자열을 검점하거나, util의 Length 상수 조정 필요. str(%d)", filePathLength + 1);
+        (void)memcpy(newMesh.MeshName, filePath, filePathLength + 1);
+        newMesh.MeshHash = modelHash;
 
         int32_t totalVertexCount = 0;
         int32_t totalIndexCount = 0;
@@ -52,7 +55,7 @@ namespace renderer
         {
             SubMesh newSubMesh = {};
 
-            newSubMesh.SubMeshHash = util::GetDjb2Hash(subMesh.MeshName);
+            newSubMesh.SubMeshHash = util::GetDjb2Hash(subMesh.MeshName, modelHash);
             mBufferManager->AddVertex(reinterpret_cast<int8_t*>(subMesh.VertexBuffer.get()), strideVertex * subMesh.VertexCount, newSubMesh.SubMeshHash, strideVertex, newSubMesh.VertexRange);
 
             mBufferManager->AddIndex(reinterpret_cast<int8_t*>(subMesh.IndexBuffer.get()), strideIndex * subMesh.IndexCount, newSubMesh.SubMeshHash, strideIndex, newSubMesh.IndexRange);
@@ -61,7 +64,10 @@ namespace renderer
             totalIndexCount += newSubMesh.IndexRange.Count;
             (void)memcpy(newSubMesh.SubMeshName, subMesh.MeshName, util::MAX_NAME_LENGTH);
 
-            newSubMesh.Material.MaterialParam = std::move(subMesh.MaterialParam);
+            newSubMesh.MinBound = std::move(subMesh.MinBound);
+            newSubMesh.MaxBound = std::move(subMesh.MaxBound);
+
+            newSubMesh.Material.Factors = std::move(subMesh.MaterialParam);
 
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)
@@ -69,7 +75,14 @@ namespace renderer
                 if(subMesh.Textures[tex].TextureHash)
                 {
                     mTextureManager->AddTexture(subMesh.Textures[tex].FilePath, subMesh.Textures[tex].TextureHash);
+
                     newSubMesh.Material.TextureHashes[tex] = subMesh.Textures[tex].TextureHash;
+                    newSubMesh.Material.TextureSerials[tex] = mTextureManager->GetTextureSerial(subMesh.Textures[tex].TextureHash);
+                }
+                else if(static_cast<eTextureType>(tex) == eTextureType::Shadow)
+                {
+                    newSubMesh.Material.TextureHashes[tex] = TextureManager::sShadowTexHash;
+                    newSubMesh.Material.TextureSerials[tex] = TextureManager::sShadowTexSerialID;
                 }
             }
             newMesh.SubMeshes.push_back(std::move(newSubMesh));
@@ -82,7 +95,6 @@ namespace renderer
         newMesh.IndexRange.Count = totalIndexCount;
 
         outModel->SetMesh(newMesh);
-        outModel->SetCenterPoint(modelContainer.CenterPoint);
     }
 
 }

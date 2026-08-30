@@ -1,7 +1,11 @@
 #pragma once
-#include "framework.h"
 #include "Renderer/Resources/RenderPacket.h"
 
+
+namespace core
+{
+    class DirectInput;
+}
 
 namespace ui
 {
@@ -45,8 +49,8 @@ private:
     bool initializeScene();
     bool initializeManagers();
 
-    // TODO: input update와 scene update 로직 분리하기
-    void updateScene(double deltaTime);
+    void processInput(double deltaTime);
+    void updateScene();
 
     void renderScene();
 
@@ -58,8 +62,9 @@ private:
 
     Window* mWindow;
 
+    int32_t mCurSubMeshIndexFocusModel;
     std::vector<renderer::RenderPacket> mCommandList;
-    renderer::RenderPacket mCommandCache;
+    renderer::RenderPacketCache mCommandCache;
     renderer::Renderer* mRenderer;
     renderer::ModelImporter* mImporter;
     renderer::Model* mCharacter;

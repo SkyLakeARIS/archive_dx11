@@ -2,14 +2,12 @@
 #include "BufferManager.h"
 #include "../../Util/Macro.h"
 #include "../Resources/RenderPacket.h"
-#include "../Shader/ShaderManager.h"
 
 namespace renderer
 {
     Model::Model(scene::Camera* camera, BufferManager* bufferManager)
         : mBufferManager(bufferManager)
         , mMesh()
-        , mCenterPosition(0.0f, 0.0f, 0.0f)
         , mMatRotation(XMMatrixIdentity())
         , mMatScale(XMMatrixIdentity())
         , mbHighlight(false)
@@ -29,99 +27,100 @@ namespace renderer
             mBufferManager->RemoveVertexData(stride, subMesh.SubMeshHash);
             mBufferManager->RemoveIndexData(strideIndex, subMesh.SubMeshHash);
         }
-        // TODO: BufferManager를 받지 않고, BufferData 처리할 수 있는 로직이 필요함.
         mBufferManager = nullptr;
     }
 
-    void Model::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void Model::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
-        RenderPacket command = {};
-        command.VertexFormat = mMesh.VertexFormat;
-        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.bUseDynamicBuffer = false;
-        command.bTransparency = false;
-        command.RenderTargetType = eRenderTarget::Default;
-        command.MatWorld = mMatWorld;
+        // Shadow pass
+        for (const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                eVertexFormat::P,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderPass::Shadow,
+                mMatWorld,
+                renderer::eShader::Shadow,
+                renderer::eRasterType::Outline,
+                renderer::eSamplerType::SamplerCount,
+                eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                false,
+                eDepthStencilState::DepthOffStencilOff,
+                false
+            );
+
+            commandList.push_back(command);
+        }
 
         // outline
         if (mbHighlight)
         {
-            command.RenderState.ShaderType = eShader::Outline;
-            renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-            renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-            renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-            command.RenderState.RasterType = eRasterType::CullBack;
-            command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
-            command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
-            command.RenderState.BlendHash = 0;
-            command.RenderState.bUseShadowMap = false;
-            command.RenderState.bUseDepthStencil = true;
-            command.RenderState.bClearDepthStencilBuffer = true;
 
             for (const auto& subMesh : mMesh.SubMeshes)
             {
-                command.VertexRange = subMesh.VertexRange;
-                command.IndexRange = subMesh.IndexRange;
-                command.Material = subMesh.Material;
+                renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                    mMesh.VertexFormat,
+                    renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                    renderer::eBufferUsage::Static,
+                    false,
+                    subMesh.VertexRange,
+                    subMesh.IndexRange,
+                    subMesh.Material,
+                    renderer::eRenderPass::Main,
+                    mMatWorld,
+                    renderer::eShader::Outline,
+                    renderer::eRasterType::CullBack,
+                    renderer::eSamplerType::SamplerCount,
+                    eBlendState::Opaque,
+                    renderer::ePrimitiveTopology::Triangles,
+                    false,
+                    eDepthStencilState::DepthOnMaskAllCompLessEqual,
+                    true
+                );
 
                 if (!mbActiveEmissive)
                 {
-                    command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    command.Material.Factors.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
                 }
 
                 commandList.push_back(command);
             }
-            commandList.push_back(command);
         }
 
-        // TODO: ResourceManager에 있는 하드코드가 여기로 이동된 셈. - 나중에 조금이나마 줄일 수 있는 방안이 있을지 고민은 해보고 코멘트 지우자.
-        command.RenderState.ShaderType = eShader::BasicWithShadow;
-        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-        command.RenderState.RasterType = eRasterType::Basic;
-        command.RenderState.SamplerType = eSamplerType::AnisotropicWrap;
-        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
-        command.RenderState.BlendHash = 0;
-        command.RenderState.bUseShadowMap = true;
-        command.RenderState.bUseDepthStencil = false;
-        command.RenderState.bClearDepthStencilBuffer = false;
-
+        // Main pass
         for (const auto& subMesh : mMesh.SubMeshes)
         {
-            command.VertexRange = subMesh.VertexRange;
-            command.IndexRange = subMesh.IndexRange;
-            command.Material = subMesh.Material;
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderPass::Main,
+                mMatWorld,
+                renderer::eShader::BasicWithShadow,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::AnisotropicWrap,
+                eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                true,
+                eDepthStencilState::DepthOffStencilOff,
+                false
+            );
 
             if (!mbActiveEmissive)
             {
-                command.Material.MaterialParam.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                command.Material.Factors.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
 
-            commandList.push_back(command);
-        }
-    }
-
-    void Model::DrawShadow(std::vector<renderer::RenderPacket>& commandList)
-    {
-        RenderPacket command = {};
-        command.VertexFormat = eVertexFormat::P;
-        command.Stride = GetVertexStrideSize(mMesh.VertexFormat);
-        command.bUseDynamicBuffer = false;
-        command.RenderTargetType = eRenderTarget::Shadow;
-        command.RenderState.ShaderType = eShader::Shadow;
-        renderer::ShaderManager::GetMaterialCbBindingDesc(command.RenderState.ShaderType, command.RenderState.CbBindingDesc);
-        renderer::ShaderManager::GetMaterialTextureBindSlots(command.RenderState.ShaderType, command.RenderState.TexBindingSlots);
-        renderer::ShaderManager::GetMaterialSamplerBindSlot(command.RenderState.ShaderType, command.RenderState.SamplerBindingSlot);
-        command.RenderState.TopologyType = ePrimitiveTopology::Triangles;
-        command.MatWorld = mMatWorld;
-        command.RenderState.RasterType = eRasterType::Outline;
-
-        for (const auto& subMesh : mMesh.SubMeshes)
-        {
-            command.VertexRange = subMesh.VertexRange;
-            command.IndexRange = subMesh.IndexRange;
-            command.Material = subMesh.Material;
             commandList.push_back(command);
         }
     }
@@ -137,20 +136,25 @@ namespace renderer
         mMesh = std::move(mesh);
     }
 
-    void Model::SetCenterPoint(XMFLOAT4& centerPoint)
-    {
-        mCenterPosition = XMFLOAT3(centerPoint.x, centerPoint.y, centerPoint.z);
-    }
-
     void Model::SetHighlight(bool bSelection)
     {
         mbHighlight = bSelection;
     }
 
-    XMFLOAT3 Model::GetCenterPoint() const
+    int32_t Model::GetSubMeshCount() const
     {
-        XMFLOAT3 pos = mCenterPosition;
-        pos.y += 1.0f;
-        return pos;
+        return mMesh.SubMeshes.size();
+    }
+
+    XMFLOAT3 Model::GetCenterPoint(int32_t subMeshIndex) const
+    {
+        ASSERT((subMeshIndex >= 0 && subMeshIndex < mMesh.SubMeshes.size()), "유효하지 않은 SubMeshIndex. pass(%d), validSubMeshCount(%d)", subMeshIndex, mMesh.SubMeshes.size());
+
+        const XMVECTOR minBound = XMLoadFloat3(&mMesh.SubMeshes[subMeshIndex].MinBound);
+        const XMVECTOR maxBound = XMLoadFloat3(&mMesh.SubMeshes[subMeshIndex].MaxBound);
+        const XMVECTOR mid = (minBound + maxBound) * 0.5f;
+        XMFLOAT3 centerPosition;
+        XMStoreFloat3(&centerPosition, mid);
+        return centerPosition;
     }
 }

@@ -1,6 +1,7 @@
 #pragma once
-#include "../../framework.h"
-#include "../Resources/ModelData.h"
+#include <vector>
+#include "FbxPrerequisites.h"
+#include "../../Util/Type.h"
 
 namespace renderer
 {
@@ -24,7 +25,7 @@ namespace renderer
 
         void preprocess(FbxNode* parent, FbxNode* current, std::vector<FbxNode*>& outNodes);
 
-        void parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer, FbxVector4& outMinBound, FbxVector4& outMaxBound);
+        void parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer);
 
         void parseTextureInfo(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer);
 

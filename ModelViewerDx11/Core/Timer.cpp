@@ -1,4 +1,5 @@
 #include "Timer.h"
+#include <Windows.h>
 
 namespace core
 {

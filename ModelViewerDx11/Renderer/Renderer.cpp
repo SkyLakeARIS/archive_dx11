@@ -1,9 +1,8 @@
 #include "Renderer.h"
 #include "../Util/Macro.h"
 #include "Resources/BufferManager.h"
-#include "Resources/Material.h"
-#include "Resources/RenderPacket.h"
 #include "Resources/TextureManager.h"
+#include "Shader/ShaderManager.h"
 
 namespace renderer
 {
@@ -49,21 +48,31 @@ namespace renderer
         return mBufferManager;
     }
 
+    eRenderTarget Renderer::GetRenderTargetByRenderPass(eRenderPass renderPass) const
+    {
+        constexpr eRenderTarget RenderPassRenderTargetMap[] =
+        {
+            eRenderTarget::Default,
+            eRenderTarget::Shadow,
+            eRenderTarget::Default
+        };
+        static_assert(sizeof(RenderPassRenderTargetMap) / sizeof(RenderPassRenderTargetMap[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassRenderTargetMap와 eRenderPass의 갯수가 서로 맞아야 합니다.");
+        return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
+    }
 
-
+    void Renderer::registerShadowTexture()
+    {
+        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);
+        TextureManager::sShadowTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sShadowTexHash);
+    }
 
     Renderer::Renderer()
-        : mDefaultTexture(nullptr)
-        , mRefCount(1)
+        : mRefCount(1)
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
-        , mShaderMapTable{}
-        , mVertexShadersList{}
-        , mPixelShaderList{}
-        , mInputLayoutList{}
         , mSwapChain(nullptr)
         , mDepthStencilTexture(nullptr)
-        , mSkyboxDepthStencil(nullptr)
+        , mDepthStencilStates{}
         , mRenderTargetViewList{nullptr}
         , mDepthStencilViewList{nullptr}
         , mRtvDsMapTable{}
@@ -75,54 +84,18 @@ namespace renderer
         , mViewportTex()
         , mRasterStates{nullptr}
         , mSamplerState{}
-        , mCbList{}
         , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
+        , mShaderManager(nullptr)
     {}
 
     Renderer::~Renderer()
     {
         Cleanup();
-    }
-
-    HRESULT Renderer::compileShaderFromFile(
-        const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
-    {
-        HRESULT result = S_OK;
-
-        DWORD dwShaderFlags = D3DCOMPILE_ENABLE_STRICTNESS;
-    #ifdef _DEBUG
-        // Set the D3DCOMPILE_DEBUG flag to embed debug information in the shaders.
-        // Setting this flag improves the shader debugging experience, but still allows 
-        // the shaders to be optimized and to run exactly the way they will run in 
-        // the release configuration of this program.
-        dwShaderFlags |= D3DCOMPILE_DEBUG;
-
-        // Disable optimizations to further improve shader debugging
-        dwShaderFlags |= D3DCOMPILE_SKIP_OPTIMIZATION;
-    #endif
-
-        ID3DBlob* pErrorBlob = nullptr;
-        result = D3DCompileFromFile(szFileName, nullptr, nullptr, szEntryPoint, szShaderModel,
-            dwShaderFlags, 0, ppBlobOut, &pErrorBlob);
-
-        if (FAILED(result))
-        {
-            if (pErrorBlob)
-            {
-                OutputDebugStringA(reinterpret_cast<const char*>(pErrorBlob->GetBufferPointer()));
-                pErrorBlob->Release();
-            }
-            return result;
-        }
-
-        if (pErrorBlob)
-        {
-            pErrorBlob->Release();
-        }
-
-        return S_OK;
+        mBufferManager = nullptr;
+        mTextureManager = nullptr;
+        mShaderManager = nullptr;
     }
 
     bool Renderer::createRasterState()
@@ -135,7 +108,7 @@ namespace renderer
         rasterDesc.FillMode = D3D11_FILL_SOLID;
         // MEMO: CW winding으로 통일 
         rasterDesc.FrontCounterClockwise = false;
-        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Basic)]);
+        HRESULT result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Basic)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for basic");
@@ -144,9 +117,8 @@ namespace renderer
         // 아웃라인용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_FRONT;
       //  rasterDesc.CullMode = D3D11_CULL_BACK;
-        // TODO: msdn 읽어보고 설정.
         rasterDesc.DepthBias = 1;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Outline)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Outline)]);
         if(FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for outline");
@@ -155,7 +127,7 @@ namespace renderer
 
         // 스카이박스용 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_BACK;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::Skybox)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::Skybox)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for Skybox");
@@ -164,7 +136,7 @@ namespace renderer
 
         // back-culling 래스터 스테이트
         rasterDesc.CullMode = D3D11_CULL_BACK;
-        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32>(eRasterType::CullBack)]);
+        result = mDevice->CreateRasterizerState(&rasterDesc, &mRasterStates[static_cast<uint32_t>(eRasterType::CullBack)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create RasterState for back face culling");
@@ -193,66 +165,22 @@ namespace renderer
         return S_OK;
     }
 
-    HRESULT Renderer::createPresetConstantBuffers()
-    {
-        constexpr ConstantBufferMap cbMapTable[static_cast<uint8_t>(eCbType::ConstantBufferCount)] =
-            {
-                {eCbType::CbWorld, sizeof(CbWorld)},
-                {eCbType::CbViewProj, sizeof(CbViewProj)},
-                {eCbType::CbLightViewProjMatrix, sizeof(CbLightViewProjMatrix)},
-                {eCbType::CbCameraPosition, sizeof(CbCameraPosition)},
-                {eCbType::CbOutlineProperty, sizeof(CbOutlineProperty)},
-                {eCbType::CbLightProperty, sizeof(CbLightProperty)},
-                {eCbType::CbMaterial, sizeof(CbMaterial)},
-                {eCbType::CbColor, sizeof(CbColor)},
-                {eCbType::CbOrthoMatrix, sizeof(CbScreenSpaceMatrix)},
-            };
-        static_assert(sizeof(cbMapTable) / sizeof(ConstantBufferMap) == static_cast<uint8_t>(eCbType::ConstantBufferCount));
-        D3D11_BUFFER_DESC desc = {};
-        // TODO: optimize - 업데이트 빈도에 따라서 분류하고난 뒤에 분류에 따라서 Usage도 적절한 값으로 지정하기
-        desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        desc.CPUAccessFlags = 0;
-        HRESULT result = {};
-        for (uint8_t index = 0; index < static_cast<uint8_t>(eCbType::ConstantBufferCount); ++index)
-        {
-            desc.ByteWidth = cbMapTable[index].ByteWidth;
-            result = CreateConstantBuffer(desc, &mCbList[index]);
-            if (FAILED(result))
-            {
-                break;
-            }
-        }
-        return result;
-    }
-
-    HashID Renderer::GetBlendStateHash(D3D11_BLEND_DESC& desc)
-    {
-        HashID hash = 0;
-        hash |= static_cast<uint32_t>(desc.RenderTarget[0].BlendEnable);
-        hash |= (desc.RenderTarget[0].SrcBlend << 1);
-        hash |= (desc.RenderTarget[0].DestBlend << 6);
-        hash |= (desc.RenderTarget[0].SrcBlendAlpha << 11);
-        hash |= (desc.RenderTarget[0].DestBlendAlpha << 16);
-        hash |= (desc.RenderTarget[0].RenderTargetWriteMask << 21);
-        hash |= (desc.RenderTarget[0].BlendOp << 26);
-        hash |= (desc.RenderTarget[0].BlendOpAlpha << 29);
-
-        return hash;
-    }
-
-    void Renderer::SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager)
+    void Renderer::SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager)
     {
         ASSERT(bufferManager, "bufferManager is nullptr");
         ASSERT(textureManager, "textureManager is nullptr");
+        ASSERT(shaderManager, "shaderManager is nullptr");
         mBufferManager = bufferManager;
         mTextureManager = textureManager;
+        mShaderManager = shaderManager;
+
+        registerShadowTexture();
     }
 
     HRESULT Renderer::CreateDeviceAndSetup(
         DXGI_SWAP_CHAIN_DESC& swapChainDesc
-        , uint32              width
-        , uint32              height
+        , uint32_t              width
+        , uint32_t              height
         , bool                bDebugMode)
     {
 
@@ -374,22 +302,36 @@ namespace renderer
         }
         SET_PRIVATE_DATA(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], "eRenderTarget::Default");
 
-        uint8 index = static_cast<uint8_t>(eRenderTarget::Default);
+        uint32_t index = static_cast<uint8_t>(eRenderTarget::Default);
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].RenderTargetIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].DepthStencilIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].NumViews = 1U;
 
-
-        D3D11_DEPTH_STENCIL_DESC depthStencilDesc;
-        ZeroMemory(&depthStencilDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
-
-        depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-        depthStencilDesc.DepthEnable = true;
-        depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-        result = mDevice->CreateDepthStencilState(&depthStencilDesc, &mSkyboxDepthStencil);
-        if (FAILED(result))
+        // MEMO: 쓰는 것들만 Preset으로 지정한다. 없으면 동적 생성은 굳이 필요하지 않음
+        constexpr DepthStencilStateMap DepthStencilStateMap[] =
         {
-            return E_FAIL;
+            // MEMO: DepthOffStencilOff는 unbind용
+            {
+                eDepthStencilState::DepthOffStencilOff,
+                {}
+            },
+            {
+                eDepthStencilState::DepthOnMaskAllCompLessEqual,
+                {true, D3D11_DEPTH_WRITE_MASK_ALL, D3D11_COMPARISON_LESS_EQUAL, false, 0, 0, {}, {}}
+            }
+        };
+
+        for(auto& dssMapEntry : DepthStencilStateMap)
+        {
+            if(dssMapEntry.Type == eDepthStencilState::DepthOffStencilOff)
+            {
+                continue;
+            }
+            result = mDevice->CreateDepthStencilState(&dssMapEntry.Desc, &mDepthStencilStates[static_cast<uint8_t>(dssMapEntry.Type)]);
+            if (FAILED(result))
+            {
+                return E_FAIL;
+            }
         }
 
         if(!createRasterState())
@@ -404,7 +346,6 @@ namespace renderer
     {
         HRESULT result = S_OK;
 
-        // TODO: 개선 경고 메세지 관련하여 조사하고 개선 필요 함
         DXGI_SWAP_CHAIN_DESC swapDesc;
         ZeroMemory(&swapDesc, sizeof(swapDesc));
         swapDesc.BufferCount = 1;
@@ -428,46 +369,24 @@ namespace renderer
 
         // set default resources
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC texDefaultDesc = {};
-        texDefaultDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        texDefaultDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        texDefaultDesc.Texture2D.MipLevels = 1;
-        texDefaultDesc.Texture2D.MostDetailedMip = 0;
-
-        // TODO: HRESULT를 에러 메세지로 변환하여 출력해주는 로그 클래스도 만드는 게 좋을 것 같다.(그래야 result를 받는 의미가 있을 듯)
-        result = CreateTextureResource(L"AssetData/textures/default.png", WIC_FLAGS_NONE, texDefaultDesc, &mDefaultTexture);
-        if (FAILED(result))
-        {
-            ASSERT(false, "FAIL : CreateTextureResource - default texture");
-            return false;
-        }
-        SET_PRIVATE_DATA(mDefaultTexture, "DefaultTexture");
-
         result = CreateShadowRenderTarget();
         if (FAILED(result))
         {
-            ASSERT(false, "FAIL : FAIL : CreateShadowRenderTarget");
-            return false;
-        }
-
-        result = setupShaders();
-        if (FAILED(result))
-        {
-            ASSERT(false, "FAIL : FAIL : setupShaders");
+            ASSERT(false, "FAIL : CreateShadowRenderTarget");
             return false;
         }
 
         result = createSamplerState();
         if (FAILED(result))
         {
-            ASSERT(false, "FAIL : FAIL : createSamplerState");
+            ASSERT(false, "FAIL : createSamplerState");
             return false;
         }
 
-        result = createPresetConstantBuffers();
+        result = createPresetBlendStates();
         if (FAILED(result))
         {
-            ASSERT(false, "FAIL : FAIL : createPresetConstantBuffers");
+            ASSERT(false, "FAIL : create preset blendStates");
             return false;
         }
 
@@ -489,155 +408,37 @@ namespace renderer
         return true;
     }
 
-    HRESULT Renderer::CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc,
-        uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout)
+    bool Renderer::createPresetBlendStates()
     {
-
-        ASSERT(outInputLayout != nullptr, "do not pass nullptr");
-        ID3D11VertexShader* dummyShader = nullptr;
-        ID3DBlob* blob = nullptr;
-        HRESULT result = compileShaderFromFile(path, "main", "vs_5_0", &blob);
-        if (FAILED(result))
+        constexpr BlendStatePreset BlendStatePresetMap[] =
         {
-            ASSERT(false, "failed to compile vertex shader : compileShaderFromFile");
-            return E_FAIL;
-        }
+            {eBlendState::Opaque, D3D11_BLEND_ONE, D3D11_BLEND_ZERO},
+            {eBlendState::AlphaBlend, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA},
+        };
 
-        result = mDevice->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &dummyShader);
-        if (FAILED(result))
+        for(const BlendStatePreset& preset : BlendStatePresetMap)
         {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
+            D3D11_BLEND_DESC desc = {};
+            desc.RenderTarget[0].BlendEnable = preset.Type != eBlendState::Opaque;
+            desc.RenderTarget[0].SrcBlend = static_cast<D3D11_BLEND>(preset.SrcBlend);
+            desc.RenderTarget[0].DestBlend = static_cast<D3D11_BLEND>(preset.DestBlend);
+            desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+            desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+            desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+            desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+            desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 
-        result = mDevice->CreateInputLayout(desc, numDescElements, blob->GetBufferPointer(), blob->GetBufferSize(), &(*outInputLayout));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
-
-        blob->Release();
-        SAFETY_RELEASE(dummyShader);
-
-        return result;
-    }
-
-    HRESULT Renderer::CreateVertexShader(
-        const WCHAR* const path, ID3D11VertexShader** const outVertexShader)
-    {
-        ASSERT(outVertexShader != nullptr, "do not pass nullptr");
-
-        ID3DBlob* blob = nullptr;
-        HRESULT result = compileShaderFromFile(path, "main", "vs_5_0", &blob);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to compile vertex shader : compileShaderFromFile");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &(*outVertexShader));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create InputLayout : CreateInputLayout");
-            return E_FAIL;
-        }
-
-        blob->Release();
-
-        return result;
-    }
-
-    HRESULT Renderer::CreatePixelShader(
-        const WCHAR* const path, ID3D11PixelShader** const outPixelShader)
-    {
-        ASSERT(outPixelShader != nullptr, "do not pass nullptr");
-
-        ID3DBlob* blob = nullptr;
-        // PS_Lighting
-        HRESULT result = compileShaderFromFile(path, "main", "ps_5_0", &blob);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to compile pixel shader : compileShaderFromFile");
-            return E_FAIL;
-        }
-
-        result = mDevice->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &(*outPixelShader));
-        blob->Release();
-        if (FAILED(result))
-        {
-            return result;
-        }
-
-        return result;
-    }
-
-    HRESULT Renderer::CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash)
-    {
-        outHash = GetBlendStateHash(desc);
-        if (mBlendStateMap.find(outHash) == mBlendStateMap.end())
-        {
-            ID3D11BlendState* newBlendState = nullptr;
-            if (FAILED(mDevice->CreateBlendState(&desc, &newBlendState)))
+            if (FAILED(mDevice->CreateBlendState(&desc, &mBlendStates[static_cast<int8_t>(preset.Type)])))
             {
-                ASSERT(false, "failed to create BlendState");
-                return E_FAIL;
+                ASSERT(false, "failed to create BlendState. Type(%d)", static_cast<int8_t>(preset.Type));
+                return false;
             }
-            mBlendStateMap.insert(std::make_pair(outHash, newBlendState));
         }
-        else
-        {
-            const auto& it = mBlendStateMap.find(outHash);
-            ASSERT(false, "hash collision detected or double insertion. Hash(%u)", it->first);
-        }
-        return S_OK;
-    }
-
-    HRESULT Renderer::CreateTextureResource(
-        const WCHAR* fileName,
-        WIC_FLAGS flag,
-        D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc,
-        ID3D11ShaderResourceView** outShaderResourceView) const
-    {
-        ScratchImage image;
-        ID3D11Texture2D* textureResource = nullptr;
-        
-        HRESULT result = LoadFromWICFile(fileName, flag, nullptr, image);
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to load imamge file : 이미지 로드 실패");
-            goto FAILED;
-        }
-
-        result = CreateTexture(mDevice, image.GetImages(), image.GetImageCount(), image.GetMetadata(), (ID3D11Resource**)(&textureResource));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create TextureResource : gTextureResource 생성 실패");
-            goto FAILED;
-        }
-        D3D11_TEXTURE2D_DESC desc;
-        textureResource->GetDesc(&desc);
-        srvDesc.Format = desc.Format;
-        srvDesc.Texture2D.MipLevels = desc.MipLevels;
-        result = mDevice->CreateShaderResourceView((ID3D11Resource*)textureResource, &srvDesc, &(*outShaderResourceView));
-        if (FAILED(result))
-        {
-            ASSERT(false, "failed to create outShaderResourceView : outShaderResourceView 생성 실패");
-            goto FAILED;
-        }
-
-        result = S_OK;
-
-    FAILED:
-        image.Release();
-        SAFETY_RELEASE(textureResource);
-
-        return result;
-        
+        return true;
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
-        ID3D11RenderTargetView** outRtv, const char* const debugTag) const
+                                             ID3D11RenderTargetView** outRtv, const char* const debugTag) const
     {
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outRtv != nullptr, "outRtv) do not pass nullptr.");
@@ -647,7 +448,7 @@ namespace renderer
         if(FAILED(result))
         {
             ASSERT(false, "failed to create RenderTargetView: RenderTargetView 생성 실패");
-            ASSERT(false, debugTag);
+            ASSERT(false, "%hs", debugTag);
         }
 
         return result;
@@ -664,18 +465,8 @@ namespace renderer
         if (FAILED(result))
         {
             ASSERT(false, "failed to create DepthStencilView: DepthStencilView 생성 실패");
-            ASSERT(false, debugTag);
+            ASSERT(false, "%hs", debugTag);
         }
-
-        return result;
-    }
-
-    HRESULT Renderer::CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const
-    {
-        ASSERT(desc.BindFlags & static_cast<uint32_t>(D3D11_BIND_CONSTANT_BUFFER), "desc.BindFlags not bind as Constant-buffer");
-        ASSERT(desc.ByteWidth != 0, "desc.ByteWidth is zero");
-
-        HRESULT result = mDevice->CreateBuffer(&desc, nullptr, outCb);
 
         return result;
     }
@@ -689,14 +480,17 @@ namespace renderer
 
     void Renderer::BindInputLayoutTo(eVertexFormat type) const
     {
-        mDeviceContext->IASetInputLayout(mInputLayoutList[static_cast<uint32>(type)]);
+        ID3D11InputLayout* const intputLayout = mShaderManager->GetInputLayoutByType(type);
+        mDeviceContext->IASetInputLayout(intputLayout);
     }
 
     void Renderer::BindShaderTo(eShader type) const
     {
-        const ShaderMap& shaderMap = mShaderMapTable[static_cast<uint32_t>(type)];
-        mDeviceContext->VSSetShader(mVertexShadersList[static_cast<uint32_t>(shaderMap.VsIndex)], nullptr, 0U);
-        mDeviceContext->PSSetShader(mPixelShaderList[static_cast<uint32_t>(shaderMap.PsIndex)], nullptr, 0U);
+        ID3D11VertexShader* vs = nullptr;
+        ID3D11PixelShader* ps = nullptr;
+        mShaderManager->GetShadersByType(type, &vs, &ps);
+        mDeviceContext->VSSetShader(vs, nullptr, 0U);
+        mDeviceContext->PSSetShader(ps, nullptr, 0U);
     }
 
     void Renderer::Draw(uint32_t vertexCount, uint32_t startVertexLocation) const
@@ -769,7 +563,7 @@ namespace renderer
         mViewportTex.TopLeftY = 0;
         // 렌더링될 영역을 지정. s가 붙으니까 여러개 지정가능.(모델링 프로그램을 생각)
         // rasterizer stage
-        mDeviceContext->RSSetViewports(1, &mViewportTex); // mViewportForTex TODO: 이렇게되면 기존 viewport도 변수화 해야한다.
+        mDeviceContext->RSSetViewports(1, &mViewportTex); // mViewportForTex 
      
         depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
@@ -865,18 +659,10 @@ namespace renderer
         mDeviceContext->PSSetSamplers(slot, 1, &mSamplerState[static_cast<int32_t>(type)]);
     }
 
-    void Renderer::BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask)
+    void Renderer::BindBlendStateByType(eBlendState type) const
     {
-        const auto& it = mBlendStateMap.find(hash);
-        if (it != mBlendStateMap.end())
-        {
-            mDeviceContext->OMSetBlendState(it->second, blendFactors, mask);
-        }
-        else
-        {
-            ID3D11BlendState* const unbind = nullptr;
-            mDeviceContext->OMSetBlendState(unbind, blendFactors, mask);
-        }
+        ASSERT(type != eBlendState::StateCount, "올바르지 않은 type. type(%d)", static_cast<uint8_t>(type));
+        mDeviceContext->OMSetBlendState(mBlendStates[static_cast<uint8_t>(type)], nullptr, 0xffff'ffff);
     }
 
     void Renderer::BindTextureToPs(uint32_t slot, HashID textureHash) const
@@ -889,14 +675,13 @@ namespace renderer
         }
     }
 
-    void Renderer::BindShadowTextureToPs(uint32_t slot) const
-    {
-        mDeviceContext->PSSetShaderResources(slot, 1, &mShadowSrv);
-    }
-
     void Renderer::BindDefaultTextureToPs(uint32_t slot) const
     {
-        mDeviceContext->PSSetShaderResources(slot, 1, &mDefaultTexture);
+        HashID hash = 0;
+        int16_t serial = 0;
+        mTextureManager->GetDefaultTexture(hash, serial);
+        ID3D11ShaderResourceView* const srv = mTextureManager->GetTextureByHash(hash);
+        mDeviceContext->PSSetShaderResources(slot, 1, &srv);
     }
 
     void Renderer::UnbindTexturePs(uint32_t slot) const
@@ -918,19 +703,13 @@ namespace renderer
 
     void Renderer::BindRasterStateByType(eRasterType type) const
     {
-        mDeviceContext->RSSetState(mRasterStates[static_cast<uint32>(type)]);
+        mDeviceContext->RSSetState(mRasterStates[static_cast<uint32_t>(type)]);
     }
 
-    void Renderer::BindDepthStencilState(bool bSkybox) const
+    void Renderer::BindDepthStencilState(eDepthStencilState type) const
     {
-        if(bSkybox)
-        {
-            mDeviceContext->OMSetDepthStencilState(mSkyboxDepthStencil, 0);
-        }
-        else
-        {
-            mDeviceContext->OMSetDepthStencilState(nullptr, 0);
-        }
+        ASSERT(type != eDepthStencilState::StateCount, "올바르지 않은 eDepthStencilState 유형. 쓰지 않으려면 DepthOff를 지정해야 합니다. type(%d)", static_cast<int8_t>(type))
+        mDeviceContext->OMSetDepthStencilState(mDepthStencilStates[static_cast<uint8_t>(type)], 0);
     }
 
     void Renderer::ClearScreenAndDepth(eRenderTarget type) const
@@ -950,146 +729,6 @@ namespace renderer
     void Renderer::Present() const
     {
         mSwapChain->Present(0, 0);
-    }
-
-    HRESULT Renderer::setupShaders()
-    {
-
-        D3D11_INPUT_ELEMENT_DESC layoutPTNDesc[] =
-        {
-            { "POSITION", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 0U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-            { "TEXCOORD", 0U, DXGI_FORMAT_R32G32_FLOAT, 0U, 12U, D3D11_INPUT_PER_VERTEX_DATA, 0U },
-            { "NORMAL", 0U, DXGI_FORMAT_R32G32B32_FLOAT, 0U, 20U, D3D11_INPUT_PER_VERTEX_DATA, 0U}
-        };
-
-        const wchar_t* InputLayoutSourceList[] =
-        {
-            L"Renderer/Shaders/LayoutPTN.hlsl",
-            L"Renderer/Shaders/LayoutPT.hlsl",
-            L"Renderer/Shaders/LayoutP.hlsl",
-        };
-
-        const wchar_t* VertexShaderSourceList[] =
-        {
-            L"Renderer/Shaders/VsOutline.hlsl",
-            L"Renderer/Shaders/VsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/VsSimple.hlsl",
-            L"Renderer/Shaders/VsSkybox.hlsl",
-            L"Renderer/Shaders/VsRenderToTexture.hlsl",
-            L"Renderer/Shaders/VsScreen.hlsl",
-            L"Renderer/Shaders/VsShadow.hlsl",
-        };
-        const wchar_t* PixelShaderSourceList[] =
-        {
-            L"Renderer/Shaders/PsOutline.hlsl",
-            L"Renderer/Shaders/PsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/PsShadow.hlsl",
-            L"Renderer/Shaders/PsRenderToTexture.hlsl",
-            L"Renderer/Shaders/PsSkybox.hlsl",
-            L"Renderer/Shaders/PsColor.hlsl"
-        };
-
-        struct PixelShaderContainer
-        {
-            ePixelShader ListIndex;
-            uint32_t     SourceIndex;
-        };
-        struct VertexShaderContainer
-        {
-            eVertexShader ListIndex;
-            uint32_t      SourceIndex;
-        };
-
-        struct InputLayoutContainer
-        {
-            eVertexFormat ListIndex;
-            uint32_t      SourceIndex;
-            D3D11_INPUT_ELEMENT_DESC* Desc;
-            uint32_t numDescElements;
-        };
-
-        InputLayoutContainer InputLayoutListMapTable[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
-        {
-            { eVertexFormat::PTN, 0U, layoutPTNDesc, 3},
-            { eVertexFormat::PT, 1U, layoutPTNDesc, 2},
-            {eVertexFormat::P, 2U, layoutPTNDesc, 1},
-        };
-
-        constexpr VertexShaderContainer VertexShaderListMapTable[static_cast<uint32_t>(eVertexShader::VertexShaderCount)] =
-        {
-            {eVertexShader::VsBasicWithShadow, 1U},
-            { eVertexShader::VsOutline, 0U},
-            {eVertexShader::VsSimple, 2U},
-            {eVertexShader::VsRenderToTexture, 4U}, // ?
-            {eVertexShader::VsSkybox, 3U},
-            {eVertexShader::VsScreen, 5U},
-            {eVertexShader::VsShadow, 6U},
-        };
-
-        constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
-        {
-            {ePixelShader::PsBasicWithShadow, 1U},
-            {ePixelShader::PsOutline, 0U},
-            {ePixelShader::PsRenderToTexture, 3U},
-            {ePixelShader::PsShadow, 2U},
-            {ePixelShader::PsSkybox, 4U},
-            {ePixelShader::PsColor, 5U},
-        };
-
-
-        // construct shader mapping table
-        constexpr ShaderMap ShaderMapTable[] =
-        {
-            {eShader::Outline, eVertexShader::VsOutline, ePixelShader::PsOutline}, 
-            {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox}, 
-            { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
-            {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::RenderToTexture,  eVertexShader::VsRenderToTexture, ePixelShader::PsRenderToTexture}, // TODO : 개선 예정(셰이더 최적화)
-            {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
-            {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsRenderToTexture},
-        };
-
-        static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
-        memcpy(mShaderMapTable, ShaderMapTable, sizeof(mShaderMapTable));
-
-
-        HRESULT result = S_OK;
-
-        // input layout
-        for (const InputLayoutContainer& layout : InputLayoutListMapTable)
-        {
-            ASSERT(mInputLayoutList[static_cast<uint32_t>(layout.ListIndex)] == nullptr, "The InputLayout-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreateInputLayout(InputLayoutSourceList[layout.SourceIndex], layout.Desc, layout.numDescElements, layout.ListIndex, &mInputLayoutList[static_cast<uint32_t>(layout.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Create InputLayout FAILED");
-            }
-        }
-
-        for (const VertexShaderContainer& vs : VertexShaderListMapTable)
-        {
-            ASSERT(mVertexShadersList[static_cast<uint32_t>(vs.ListIndex)] == nullptr, "The VS-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreateVertexShader(VertexShaderSourceList[vs.SourceIndex], &mVertexShadersList[static_cast<uint32_t>(vs.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Compile Vertex Shader FAILED");
-            }
-        }
-
-        for (const PixelShaderContainer& ps : PixelShaderListMapTable)
-        {
-            ASSERT(mPixelShaderList[static_cast<uint32_t>(ps.ListIndex)] == nullptr, "The PS-Mapping List may be incorrect or not initialized as nullptr.");
-
-            result = CreatePixelShader(PixelShaderSourceList[ps.SourceIndex], &mPixelShaderList[static_cast<uint32_t>(ps.ListIndex)]);
-            if (FAILED(result))
-            {
-                ASSERT(false, "To Compile Pixel Shader FAILED");
-            }
-        }
-
-        return result;
     }
 
     bool Renderer::CheckDeviceLost(bool& outIsReInitialize) const
@@ -1126,143 +765,38 @@ namespace renderer
         return bTerminateProgram;
     }
 
-    void Renderer::MakeSortKey(RenderPacket& command)
-    {
-        // MEMO: 32bit, 내림차순 정렬(값이 큰 순서로 렌더링)
-        // MEMO:  높은 쪽 <-----------> 낮은 쪽
-        // MEMO: 상위 비트 | 중간 비트 | 하위 비트
-
-        // MEMO: 추후에 작업하면서 필요에 따라 Bit 수, 순서 조정하면서 정답을 찾아가기.
-
-        // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
-        // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
-        // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
-        // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
-        // MEMO: 셰이더는, 머티리얼보다 높은 쪽을 사용한다.
-        // 현재는 머티리얼당 셰이더 하나와 대응되어 의미 없지만 같은 셰이더를 공유하는 머티리얼이 있다면 대응이 될 수 있는 구조로 판단됨.
-        // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
-
-
-        // TODO: improve - 값을 보고 총 몇비트가 필요한지 자동으로 계산하도록 하면 좋을 것 같다. 나중에 한번 고민해보기(컴파일 타임에도 가능한가?)
-        constexpr uint8_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
-        {
-            0,
-            1,
-        };
-
-        // TODO: RenderTarget 같은 경우는 순서가 중요하지만, 셰이더나, 머티리얼 등 몇몇개는 순서가 별로 중요하지 않은 것 같다. 좀 더 조사해보고 좀 더 개선하기.
-        constexpr uint8_t VertexFormatPriority[static_cast<uint8_t>(eVertexFormat::FormatCount)] =
-        {
-            2,
-            1,
-            0
-        };
-
-        constexpr uint8_t ShaderPriority[static_cast<uint8_t>(eShader::ShaderCount)] =
-        {
-            1, // Outline,
-            2, // Skybox,
-            3, // Shadow,
-            4, // BasicWithShadow,
-            5, // RenderToTexture,
-            6, // Color,
-            0, // DebugHUD,
-        };
-
-        constexpr uint8_t RasterStatePriority[static_cast<uint8_t>(eRasterType::RasterCount)] =
-        {
-            1, // Basic,
-            2, // Outline,
-            3, // Skybox,
-            4, // CullBack,
-        };
-
-        constexpr uint8_t SamplerStatePriority[static_cast<uint8_t>(eSamplerType::SamplerCount)] =
-        {
-            0 // AnisotropicWrap,
-        };
-
-        constexpr uint8_t PrimitiveTopologyPriority[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)] =
-        {
-            0, // Triangles,
-            1, // TriangleStrip,
-            2, // Lines
-        };
-
-        // TODO: 머티리얼은 같은지 다른지 구분할 식별자가 필요하다. 우선은 구분하지 않아도 되므로 무시하되, 렌더큐 구조 완료 후 바로 작업이 필요함.
-        // MaterialParameter
-        // TODO: 해시라서 Bit에 할당하기 애매한 상태. BlendState를 여러 개 대표적으로 쓸 것들만 뽑아서 열거형으로 만들어 사용하는 것으로 변경한다.
-        // BlendHash
-        // TODO: 텍스처 해시도 동일한 텍스처를 쓰는 드로우콜을 뭉치면 좋을 것 같지만, 그렇게하면 해시가 아니라 다른 ID로 써야할 것 같다.
-
-        // TODO: 설계 문서 대로 비트 위치는 구분해놓는 것이 깔끔할 것 같다.
-        uint32_t sortKey = 0;
-        sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 31);
-        // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
-        sortKey |= static_cast<uint8_t>(command.bTransparency == false) << 30;
-        sortKey |= static_cast<uint8_t>(command.bUseDynamicBuffer) << 29;
-        sortKey |= static_cast<uint8_t>(command.RenderState.bUseDepthStencil) << 28;
-        sortKey |= static_cast<uint8_t>(command.RenderState.bClearDepthStencilBuffer) << 27;
-        sortKey |= (SamplerStatePriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 26);
-        sortKey |= static_cast<uint8_t>(command.RenderState.bUseShadowMap) << 25;
-        sortKey |= (ShaderPriority[static_cast<uint8_t>(command.RenderState.ShaderType)] << 21);
-        sortKey |= (VertexFormatPriority[static_cast<uint8_t>(command.VertexFormat)] << 18);
-        sortKey |= (RasterStatePriority[static_cast<uint8_t>(command.RenderState.RasterType)] << 14);
-        sortKey |= (PrimitiveTopologyPriority[static_cast<uint8_t>(command.RenderState.TopologyType)] << 10);
-
-        command.SortKey = sortKey;
-    }
-
     void Renderer::Cleanup()
     {
-        for (uint32 i = 0; i < static_cast<uint32>(eCbType::ConstantBufferCount); ++i)
-        {
-            SAFETY_RELEASE(mCbList[i]);
-        }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eRasterType::RasterCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eRasterType::RasterCount); ++i)
         {
             SAFETY_RELEASE(mRasterStates[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(eSamplerType::SamplerCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(eSamplerType::SamplerCount); ++i)
         {
             SAFETY_RELEASE(mSamplerState[i]);
         }
 
-        for (auto& it : mBlendStateMap)
+        for (uint32_t i = 0; i < static_cast<uint8_t>(eBlendState::StateCount); ++i)
         {
-            SAFETY_RELEASE(it.second);
-        }
-        mBlendStateMap.clear();
-
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexShader::VertexShaderCount); ++i)
-        {
-            SAFETY_RELEASE(mVertexShadersList[i]);
+            SAFETY_RELEASE(mBlendStates[i]);
         }
 
-        for (uint32 i = 0; i < static_cast<uint32>(ePixelShader::PixelShaderCount); ++i)
-        {
-            SAFETY_RELEASE(mPixelShaderList[i]);
-        }
-
-        for (uint32 i = 0; i < static_cast<uint32>(eVertexFormat::FormatCount); ++i)
-        {
-            SAFETY_RELEASE(mInputLayoutList[i]);
-        }
-
-        for (uint32 i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
+        for (uint32_t i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
         {
             SAFETY_RELEASE(mRenderTargetViewList[i]);
             SAFETY_RELEASE(mDepthStencilViewList[i]);
         }
 
-        SAFETY_RELEASE(mDefaultTexture);
         SAFETY_RELEASE(mTexShadow);
         SAFETY_RELEASE(mTexColor);
         SAFETY_RELEASE(mShadowSrv);
         SAFETY_RELEASE(mDepthStencilTexture);
-        SAFETY_RELEASE(mSkyboxDepthStencil);
+        for (uint32_t state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
+        {
+            SAFETY_RELEASE(mDepthStencilStates[state]);
+        }
         SAFETY_RELEASE(mSwapChain);
         SAFETY_RELEASE(mDeviceContext);
         SAFETY_RELEASE(mDevice);
@@ -1289,20 +823,16 @@ namespace renderer
         return E_FAIL;
     }
 
-    void Renderer::UpdateCB(eCbType type, const void* const data) const
-    {
-        mDeviceContext->UpdateSubresource(mCbList[static_cast<uint32_t>(type)], 0U, nullptr, data, 0U, 0U);
-    }
-
-
     void Renderer::BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+        ID3D11Buffer* const cBuffer = mShaderManager->GetConstantBufferByType(type);
+        mDeviceContext->VSSetConstantBuffers(slot, numBuffer, &cBuffer);
     }
 
 
     void Renderer::BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const
     {
-        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &mCbList[static_cast<uint32_t>(type)]);
+        ID3D11Buffer* const cBuffer = mShaderManager->GetConstantBufferByType(type);
+        mDeviceContext->PSSetConstantBuffers(slot, numBuffer, &cBuffer);
     }
 }

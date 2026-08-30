@@ -1,11 +1,9 @@
 #pragma once
-#include "../Renderer/Resources/ModelData.h"
+#include "../Renderer/Resources/Mesh.h"
 
 namespace renderer
 {
-    enum class eRenderTarget : uint8_t;
     struct RenderPacket;
-    class Renderer;
 }
 
 namespace ui
@@ -16,11 +14,10 @@ namespace ui
         DebugPanel(int16_t originX, int16_t originY, int16_t width, int16_t height);
         ~DebugPanel();
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
 
-        void SetDebugType(renderer::eRenderTarget type);
+        void SetDebugType(HashID texHash, int16_t serialID);
     private:
         renderer::Mesh mMesh;
-        renderer::eRenderTarget mType;
     };
 }

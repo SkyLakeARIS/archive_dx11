@@ -1,5 +1,6 @@
 #pragma once
-#include "../../framework.h"
+#include "../GfxPrerequisites.h"
+#include "../../Util/Type.h"
 
 namespace renderer
 {
@@ -14,6 +15,9 @@ namespace renderer
     struct TextureData
     {
         ID3D11ShaderResourceView* SRV;
+        // MEMO: 텍스처 식별자
         HashID Hash;
+        // MEMO: SortKey 위한 id.
+        int16_t SerialID;
     };
 }

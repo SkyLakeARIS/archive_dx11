@@ -9,20 +9,16 @@ Texture2D texShadow : register(t2);
 SamplerState samLinear : register(s0);
 
 
-cbuffer cbMaterial : register(b0)
+cbuffer cbMaterialFactors : register(b0)
 {
     float3 Diffuse;
-    float Reserve0;
+    float Opacity;   // 알파값으로 사용
     float3 Ambient;
-    float Reserve1;
-    float3 Specular;
-    float Reserve2;
-    float3 Emissive;
-    float Reserve3;
-    float Opacity; // 알파값으로 사용
     float Reflectivity;
-    float Shininess; // 스페큘러 거듭제곱 값
-    float Reserve4;
+    float3 Specular;  // 스페큘러 거듭제곱 값
+    float Shininess;
+    float3 Emissive;
+    float Reserve1;
 }
 
 struct PS_INPUT
@@ -49,7 +45,7 @@ float4 main(PS_INPUT input) : SV_TARGET
     float depthShadow = texShadow.Sample(samLinear, shadowCoord.xy).r;
 
    // if (depth < depthShadow - 0.0001)
-    if (depth < depthShadow - 0.0001)
+    if (depth < depthShadow + 0.00001)
     {
         normal.z = sqrt(1.0 - (normal.x * normal.x + normal.y * normal.y));
 

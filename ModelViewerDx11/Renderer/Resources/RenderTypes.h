@@ -1,68 +1,12 @@
 #pragma once
-#include "../../framework.h"
 #include "TextureData.h"
+#include "VertexType.h"
+#include "../Shader/ShaderType.h"
+
+
 
 namespace renderer
 {
-    enum class eSamplerType : uint8_t;
-    enum class eRasterType : uint8_t;
-    enum class eShader : uint8_t;
-}
-
-namespace renderer
-{
-    enum class ePrimitiveTopology : uint8_t
-    {
-        Triangles,
-        TriangleStrip,
-        Lines,
-        TopologyCount
-    };
-
-    enum class eVertexFormat : uint8_t
-    {
-        PTN,    // pos, normal, tex
-        PT,     // pos, tex
-        P,      // pos
-        FormatCount
-    };
-
-    struct VertexPTN // 4bytes align
-    {
-        XMFLOAT3 Position;
-        XMFLOAT2 TexCoord;
-        XMFLOAT3 Normal;
-        float    Reserve1;
-    };
-
-    struct VertexPT // 4bytes align
-    {
-        XMFLOAT3 Position;
-        XMFLOAT2 TexCoord;
-    };
-
-    struct VertexP // 4bytes align
-    {
-        XMFLOAT3 Position;
-    };
-
-    inline constexpr int16_t GetVertexStrideSize(eVertexFormat vertexAttrib)
-    {
-        constexpr int16_t VertexStrideMap[static_cast<int8_t>(eVertexFormat::FormatCount)] =
-        {
-            sizeof(VertexPTN),
-            sizeof(VertexPT),
-            sizeof(VertexP)
-        };
-        return VertexStrideMap[static_cast<int8_t>(vertexAttrib)];
-    }
-
-    struct BufferRange
-    {
-        int32_t StartIndex;
-        int32_t Count;
-    };
-
     typedef struct CbMatrix
     {
         XMMATRIX Matrix;
@@ -72,7 +16,6 @@ namespace renderer
     {
         XMFLOAT3    Float3;
         float       Reserve;
-        // TODO: improve - outlineProperty는 왜 float3로 했는지? -> CbFloat으로 분리하기
     } CbCameraPosition, CbOutlineProperty, CbColor;
 
     typedef struct CbTwoVec4
@@ -80,21 +23,6 @@ namespace renderer
         XMFLOAT4    First;
         XMFLOAT4    Second;
     }CbLightProperty;
-
-    // TODO: cleanup - 관련 코드들 ShaderManager로 이동
-    enum class eCbType : uint8_t
-    {
-        CbWorld,
-        CbViewProj,
-        CbLightViewProjMatrix,
-        CbCameraPosition,
-        CbOutlineProperty,
-        CbLightProperty,
-        CbMaterial,
-        CbColor,
-        CbOrthoMatrix,
-        ConstantBufferCount
-    };
 
     enum class eRasterType : uint8_t
     {
@@ -111,19 +39,6 @@ namespace renderer
         SamplerCount
     };
 
-
-    enum class eShader : uint8_t
-    {
-        Outline,
-        Skybox,
-        Shadow,
-        BasicWithShadow,
-        RenderToTexture,
-        Color,
-        DebugHUD,
-        ShaderCount
-    };
-
     // RenderTarget, DepthStencil 
     enum class eRenderTarget : uint8_t
     {
@@ -132,11 +47,35 @@ namespace renderer
         RenderTargetCount
     };
 
-    struct MaterialCbBinding
+    enum class eRenderPass : uint8_t
     {
-        eCbType Type;
-        bool bBindPixelShader;
-        int8_t BindSlot;
+        Main,
+        Shadow,
+        UI,
+        PassCount
+    };
+
+    // MEMO: 우선은 캐시 변수가 unbind 상태로 초기화 될 수 있도록 열거형으로 변경
+    enum class eDepthStencilState
+    {
+        // MEMO: DepthOffStencilOff는 unbind용이나 다름 없음.
+        DepthOffStencilOff,
+        DepthOnMaskAllCompLessEqual,
+        StateCount
+    };
+
+    enum class eShadowMapUsage
+    {
+        Off,
+        On,
+        UsageCount
+    };
+
+    enum eBlendState : uint8_t
+    {
+        Opaque,
+        AlphaBlend,
+        StateCount
     };
 
     struct RenderState
@@ -154,10 +93,9 @@ namespace renderer
         eRasterType RasterType;
         eSamplerType SamplerType;
         ePrimitiveTopology TopologyType;
-        HashID BlendHash;
-        // TODO: improve - 현재 옵션이 Skybox 전용으로만 존재하므로 확장이 필요함.
-        bool bUseDepthStencil;
-        bool bUseShadowMap;
+        eBlendState BlendState;
+        eDepthStencilState DepthStencilState;
+        eShadowMapUsage UseShadowMapUsage;
         bool bClearDepthStencilBuffer;
     };
 }

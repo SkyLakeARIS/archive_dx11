@@ -2,11 +2,9 @@
 #include "Material.h"
 #include "RenderTypes.h"
 #include "../../Util/Define.h"
-#include "../../Util/Type.h"
 
 namespace renderer
 {
-    // TODO: cleanup - ModelData -> Mesh로 파일명을 바꿔도 좋을 것 같다.
 
     // MEMO: SubMesh가 Mesh의 부분집합
     // MEMO: SubMesh가 Material을 가지고, Mesh가 SubMesh들을 가지는 구조로 정리.
@@ -18,7 +16,9 @@ namespace renderer
         BufferRange VertexRange;
         BufferRange IndexRange;
         HashID SubMeshHash;
-
+        // For Orbit Camera
+        XMFLOAT3 MinBound;
+        XMFLOAT3 MaxBound;
         // for debugging
         int8_t SubMeshName[util::MAX_NAME_LENGTH];
     };

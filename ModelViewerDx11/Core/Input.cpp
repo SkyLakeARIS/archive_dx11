@@ -137,7 +137,7 @@ namespace core
             }
         }
 
-        uint32 flag = 0;
+        uint32_t flag = 0;
         if (mKeyboardState[DIK_LALT])
         {
             flag = DISCL_NOWINKEY | DISCL_NONEXCLUSIVE | DISCL_FOREGROUND;
@@ -217,7 +217,7 @@ namespace core
         return result;
     }
 
-    void DirectInput::SetControlMode(uint32 flag)
+    void DirectInput::SetControlMode(uint32_t flag)
     {
         mControlState ^= flag;
     }
@@ -259,127 +259,7 @@ namespace core
         return mKeyboardState;
     }
 
-    uint32 DirectInput::GetControlMode() const
-    {
-        return mControlState;
-    }
-
-
-    /*
-     *
-     * MyInput Class
-     *
-     */
-
-    MyInput::MyInput()
-        : mWnd(nullptr)
-        , mScreenWidth(0)
-        , mScreenHeight(0)
-        , mMouseX(0)
-        , mMouseY(0)
-    {
-        ZeroMemory(&mKeyboardState, sizeof(mKeyboardState));
-    }
-
-    MyInput::~MyInput()
-    {
-        Release();
-    }
-
-    HRESULT MyInput::Initialize(HWND* const hwnd, int screenWidth, int screenHeight)
-    {
-        ASSERT(hwnd != nullptr, "hwnd가 nullptr입니다.");
-
-        mWnd = &(*hwnd);
-        mScreenWidth = screenWidth;
-        mScreenHeight = screenHeight;
-        return S_OK;
-    }
-
-    void MyInput::Release()
-    {
-        mWnd = nullptr;
-    }
-
-    void MyInput::UpdateWindowSize(int newWidth, int newHeight)
-    {
-        mScreenWidth = newWidth;
-        mScreenHeight = newHeight;
-    }
-
-    bool MyInput::UpdateMouseInput(const MSG& msg)
-    {
-
-        if (msg.message != WM_MOUSEMOVE)
-        {
-            return false;
-        }
-
-        if (mKeyboardState[DIK_LALT])
-        {
-            return false;
-        }
-
-        POINT curPosition;
-        GetCursorPos(&curPosition);
-
-        POINT centerPosition;
-        centerPosition.x = mScreenWidth / (float)2;
-        centerPosition.y = mScreenHeight / (float)2;
-
-        mMouseDeltaX = curPosition.x - centerPosition.x;
-        mMouseDeltaY = curPosition.y - centerPosition.y;
-
-        SetCursorPos(centerPosition.x, centerPosition.y);
-
-        return true;
-    }
-
-    bool MyInput::UpdateKeyboardInput(const MSG& msg)
-    {
-        if (msg.message == WM_KEYDOWN)
-        {
-            mKeyboardState[msg.wParam] = true;
-            return true;
-        }
-
-        if (msg.message == WM_KEYUP)
-        {
-            mKeyboardState[msg.wParam] = false;
-            return true;
-        }
-        return false;
-    }
-
-    void MyInput::SetControlMode(uint32 flag)
-    {
-        mControlState ^= flag;
-    }
-
-    void MyInput::GetMousePosition(int& mouseX, int& mouseY) const
-    {
-        POINT curPosition;
-        GetCursorPos(&curPosition);
-        mouseX = curPosition.x;
-        mouseY = curPosition.y;
-    }
-
-    void MyInput::GetMouseDeltaPosition(int& deltaX, int& deltaY) const
-    {
-        deltaX = mMouseDeltaX;
-        deltaY = mMouseDeltaY;
-    }
-
-    void MyInput::GetKeyboardPressed(bool* keyboardState, int* size) const
-    {
-        ASSERT(keyboardState != nullptr, "keyboardState가 nullptr입니다.");
-
-        enum { KEYBOARD_STATE_ARR_SIZE = 256 };
-        *size = KEYBOARD_STATE_ARR_SIZE;
-        memcpy(keyboardState, mKeyboardState, sizeof(bool) * KEYBOARD_STATE_ARR_SIZE);
-    }
-
-    uint32 MyInput::GetControlMode() const
+    uint32_t DirectInput::GetControlMode() const
     {
         return mControlState;
     }

@@ -3,9 +3,9 @@
 #include <map>
 #include <set>
 #include "ImportedModelData.h"
-#include "../../Util/Define.h"
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
+#include "../Resources/VertexType.h"
 
 namespace renderer
 {
@@ -67,7 +67,7 @@ namespace renderer
             int8_t str[util::MAX_STRING_LENGTH] = {};
             sprintf_s(reinterpret_cast<char*>(str), util::MAX_STRING_LENGTH, "\n\n\n\nERROR : %s\n\n\n\n", mImporter->GetStatus().GetErrorString());
             OutputDebugStringA(reinterpret_cast<LPCSTR>(str));
-            ASSERT(false, "fbxImporter file initialization failed. fileName(%s)", fileName);
+            ASSERT(false, "fbxImporter file initialization failed. fileName(%hs)", fileName);
             return;
         }
 
@@ -85,16 +85,7 @@ namespace renderer
 
         modelContainer.SubMeshes.reserve(nodes.size());
 
-        FbxVector4 minBound = {};
-        FbxVector4 maxBound = {};
-        FbxVector4 modelCenterPoint = {};
-        parseMesh(nodes, modelContainer, minBound, maxBound);
-
-        modelCenterPoint = (minBound + maxBound) * 0.5;
-        modelContainer.CenterPoint.x = static_cast<float>(modelCenterPoint.mData[0]);
-        modelContainer.CenterPoint.y = static_cast<float>(modelCenterPoint.mData[1]);
-        modelContainer.CenterPoint.z = static_cast<float>(modelCenterPoint.mData[2]);
-        modelContainer.CenterPoint.w = static_cast<float>(modelCenterPoint.mData[3]);
+        parseMesh(nodes, modelContainer);
 
         modelContainer.ModelHash = modelHash;
 
@@ -138,7 +129,7 @@ namespace renderer
         }
     }
 
-    void ModelImporter::parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer, FbxVector4& outMinBound, FbxVector4& outMaxBound)
+    void ModelImporter::parseMesh(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer)
     {
         std::set<int> vertexDuplicationCheck;
         std::map<int, int> indexMap;
@@ -265,7 +256,6 @@ namespace renderer
                                 vertexInfo.TexCoord.x = uv[0];
                                 vertexInfo.TexCoord.y = 1.0f - uv[1];
                             }
-                            // TODO: improve - 이 부분은 개선하거나 데이터 구조를 좀 더 다듬는 게 좋아보인다. 메모해 두지 않으면 코드 다듬다가 실수하기 좋음.
                             // indexlist 구성을 위한 vertexCount와 통합 버퍼로 인한 CursorIndex 가 다르게 동작해야 하는 문제.
                             indexMap.insert(std::make_pair(indexOfVertex, newMeshData.VertexCount));
                             newMeshData.VertexBuffer[newMeshData.VertexCount] = vertexInfo;
@@ -301,17 +291,17 @@ namespace renderer
                     }
                 }
             }
+
+            newMeshData.MinBound = XMFLOAT3(minBound.mData[0], minBound.mData[1], minBound.mData[2]);
+            newMeshData.MaxBound = XMFLOAT3(maxBound.mData[0], maxBound.mData[1], maxBound.mData[2]);
             outModelContainer.SubMeshes.emplace_back(std::move(newMeshData));
         }
-        outMinBound = minBound;
-        outMaxBound = maxBound;
     }
 
     void ModelImporter::parseTextureInfo(std::vector<FbxNode*>& outNodes, ImportedModelContainer& outModelContainer)
     {
         OutputDebugStringA("========== Texture Info Extraction start ==========\n");
 
-        // TODO: nodeIndex와 ImportedModelContainer의 mesh가 짝이 맞다고 보장 할 수 있는지? - 나중에 mesh와 짝지을 수 있는 수단으로 개선하면 좋을 것.
         for (size_t nodeIndex = 0; nodeIndex < outNodes.size(); ++nodeIndex)
         {
             FbxNode* const currentNode = outNodes[nodeIndex];

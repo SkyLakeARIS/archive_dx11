@@ -1,5 +1,5 @@
 #pragma once
-#include "../Resources/ModelData.h"
+#include "../Resources/Mesh.h"
 
 namespace scene
 {
@@ -10,7 +10,6 @@ namespace renderer
 {
     struct RenderPacket;
     class BufferManager;
-    class Renderer;
 
 
     class Model
@@ -19,24 +18,21 @@ namespace renderer
         Model(scene::Camera* camera, BufferManager* bufferManager);
         ~Model();
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
-        void DrawShadow(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
 
         void Update();
 
         void SetMesh(const Mesh& mesh);
-        void SetCenterPoint(XMFLOAT4& centerPoint);
-
         void SetHighlight(bool bSelection);
 
-        XMFLOAT3 GetCenterPoint() const;
+        int32_t  GetSubMeshCount() const;
+        XMFLOAT3 GetCenterPoint(int32_t subMeshIndex) const;
 
     private:
         BufferManager* mBufferManager;
 
         Mesh mMesh;
 
-        XMFLOAT3 mCenterPosition;
         XMMATRIX mMatWorld;
         XMMATRIX mMatRotation;
         XMMATRIX mMatScale;

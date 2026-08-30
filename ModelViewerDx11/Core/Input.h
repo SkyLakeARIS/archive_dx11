@@ -1,12 +1,13 @@
 #pragma once
-#include "../framework.h"
+#include "InputPrerequisites.h"
+#include "../Util/Type.h"
 
 namespace core
 {
     /*
      * DirectInput 사용 클래스
      */
-    enum class eControlFlags : uint32
+    enum class eControlFlags : uint32_t
     {
         KEYBOARD_MOVEMENT_MODE = 1, // 1 == keyboard control, 0 == mouse control
     };
@@ -25,12 +26,12 @@ namespace core
 
         HRESULT     UpdateInput();
 
-        void        SetControlMode(uint32 flag);
+        void        SetControlMode(uint32_t flag);
 
         void                GetMousePosition(int& mouseX, int& mouseY) const;
         void                GetMouseDeltaPosition(int& deltaX, int& deltaY) const;
         unsigned char* GetKeyboardPress();
-        uint32              GetControlMode() const;
+        uint32_t              GetControlMode() const;
 
     private:
         IDirectInput8* mDirectInput;
@@ -40,7 +41,7 @@ namespace core
         HINSTANCE               mhInstance;
         HWND                    mhWnd;
 
-        uint32                  mMouseInputFlag;
+        uint32_t                  mMouseInputFlag;
 
         unsigned char           mKeyboardState[256];
         DIMOUSESTATE            mMouseState;
@@ -49,50 +50,6 @@ namespace core
         int                     mMouseY;
         int                     mOriginalMouseX;
         int                     mOriginalMouseY;
-
-        int                     mScreenWidth;
-        int                     mScreenHeight;
-
-        UINT32                  mControlState;
-    };
-
-
-    /*
-     * TODO 1차적으로 코드들 정리해서 이것도 지워야 하긴하지만, 잠깐 놔둠.
-     * 직접 만든 keyboard/mouse Input 클래스
-     *
-     * 현재는 DirectInput과 다른점이 안보이나, 프로그램이 커지기 시작해야
-     * 성능 문제가 보이지 않을까 예상.
-     */
-    class MyInput final
-    {
-    public:
-        MyInput();
-        ~MyInput();
-
-        HRESULT     Initialize(HWND* const hwnd, int screenWidth, int screenHeight);
-        void        Release();
-
-        void        UpdateWindowSize(int newWidth, int newHeight);
-
-        bool        UpdateMouseInput(const MSG& msg);
-        bool        UpdateKeyboardInput(const MSG& msg);
-
-        void        SetControlMode(uint32 flag);
-
-        void        GetMousePosition(int& mouseX, int& mouseY) const;
-        void        GetMouseDeltaPosition(int& deltaX, int& deltaY) const;
-        void        GetKeyboardPressed(bool* keyboardState, int* size) const;
-        uint32      GetControlMode() const;
-
-    private:
-        HWND* mWnd;
-        bool                    mKeyboardState[256];
-
-        int                     mMouseX;
-        int                     mMouseY;
-        int                     mMouseDeltaX;
-        int                     mMouseDeltaY;
 
         int                     mScreenWidth;
         int                     mScreenHeight;

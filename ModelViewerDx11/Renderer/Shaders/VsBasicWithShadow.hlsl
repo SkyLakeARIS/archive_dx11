@@ -9,7 +9,6 @@
     b5 : Orthographic Matrix (for screen)
  */
 
-// TODO: 위 코멘트를 각 파일에 복붙하기보다 추후 공용 헤더파일로 빼서 공통으로 쓰는 방법 조사하기
 cbuffer CbMatWorld : register(b0)
 {
     matrix MatWorld;

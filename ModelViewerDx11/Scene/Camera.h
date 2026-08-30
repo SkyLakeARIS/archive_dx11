@@ -1,26 +1,23 @@
 #pragma once
-#include "../framework.h"
-
-namespace renderer
-{
-    class Renderer;
-}
+#include "../Core/MathPrerequisites.h"
+#include "../Util/Type.h"
 
 namespace scene
 {
-    // TODO: 그림자 효과 추가하면 FPS로 동작하는 Camera를 분리하는것이 Light클래스 관리에 도움이 될 듯 함.
     class Camera final
     {
     public:
         Camera(XMVECTOR vEye, XMVECTOR vLookAt, XMVECTOR vUp, int16_t windowWidth, int16_t windowHeight);
         ~Camera();
 
-        void RotateAxis(float yawRad, float pitchRad, renderer::Renderer& renderer);
+        void Update();
 
-        void AddRadiusSphere(float scaleFactor, renderer::Renderer& renderer);
-        void AddHeight(float height, renderer::Renderer& renderer);
+        void RotateAxis(float yawRad, float pitchRad);
 
-        void ChangeFocus(XMFLOAT3 newFocus, renderer::Renderer& renderer);
+        void AddRadiusSphere(float scaleFactor);
+        void AddHeight(float height);
+
+        void ChangeFocus(XMFLOAT3 newFocus);
 
         float GetFov() const;
         float GetAspectRatio() const;
@@ -30,12 +27,7 @@ namespace scene
         inline XMMATRIX GetViewMatrix() const;
         inline XMMATRIX GetViewProjectionMatrix() const;
         inline XMMATRIX GetProjectionMatrix() const;
-    private:
-
-        void calcCameraPosition(renderer::Renderer& renderer);
-
-        void makeViewMatrix();
-        void makeProjectionMatrix();
+        XMFLOAT3 GetEye() const;
 
     private:
 
@@ -52,8 +44,8 @@ namespace scene
         XMVECTOR    mvRight;            // 필요없음.
 
         float       mFov;
-        uint32      mScreenWidth;
-        uint32      mScreenHeight;
+        uint32_t      mScreenWidth;
+        uint32_t      mScreenHeight;
 
         XMMATRIX    mMatView;
         XMMATRIX    mMatProjection;

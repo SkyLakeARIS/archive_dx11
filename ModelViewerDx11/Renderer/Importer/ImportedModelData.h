@@ -1,12 +1,11 @@
 #pragma once
-#include "../../framework.h"
+#include <memory>
 #include "../../Util/Define.h"
 #include "../Resources/Material.h"
+#include "../Resources/VertexType.h"
 
 namespace renderer
 {
-    struct VertexPTN;
-
     struct ImportedTextureData
     {
         int8_t FilePath[util::MAX_PATH_LENGTH];
@@ -21,14 +20,15 @@ namespace renderer
         uint32_t VertexCount;
         std::unique_ptr<uint32_t[]> IndexBuffer;
         uint32_t IndexCount;
-        MaterialParameter MaterialParam;
+        MaterialFactors MaterialParam;
+        XMFLOAT3 MinBound;
+        XMFLOAT3 MaxBound;
         ImportedTextureData Textures[static_cast<int32_t>(eTextureType::TextureTypeCount)];
     };
 
     struct ImportedModelContainer
     {
         HashID ModelHash;
-        XMFLOAT4 CenterPoint;
         std::vector<ImportedMeshData> SubMeshes;
     };
 }

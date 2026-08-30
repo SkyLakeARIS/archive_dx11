@@ -1,9 +1,9 @@
 #pragma once
-#include "../framework.h"
 #include "./Resources/RenderTypes.h"
 
 namespace renderer
 {
+    class ShaderManager;
     struct RenderPacket;
 }
 
@@ -15,38 +15,6 @@ namespace renderer
     class Renderer final : IUnknown
     {
     private:
-
-        enum class eVertexShader : uint32_t
-        {
-            VsBasicWithShadow,
-            VsOutline,
-            VsRenderToTexture,
-            VsSimple,
-            VsSkybox,
-            VsScreen,
-            VsShadow,
-            VertexShaderCount
-        };
-
-        enum class ePixelShader : uint32_t
-        {
-            PsBasicWithShadow,
-            PsOutline,
-            PsShadow,
-            PsSkybox,
-            // TODO: improve - PsTexture 정도가 적당한 네이밍일 듯하다. - 후순위로 작업
-            PsRenderToTexture,
-            PsColor,
-            PixelShaderCount
-        };
-
-        struct ShaderMap
-        {
-            eShader Type;
-            eVertexShader VsIndex;
-            ePixelShader PsIndex;
-        };
-
         struct RenderTargetDepthStencilMap
         {
             uint32_t RenderTargetIndex;
@@ -55,31 +23,35 @@ namespace renderer
         };
         typedef RenderTargetDepthStencilMap RtvDsMap;
 
-        struct ConstantBufferMap
-        {
-            eCbType Index; // added for easy to see.
-            uint32_t ByteWidth;
-        };
-
         struct PrimitiveTopologyMap
         {
             ePrimitiveTopology UserType;
             D3D11_PRIMITIVE_TOPOLOGY ApiType;
         };
+
+        struct DepthStencilStateMap
+        {
+            eDepthStencilState Type;
+            D3D11_DEPTH_STENCIL_DESC Desc;
+        };
+
+        struct BlendStatePreset
+        {
+            eBlendState Type;
+            int32_t SrcBlend;
+            int32_t DestBlend;
+        };
     public:
         Renderer();
         ~Renderer();
 
-        // MEMO: BlendState의 다양한 옵션을 대응하기 위해 비트 슬라이싱을 통해 해시 계산
-        static inline HashID GetBlendStateHash(D3D11_BLEND_DESC& desc);
 
-        void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager);
+        void SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager);
 
         // D3D
-        HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32 width, uint32 height, bool bDebugMode);
+        HRESULT CreateDeviceAndSetup(DXGI_SWAP_CHAIN_DESC& swapChainDesc, uint32_t width, uint32_t height, bool bDebugMode);
         HRESULT CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc, ID3D11RenderTargetView** outRtv, const char* const debugTag = "NO_INFO") const;
         HRESULT CreateDepthStencilView(ID3D11Texture2D* const texture, D3D11_DEPTH_STENCIL_VIEW_DESC* const desc, ID3D11DepthStencilView** outDs, const char* const debugTag = "NO_INFO") const;
-        HRESULT CreateConstantBuffer(D3D11_BUFFER_DESC& desc, ID3D11Buffer** outCb) const;
 
         // 그림자 매핑을 위한 설계
         void    SetViewport(bool bFullScreen) const;
@@ -88,15 +60,8 @@ namespace renderer
         // init - program
         bool initialize(HWND handleWindow, int16_t width, int16_t height, int16_t frameRate);
 
-        // Cate : shader
-        HRESULT CreateInputLayout(const WCHAR* const path, D3D11_INPUT_ELEMENT_DESC* const desc, uint32 numDescElements, eVertexFormat type, ID3D11InputLayout** const outInputLayout);
-        HRESULT CreateVertexShader(const WCHAR* const path, ID3D11VertexShader** const outVertexShader);
-        HRESULT CreatePixelShader(const WCHAR* const path, ID3D11PixelShader** const outPixelShader);
-        // TODO: API 의존성을 완전히 분리하려면 desc 조차도 분리하는 게 좋을 것 같다. 일단은 이대로 사용
-        HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
-        HRESULT CreateTextureResource(const WCHAR* fileName, WIC_FLAGS flag, D3D11_SHADER_RESOURCE_VIEW_DESC& srvDesc, ID3D11ShaderResourceView** outShaderResourceView) const;
 
         // Renderer 
         void ClearScreenAndDepth(eRenderTarget type) const;
@@ -106,10 +71,6 @@ namespace renderer
         void    Cleanup();
         bool CheckDeviceLost(bool& outIsReInitialize) const;
 
-        // Debug
-        // TODO: static 메서드들은 따로 섹션 분리하기.
-        static void MakeSortKey(RenderPacket& command);
-        static void    CheckLiveObjects();
 
         // COM
         ULONG   AddRef() override;
@@ -117,7 +78,6 @@ namespace renderer
         HRESULT QueryInterface(const IID& riid, void** ppvObject) override;
 
         //  D3D state
-        void UpdateCB(eCbType type, const void* const data) const;
 
         void BindCbToVsByType(uint32_t slot, uint32_t numBuffer, eCbType type) const;
         void BindCbToPs(uint32_t slot, uint32_t numBuffer, eCbType type) const;
@@ -128,13 +88,11 @@ namespace renderer
         void BindIndexBufferDynamic() const;
 
         void BindSamplerToPsByType(uint32_t slot, eSamplerType type) const;
-        void BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask);
+        void BindBlendStateByType(eBlendState type) const;
         void BindTextureToPs(uint32_t slot, HashID textureHash) const;
-        // TODO: improve - eTextureType과 충돌이 없으면서 preset을 쓸 방법을 나중에 고민해 보자(default/shadow). 우선은 texture분리를 위해 이렇게
-        void BindShadowTextureToPs(uint32_t slot) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;
-        void BindDepthStencilState(bool bSkybox) const; // 현재는 스카이박스만 사용하므로
+        void BindDepthStencilState(eDepthStencilState type) const;
 
         void UnbindTexturePs(uint32_t slot) const;
 
@@ -144,7 +102,7 @@ namespace renderer
         void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type) const;
 
-        // Draw
+        // SubmitCommand
         void Draw(uint32_t vertexCount, uint32_t startVertexLocation) const;
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) const;
 
@@ -154,19 +112,19 @@ namespace renderer
 
         void GetCurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY& outTopology) const;
         BufferManager* const GetBufferManager() const;
-
+        eRenderTarget GetRenderTargetByRenderPass(eRenderPass renderPass) const;
+    public:
+        // Debug
+        static void CheckLiveObjects();
     private:
+        // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
+        void registerShadowTexture();
 
-        HRESULT compileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut);
 
         bool    createRasterState();
         HRESULT createSamplerState();
-        HRESULT createPresetConstantBuffers();
-        HRESULT setupShaders();
+        bool    createPresetBlendStates();
 
-    private:
-        // TODO texture resource manager 생기면 이동 시키기.
-        ID3D11ShaderResourceView*   mDefaultTexture;
     private:
 
 
@@ -176,17 +134,11 @@ namespace renderer
         ID3D11Device*               mDevice;
         ID3D11DeviceContext*        mDeviceContext;
 
-        // shader
-        ShaderMap           mShaderMapTable[static_cast<uint32_t>(eShader::ShaderCount)]; // combine vs-ps pairs
-        ID3D11VertexShader* mVertexShadersList[static_cast<uint32_t>(eVertexShader::VertexShaderCount)];
-        ID3D11PixelShader*  mPixelShaderList[static_cast<uint32_t>(ePixelShader::PixelShaderCount)];
-        ID3D11InputLayout*  mInputLayoutList[static_cast<uint32_t>(eVertexFormat::FormatCount)];
-
         // 
         IDXGISwapChain*             mSwapChain;
 
         ID3D11Texture2D*            mDepthStencilTexture;
-        ID3D11DepthStencilState*    mSkyboxDepthStencil;
+        ID3D11DepthStencilState*    mDepthStencilStates[static_cast<uint8_t>(eDepthStencilState::StateCount)];
 
         // render target, depthStencil
         // 일단은 쉽게 무조건 1:1매핑으로 (nullptr 처리는 나중에 최적화)
@@ -195,27 +147,26 @@ namespace renderer
         RtvDsMap mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
 
         // shadow
-        ID3D11Texture2D*            mTexShadow;
-        ID3D11Texture2D*            mTexColor;
-        ID3D11ShaderResourceView*     mShadowSrv;
-        ID3D11ShaderResourceView**     mCascadeShadowSrvList;
-        D3D11_VIEWPORT mViewportFull;
-        D3D11_VIEWPORT mViewportTex;
+        ID3D11Texture2D*           mTexShadow;
+        ID3D11Texture2D*           mTexColor;
+        ID3D11ShaderResourceView*  mShadowSrv;
+        ID3D11ShaderResourceView** mCascadeShadowSrvList;
+        D3D11_VIEWPORT             mViewportFull;
+        D3D11_VIEWPORT             mViewportTex;
 
         // raster state
-        ID3D11RasterizerState*      mRasterStates[static_cast<uint32>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull
+        ID3D11RasterizerState*      mRasterStates[static_cast<uint32_t>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull
 
         // sampler state
         ID3D11SamplerState* mSamplerState[static_cast<uint8_t>(eSamplerType::SamplerCount)];
         // blend state
-        // MEMO: option이 많고, 블렌드 하는데 조합이 많을 것 같으니 Hash로 관리하는 게 나을 것 같다.
-        std::unordered_map<HashID, ID3D11BlendState*> mBlendStateMap;
-        // CB
-        ID3D11Buffer* mCbList[static_cast<uint8_t>(eCbType::ConstantBufferCount)];
+        // MEMO: 자주 쓰이는 옵션으로 Preset을 뽑아서 사용(XTK의 CommonState)
+        ID3D11BlendState* mBlendStates[static_cast<uint8_t>(eBlendState::StateCount)];
         // topology
         PrimitiveTopologyMap mPrimitiveTopologies[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)];
         // Managers
         BufferManager* mBufferManager;
         TextureManager* mTextureManager;
+        ShaderManager* mShaderManager;
     };
 }

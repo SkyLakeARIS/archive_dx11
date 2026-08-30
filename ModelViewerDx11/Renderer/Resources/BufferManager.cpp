@@ -1,5 +1,6 @@
 #include "BufferManager.h"
 #include <algorithm>
+#include <stack>
 #include "RenderTypes.h"
 #include "../../Util/Macro.h"
 
@@ -189,7 +190,6 @@ namespace renderer
         auto chunkIt = mVertexBuffers.find(stride);
 
         const auto& subChunkIt = chunkIt->second.SubChunks.find(hash);
-        // TODO: 나중에 <파일 명 - 해시> Map을 만들어서 같은 데이터를 중복 삽입하는 건지 해시함수 충돌 발생인지 구분할 필요가 있음.
         if(subChunkIt != chunkIt->second.SubChunks.end())
         {
             // MEMO: in vertex count (not bytes). convert bytes -> stride
@@ -199,72 +199,31 @@ namespace renderer
             return;
         }
 
-        // MEMO: 적절한 공간을 가진 빈공간 탐색
+        // MEMO: 재활용 공간 탐색
         const auto& removedRangeIt = mVertexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.begin();
-        int32_t minRemainSpace = INT32_MAX;
-        for(int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
-        {
-            const std::vector<BufferRange>::iterator& element = (removedRangeIt->second.begin() + rangeIndex);
-            const int32_t remainSpace = element->Count - dataByteSize;
-            if(remainSpace >= 0)
-            {
-                // MEMO: save best-fit.
-                if (remainSpace < minRemainSpace)
-                {
-                    minRemainSpace = remainSpace;
-                    bestFitSpaceIt = element;
-                }
-            }
-        }
+        int32_t writeIndex = 0;
+        std::vector<BufferRange>::iterator recycledSpaceIt = removedRangeIt->second.end();
 
-        int32_t writeCursorInBuffer  = chunkIt->second.CursorBytes;
-        if(bestFitSpaceIt != removedRangeIt->second.end())
-        {
-            // MEMO: 빈공간 재활용
-            if(minRemainSpace == 0)
-            {
-                *bestFitSpaceIt = removedRangeIt->second.back();
-                removedRangeIt->second.pop_back();
-            }
-            else
-            {
-                writeCursorInBuffer = bestFitSpaceIt->StartIndex;
-                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
-                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + dataByteSize;
-                bestFitSpaceIt->Count = minRemainSpace;
-            }
-        }
-        else
-        {
-            // MEMO: 재활용할 공간이 없음
-            if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
-            {
-                resizeVertexBuffer(writeCursorInBuffer + dataByteSize, D3D11_USAGE_DEFAULT, 0, chunkIt);
-            }
+        tryGetRecycleSpaceBestFit(removedRangeIt, dataByteSize, writeIndex, recycledSpaceIt);
 
+        // MEMO: 재활용할 공간이 없음
+        if (recycledSpaceIt == removedRangeIt->second.end())
+        {
+            // MEMO: 남은 공간도 없음
+            if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
+            {
+                resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
+            }
+            // MEMO: 재활용 공간이 없을 시에만 커서에 write. 
+            writeIndex = chunkIt->second.CursorBytes;
+            // MEMO: 이곳에서 미리 커서 이동시키고, 위에서 저장했으므로 아래 로직 문제없음.
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
-        D3D11_BOX updateRange = {};
-        updateRange.front = 0;
-        updateRange.back = 1;
-        updateRange.top = 0;
-        updateRange.bottom = 1;
-        updateRange.left = writeCursorInBuffer;
-        updateRange.right = writeCursorInBuffer + dataByteSize;
-        mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
+        uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeCursorInBuffer;
-        subChunk.Ranges.Count = dataByteSize;
-        subChunk.RefCount = 1;
 
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Static, chunkIt->first, chunkIt->second, hash, writeIndex, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddIndex(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride, BufferRange& outRangeInBuffer)
@@ -291,70 +250,28 @@ namespace renderer
 
         // MEMO: 적절한 공간을 가진 빈공간 탐색
         const auto& removedRangeIt = mIndexRemovedRanges.find(stride);
-        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.begin();
-        int32_t minRemainSpace = INT32_MAX;
-        for (int32_t rangeIndex = 0; rangeIndex < removedRangeIt->second.size(); ++rangeIndex)
-        {
-            const std::vector<BufferRange>::iterator& element = (removedRangeIt->second.begin() + rangeIndex);
-            const int32_t remainSpace = element->Count - dataByteSize;
-            if (remainSpace >= 0)
-            {
-                // MEMO: save best-fit.
-                if (remainSpace < minRemainSpace)
-                {
-                    minRemainSpace = remainSpace;
-                    bestFitSpaceIt = element;
-                }
-            }
-        }
+        int32_t writeIndex = 0;
+        std::vector<BufferRange>::iterator recycledSpaceIt = removedRangeIt->second.end();
 
-        int32_t writeCursorInBuffer = chunkIt->second.CursorBytes;
-        if (bestFitSpaceIt != removedRangeIt->second.end())
-        {
-            // MEMO: 빈공간 재활용
-            if (minRemainSpace == 0)
-            {
-                *bestFitSpaceIt = removedRangeIt->second.back();
-                removedRangeIt->second.pop_back();
-            }
-            else
-            {
-                writeCursorInBuffer = bestFitSpaceIt->StartIndex;
-                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
-                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + dataByteSize;
-                bestFitSpaceIt->Count = minRemainSpace;
-            }
-        }
-        else
-        {
-            // MEMO: 재활용할 공간이 없음
-            if (chunkIt->second.TotalSizeBytes <= writeCursorInBuffer + dataByteSize)
-            {
-                resizeIndexBuffer(writeCursorInBuffer + dataByteSize, D3D11_USAGE_DEFAULT, 0, chunkIt);
-            }
+        tryGetRecycleSpaceBestFit(removedRangeIt, dataByteSize, writeIndex, recycledSpaceIt);
 
+        // MEMO: 재활용할 공간이 없음
+        if (recycledSpaceIt == removedRangeIt->second.end())
+        {
+            // MEMO: 남은 공간도 없음
+            if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
+            {
+                resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT, 0, chunkIt);
+            }
+            // MEMO: 재활용 공간이 없을 시에만 커서에 write. 
+            writeIndex = chunkIt->second.CursorBytes;
+            // MEMO: 이곳에서 미리 커서 이동시키고, 위에서 저장했으므로 아래 로직 문제없음.
             chunkIt->second.CursorBytes += dataByteSize;
         }
 
-        D3D11_BOX updateRange = {};
-        updateRange.front = 0;
-        updateRange.back = 1;
-        updateRange.top = 0;
-        updateRange.bottom = 1;
-        updateRange.left = writeCursorInBuffer;
-        updateRange.right = writeCursorInBuffer + dataByteSize;
-        mDeviceContext->UpdateSubresource(chunkIt->second.Buffer, 0, &updateRange, pData, 0, 0);
+        uploadResource(eBufferUsage::Static, chunkIt->second.Buffer, pData, writeIndex, dataByteSize, false);
 
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = writeCursorInBuffer;
-        subChunk.Ranges.Count = dataByteSize;
-        subChunk.RefCount = 1;
-
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Static, chunkIt->first, chunkIt->second, hash, writeIndex, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddVertexDynamic(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride, BufferRange& outRangeInBuffer)
@@ -380,31 +297,13 @@ namespace renderer
 
         if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
         {
-            resizeVertexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
+            resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
-        const D3D11_MAP mapType = mbNeedDiscardDynamicVertex ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+        uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicVertex);
         mbNeedDiscardDynamicVertex = false;
 
-        D3D11_MAPPED_SUBRESOURCE mappedRes = {};
-        mDeviceContext->Map(chunkIt->second.Buffer, 0, mapType, 0, &mappedRes);
-
-        int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
-        memcpy(gpuBuffer + chunkIt->second.CursorBytes, pData, dataByteSize);
-
-        mDeviceContext->Unmap(chunkIt->second.Buffer, 0);
-
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
-        subChunk.Ranges.Count = dataByteSize;
-        // MEMO: 동적 데이터에는 필요 없음.
-
-        chunkIt->second.CursorBytes += dataByteSize;
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Dynamic, chunkIt->first, chunkIt->second, hash, chunkIt->second.CursorBytes, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::AddIndexDynamic(const int8_t* const pData, int32_t dataByteSize, HashID hash, int16_t stride,
@@ -431,32 +330,13 @@ namespace renderer
 
         if (chunkIt->second.TotalSizeBytes <= chunkIt->second.CursorBytes + dataByteSize)
         {
-            resizeVertexBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_USAGE_DYNAMIC, 0, chunkIt);
+            resizeBuffer(chunkIt->second.CursorBytes + dataByteSize, D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DYNAMIC, 0, chunkIt);
         }
 
-
-        const D3D11_MAP mapType = mbNeedDiscardDynamicIndex ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+        uploadResource(eBufferUsage::Dynamic, chunkIt->second.Buffer, pData, chunkIt->second.CursorBytes, dataByteSize, mbNeedDiscardDynamicIndex);
         mbNeedDiscardDynamicIndex = false;
 
-        D3D11_MAPPED_SUBRESOURCE mappedRes = {};
-        mDeviceContext->Map(chunkIt->second.Buffer, 0, mapType, 0, &mappedRes);
-
-        int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
-        memcpy(gpuBuffer + subChunkIt->second.Ranges.StartIndex, pData, dataByteSize);
-
-        mDeviceContext->Unmap(chunkIt->second.Buffer, 0);
-
-        SubChunk subChunk = {};
-        subChunk.Ranges.StartIndex = chunkIt->second.CursorBytes;
-        subChunk.Ranges.Count = dataByteSize;
-        // MEMO: 동적 데이터에는 필요 없음.
-
-        chunkIt->second.SubChunks.insert(std::make_pair(hash, subChunk));
-        chunkIt->second.CursorBytes += dataByteSize;
-
-        // MEMO: in vertex count (not bytes). convert bytes -> stride
-        outRangeInBuffer.Count = subChunk.Ranges.Count / chunkIt->first;
-        outRangeInBuffer.StartIndex = subChunk.Ranges.StartIndex / chunkIt->first;
+        addSubChunkToBuffer(eBufferUsage::Dynamic, chunkIt->first, chunkIt->second, hash, chunkIt->second.CursorBytes, dataByteSize, outRangeInBuffer.StartIndex, outRangeInBuffer.Count);
     }
 
     void BufferManager::RemoveVertexData(int16_t stride, HashID hash)
@@ -466,7 +346,6 @@ namespace renderer
 
         const auto& chunkIt = mVertexBuffers.find(stride);
         const auto& subChunkIt = chunkIt->second.SubChunks.find(hash);
-        // TODO: RefCount를 통해서 바로 제거되지 않도록 작업해야 한다. (Add 함수도 마찬가지로 중복 데이터가 삽입되면 RefUp)
         if(subChunkIt != chunkIt->second.SubChunks.end())
         {
             --subChunkIt->second.RefCount;
@@ -476,31 +355,10 @@ namespace renderer
                 removedRangeIt->second.push_back(subChunkIt->second.Ranges);
 
                 chunkIt->second.SubChunks.erase(subChunkIt);
-                // TODO: 나중에 별도 Merge 함수로 분리하여, 정한 기준에 따라서 주기적으로 병합을 시도하는 것이 필요함.
                 // MEMO: 연속된 빈공간 병합 시도
                 if (removedRangeIt->second.size() >= 2)
                 {
-                    std::sort(removedRangeIt->second.begin(), removedRangeIt->second.end(), BufferRangeIncrCompare);
-                    auto cursorIt = removedRangeIt->second.begin();
-                    // 1. 병합되고 나서 vector size가 1개 일 때.
-                    // 2. nextRangeIt이 end 일 때.
-                    while ((cursorIt + 1) != removedRangeIt->second.end())
-                    {
-                        const auto nextRangeIt = cursorIt + 1;
-                        if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
-                        {
-                            cursorIt->Count += nextRangeIt->Count;
-                            // TODO: optimize - 현재 로직 구조로는 제거를 빠르게 할 수 없는 것 같다. 다른 좋은 방안 찾는게 필요
-                            removedRangeIt->second.erase(nextRangeIt);
-                            // TODO: optimize - 이렇게하면 항상 처음으로 돌아가므로 중간에 병합된 경우 다시 처음부터 순회해야하는 비효율 존재. 빠른 구현을 위해 우선 이렇게 함.
-                            // RemoveIndexData도 마찬가지로 작업
-                            cursorIt = removedRangeIt->second.begin();
-                        }
-                        else
-                        {
-                            ++cursorIt;
-                        }
-                    }
+                    mergeRemovedSpace(removedRangeIt);
                 }
             }
         }
@@ -524,22 +382,7 @@ namespace renderer
                 chunkIt->second.SubChunks.erase(subChunkIt);
                 if (removedRangeIt->second.size() >= 2)
                 {
-                    auto cursorIt = removedRangeIt->second.begin();
-
-                    while ((cursorIt + 1) != removedRangeIt->second.end())
-                    {
-                        const auto nextRangeIt = cursorIt + 1;
-                        if ((cursorIt->StartIndex + cursorIt->Count) == nextRangeIt->StartIndex)
-                        {
-                            cursorIt->Count += nextRangeIt->Count;
-                            removedRangeIt->second.erase(nextRangeIt);
-                            cursorIt = removedRangeIt->second.begin();
-                        }
-                        else
-                        {
-                            ++cursorIt;
-                        }
-                    }
+                    mergeRemovedSpace(removedRangeIt);
                 }
             }
         }
@@ -711,17 +554,75 @@ namespace renderer
         return sIndexFormatMap[static_cast<int8_t>(mIndexFormat)].Format;
     }
 
-    void BufferManager::resizeVertexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
+    void BufferManager::uploadResource(eBufferUsage usage, ID3D11Buffer* const buffer, const int8_t* const pData, int32_t startIndex, int32_t count, bool bIsDiscardDynamicBuffer)
+    {
+        ASSERT(usage != eBufferUsage::UsageCount, "업로드할 버퍼는 static/dynamic 중 하나여야 합니다 ");
+        if(usage == eBufferUsage::Static)
+        {
+            D3D11_BOX updateRange = {};
+            updateRange.front = 0;
+            updateRange.back = 1;
+            updateRange.top = 0;
+            updateRange.bottom = 1;
+            updateRange.left = startIndex;
+            updateRange.right = startIndex + count;
+            mDeviceContext->UpdateSubresource(buffer, 0, &updateRange, pData, 0, 0);
+        }
+        else
+        {
+            const D3D11_MAP mapType = bIsDiscardDynamicBuffer ? (D3D11_MAP_WRITE_DISCARD) : D3D11_MAP_WRITE_NO_OVERWRITE;
+
+            D3D11_MAPPED_SUBRESOURCE mappedRes = {};
+            mDeviceContext->Map(buffer, 0, mapType, 0, &mappedRes);
+
+            int8_t* gpuBuffer = reinterpret_cast<int8_t*>(mappedRes.pData);
+            memcpy(gpuBuffer + startIndex, pData, count);
+
+            mDeviceContext->Unmap(buffer, 0);
+        }
+    }
+
+    void BufferManager::addSubChunkToBuffer(eBufferUsage usage, int16_t stride, BufferChunk& bufferChunk, HashID hash, int32_t startIndex, int32_t count, int32_t& outStartIndexInElement, int32_t& outCountInElement)
+    {
+        ASSERT(usage != eBufferUsage::UsageCount, "업로드할 버퍼는 static/dynamic 중 하나여야 합니다 ");
+        if (usage == eBufferUsage::Static)
+        {
+            SubChunk subChunk = {};
+            subChunk.Ranges.StartIndex = startIndex;
+            subChunk.Ranges.Count = count;
+            subChunk.RefCount = 1;
+
+            bufferChunk.SubChunks.insert(std::make_pair(hash, subChunk));
+        }
+        else
+        {
+            SubChunk subChunk = {};
+            subChunk.Ranges.StartIndex = startIndex;
+            subChunk.Ranges.Count = count;
+            // MEMO: 동적 데이터에는 프레임마다 초기화하니 RefCount 필요 없음.
+
+            bufferChunk.SubChunks.insert(std::make_pair(hash, subChunk));
+            bufferChunk.CursorBytes += count;
+        }
+
+        // MEMO: in vertex count (not bytes). convert bytes -> stride
+        // MEMO: Draw함수에 사용할 index/count 정보(요소 갯수)
+        outStartIndexInElement = startIndex / stride;
+        outCountInElement = count / stride;
+    }
+
+    void BufferManager::resizeBuffer(uint32_t newSize, uint32_t bindFlag, D3D11_USAGE usageType, uint32_t cpuAccessFlag,
+                                     std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
     {
         ID3D11Buffer* resizedBuffer = nullptr;
         D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        bufferDesc.BindFlags = bindFlag;
         bufferDesc.Usage = usageType;
         bufferDesc.ByteWidth = newSize * 2;
         bufferDesc.CPUAccessFlags = cpuAccessFlag;
         if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
         {
-            ASSERT(false, "vertex buffer creation failed while resizing. check the options. tried buffer type (%d)", bufferDesc.BindFlags);
+            ASSERT(false, "buffer creation failed while resizing. check the options. tried buffer type (%d), BufferUsage(%d), size(%d), cpuFlag(%d)", bufferDesc.BindFlags, bufferDesc.Usage, bufferDesc.ByteWidth, bufferDesc.CPUAccessFlags);
             return;
         }
 
@@ -742,34 +643,84 @@ namespace renderer
         chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
     }
 
-    void BufferManager::resizeIndexBuffer(uint32_t newSize, D3D11_USAGE usageType, uint32_t cpuAccessFlag, std::unordered_map<int16_t, BufferChunk>::iterator& chunkIt)
+    void BufferManager::tryGetRecycleSpaceBestFit(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedRangeIt, int32_t tryByteSize, int32_t& outWriteStartIndex, std::vector<BufferRange>::iterator& outRecycledSpace)
     {
-        ID3D11Buffer* resizedBuffer = nullptr;
-        D3D11_BUFFER_DESC bufferDesc = {};
-        bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-        bufferDesc.Usage = usageType;
-        bufferDesc.ByteWidth = newSize * 2;
-        bufferDesc.CPUAccessFlags = cpuAccessFlag;
-        if (mDevice->CreateBuffer(&bufferDesc, nullptr, &resizedBuffer) == E_FAIL)
+        // MEMO: 적절한 공간을 가진 빈공간 탐색.
+        // 넣어봤을 때 빈공간이 가장 작으면 best fit.
+        std::vector<BufferRange>::iterator bestFitSpaceIt = removedRangeIt->second.end();
+        int32_t minRemainSpace = INT32_MAX;
+        for (auto rangeIt = removedRangeIt->second.begin(); rangeIt != removedRangeIt->second.end(); ++rangeIt)
         {
-            ASSERT(false, "index buffer creation failed while resizing. check the options. tried buffer type (%d)", bufferDesc.BindFlags);
-            return;
+            const int32_t remainSpace = rangeIt->Count - tryByteSize;
+            if (remainSpace >= 0)
+            {
+                // MEMO: save best-fit.
+                if (remainSpace < minRemainSpace)
+                {
+                    minRemainSpace = remainSpace;
+                    bestFitSpaceIt = rangeIt;
+                }
+            }
         }
 
-        if (chunkIt->second.CursorBytes > 0)
+        int32_t cursorStartIndex = 0;
+        if (bestFitSpaceIt != removedRangeIt->second.end())
         {
-            D3D11_BOX updateRange = {};
-            updateRange.front = 0;
-            updateRange.back = 1;
-            updateRange.top = 0;
-            updateRange.bottom = 1;
-            updateRange.left = 0;
-            updateRange.right = chunkIt->second.CursorBytes;
-            mDeviceContext->CopySubresourceRegion(resizedBuffer, 0, 0, 0, 0, chunkIt->second.Buffer, 0, &updateRange);
+            ASSERT(tryByteSize <= bestFitSpaceIt->Count, "재사용 로직 에러. 올바르지 않은 요소가 선택 됨. dataByteSize(%d), bestFitSize(%d)", tryByteSize, bestFitSpaceIt->Count);
+            cursorStartIndex = bestFitSpaceIt->StartIndex;
+            if (minRemainSpace == 0)
+            {
+                // MEMO: 딱맞는 공간이므로 제거
+                *bestFitSpaceIt = removedRangeIt->second.back();
+                removedRangeIt->second.pop_back();
+            }
+            else
+            {
+                // MEMO: 재활용하고 남은 공간은 또 재활용을 하기 위함.
+                bestFitSpaceIt->StartIndex = bestFitSpaceIt->StartIndex + tryByteSize;
+                bestFitSpaceIt->Count = minRemainSpace;
+            }
         }
+        outWriteStartIndex = cursorStartIndex;
+        outRecycledSpace = bestFitSpaceIt;
+    }
 
-        std::swap(chunkIt->second.Buffer, resizedBuffer);
-        SAFETY_RELEASE(resizedBuffer);
-        chunkIt->second.TotalSizeBytes = bufferDesc.ByteWidth;
+    void BufferManager::mergeRemovedSpace(const std::unordered_map<int16_t, std::vector<BufferRange>>::iterator& removedBufferIt)
+    {
+        ASSERT(removedBufferIt->second.size() >= 2, "병합 선조건은 벡터 사이즈가 2개 이상이어야 합니다. size(%d)", static_cast<int32_t>(removedBufferIt->second.size()));
+        std::sort(removedBufferIt->second.begin(), removedBufferIt->second.end(), BufferRangeIncrCompare);
+        // 1. 병합되고 나서 vector size가 1개 일 때.
+        // 2. nextRangeIt이 end 일 때.
+        // MEMO: 병합검출과 병합된 공간 제거 과정은 병합될 수 있는 케이스에 따라서 제거 시 문제가 될 수 있음.
+        // 1. 연속되지 않은 서로 다른 공간
+        // 2. 중간에 연속되지 않은 공간이 끼어있고, 앞 뒤로 연속된 공간이 있는 경우 <- 제거를 따로 하면 문제 생김
+        // 3. 연속된 공간만 존재하는 경우
+        // 4. 빈경우
+        std::stack<int32_t> removeIndices;
+        int32_t pivot = 0;
+        // MEMO: 앞에서 2개 이상을 보장하니 괜찮음.
+        int32_t cursor = 1;
+        while (cursor < static_cast<int32_t>(removedBufferIt->second.size()))
+        {
+            if ((removedBufferIt->second[pivot].StartIndex + removedBufferIt->second[pivot].Count) == removedBufferIt->second[cursor].StartIndex)
+            {
+                removedBufferIt->second[pivot].Count += removedBufferIt->second[cursor].Count;
+                removeIndices.push(cursor);
+            }
+            else
+            {
+                pivot = cursor;
+            }
+            ++cursor;
+        }
+        // MEMO: 병합이 끝나고 필요 없어진 요소들 제거 (거꾸로 순회하면 제거할 때 문제될 수 있는 부분을 해결)
+        while (removeIndices.empty() == false)
+        {
+            const int32_t removeIndex = removeIndices.top();
+            removeIndices.pop();
+
+            removedBufferIt->second[removeIndex] = removedBufferIt->second.back();
+            removedBufferIt->second.pop_back();
+        }
     }
 }

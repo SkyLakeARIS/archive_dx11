@@ -1,9 +1,9 @@
 #include "MeshGenerator.h"
+#include <memory>
 #include "../../Util/Macro.h"
 #include "../../Util/Util.h"
 #include "../Resources/BufferManager.h"
-#include "../Resources/ModelData.h"
-#include "../Resources/RenderTypes.h"
+#include "../Resources/Mesh.h"
 
 namespace renderer
 {
@@ -26,8 +26,8 @@ namespace renderer
         ASSERT(latLines > 0, "latLines too small. (line > 0)");
         ASSERT(lonLines > 0, "lonLines too small. (line > 0)");
 
-        const uint32 numVertex = ((latLines - 2) * lonLines) + 2;
-        const uint32 numFace = ((latLines - 3) * (lonLines) * 2) + (lonLines * 2);
+        const uint32_t numVertex = ((latLines - 2) * lonLines) + 2;
+        const uint32_t numFace = ((latLines - 3) * (lonLines) * 2) + (lonLines * 2);
 
         std::vector<VertexP> vertices(numVertex);
 
@@ -40,17 +40,17 @@ namespace renderer
         float sphereYaw = 0.0f;
         float spherePitch = 0.0f;
         XMVECTOR currVertPos = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-        for (uint32 i = 0; i < latLines - 2U; ++i)
+        for (uint32_t i = 0; i < latLines - 2U; ++i)
         {
             spherePitch = (float)(i + 1U) * (3.14f / (float)(latLines - 1U));
             matRotationX = XMMatrixRotationX(spherePitch);
-            for (uint32 j = 0U; j < lonLines; ++j)
+            for (uint32_t j = 0U; j < lonLines; ++j)
             {
                 sphereYaw = (float)j * (6.28f / (float)lonLines);
                 matRotationY = XMMatrixRotationZ(sphereYaw);
                 currVertPos = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), (matRotationX * matRotationY));
                 currVertPos = XMVector3Normalize(currVertPos);
-                uint32 index = i * lonLines + j + 1U;
+                uint32_t index = i * lonLines + j + 1U;
                 vertices[index].Position.x = XMVectorGetX(currVertPos);
                 vertices[index].Position.y = XMVectorGetY(currVertPos);
                 vertices[index].Position.z = XMVectorGetZ(currVertPos);
@@ -61,10 +61,10 @@ namespace renderer
         vertices[numVertex - 1U].Position.y = 0.0f;
         vertices[numVertex - 1U].Position.z = -1.0f;
 
-        std::vector<uint32> indices(numFace * 3U);
+        std::vector<uint32_t> indices(numFace * 3U);
 
         int k = 0;
-        for (uint32 l = 0U; l < lonLines - 1U; ++l)
+        for (uint32_t l = 0U; l < lonLines - 1U; ++l)
         {
             indices[k] = l + 2U;
             indices[k + 1] = l + 1U;
@@ -77,9 +77,9 @@ namespace renderer
         indices[k + 2] = 0U;
         k += 3;
 
-        for (uint32 i = 0U; i < latLines - 3U; ++i)
+        for (uint32_t i = 0U; i < latLines - 3U; ++i)
         {
-            for (uint32 j = 0U; j < lonLines - 1U; ++j)
+            for (uint32_t j = 0U; j < lonLines - 1U; ++j)
             {
                 indices[k] = i * lonLines + j + 1U;
                 indices[k + 1] = i * lonLines + j + 2U;
@@ -103,7 +103,7 @@ namespace renderer
             k += 6;
         }
 
-        for (uint32 l = 0U; l < lonLines - 1U; ++l)
+        for (uint32_t l = 0U; l < lonLines - 1U; ++l)
         {
             indices[k] = (numVertex - 1U) - (l + 2U);
             indices[k + 1] = (numVertex - 1U) - (l + 1U);

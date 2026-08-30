@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <string>
 #include "Window.h"
+#include "Core/Input.h"
+#include "Core/Timer.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/Importer/ModelImporter.h"
 #include "Renderer/Primitive/MeshGenerator.h"
@@ -19,16 +21,13 @@
 #include "Util/Macro.h"
 
 
-bool RenderPacketCompareDecr(const renderer::RenderPacket& lhs, const renderer::RenderPacket& rhs)
-{
-    return lhs.SortKey > rhs.SortKey;
-}
 
 Application::Application()
     : mWindowWidth(1280)
     , mWindowHeight(720)
     , mAppFrameRate(120)
     , mWindow(nullptr)
+    , mCurSubMeshIndexFocusModel(0)
     , mCommandCache()
     , mRenderer(nullptr)
     , mImporter(nullptr)
@@ -162,9 +161,8 @@ void Application::Run()
 
         lastFrameTime = startTime;
 
-        mDirectInput->UpdateInput();
-
-        updateScene(deltaTime);
+        processInput(deltaTime);
+        updateScene();
 
         renderScene();
         mRenderer->Present();
@@ -204,46 +202,40 @@ bool Application::initializeScene()
 
 
     const int8_t* const modelFilePath = reinterpret_cast<int8_t*>("/AssetData/models/unagi.fbx");
-    // TODO: 나중에 Object List를 만들어서 관리하도록 변경(성공하면 drawable 리스트에 추가)
     mCharacter = new renderer::Model(mCamera, mBufferManager);
 
     mResourceManager->LoadModel(modelFilePath, mCharacter);
 
-    mSkybox = new scene::Sky(*mCamera);
+    mSkybox = new scene::Sky();
     mSkybox->Initialize(10, 10, mTextureManager);
 
     mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    mCamera->ChangeFocus(mCharacter->GetCenterPoint(), *mRenderer);
+    mCamera->ChangeFocus(mCharacter->GetCenterPoint(0));
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), mCamera, 0.1f, 500.0f, *mRenderer);
-    mLight->SetupCascade(*mRenderer);
+    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(0), XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
+    mLight->Update(*mRenderer);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
 
     mShadowDebugPanel = new ui::DebugPanel(0, 0, 200, 200);
-    mShadowDebugPanel->SetDebugType(renderer::eRenderTarget::Shadow);
+    const int16_t shadowTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sShadowTexHash);
+    mShadowDebugPanel->SetDebugType(renderer::TextureManager::sShadowTexHash, shadowTexSerial);
 
     mLightIcon = new scene::Billboard();
     mLightIcon->Initialize(*mRenderer);
 
     const int8_t* const filePath = reinterpret_cast<const int8_t*>("./AssetData/textures/lightIcon.png");
     HashID lightIconTexID = 0;
+    int16_t lightIconSerialID = 0;
     mTextureManager->AddTexture(filePath, lightIconTexID);
+    lightIconSerialID = mTextureManager->GetTextureSerial(lightIconTexID);
     ASSERT(lightIconTexID, "icon texture fail to add");
+    ASSERT(lightIconSerialID >= 0, "icon texture 의 serial 값을 얻어오지 못함.");
 
-    mLightIcon->SetTexture(lightIconTexID);
+    mLightIcon->SetTexture(lightIconTexID, lightIconSerialID);
 
-    // MEMO: 유효하지 않은 상태로 세팅
-    mCommandCache = {};
-    mCommandCache.VertexFormat = renderer::eVertexFormat::FormatCount;
-    mCommandCache.Stride = 0;
-    mCommandCache.RenderState.ShaderType = renderer::eShader::ShaderCount;
-    mCommandCache.RenderState.TopologyType = renderer::ePrimitiveTopology::TopologyCount;
-    mCommandCache.RenderState.SamplerType = renderer::eSamplerType::SamplerCount;
-    mCommandCache.RenderState.RasterType = renderer::eRasterType::RasterCount;
-    mCommandCache.RenderState.BlendHash = 0;
     return true;
 }
 
@@ -252,7 +244,19 @@ bool Application::initializeManagers()
     ID3D11Device* device = mRenderer->GetDevice();
     ID3D11DeviceContext* deviceContext = mRenderer->GetDeviceContext();
 
-    mShaderManager = new renderer::ShaderManager(*device, *mRenderer);
+    mShaderManager = new renderer::ShaderManager(*device, *deviceContext);
+    if (!mShaderManager->CreatePresetConstantBuffers())
+    {
+        ASSERT(false, "CB 초기화 실패")
+        return false;
+    }
+
+    if (!mShaderManager->SetupShaders())
+    {
+        ASSERT(false, "셰이더 초기화 실패")
+        return false;
+    }
+
 
     mBufferManager = new renderer::BufferManager(device, deviceContext, renderer::BufferManager::eIndexListFormat::UInt32);
     if (!mBufferManager->Initialize(renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize, renderer::BufferManager::sVertexBufferDefaultSize, renderer::BufferManager::sIndexBufferDefaultSize))
@@ -262,16 +266,18 @@ bool Application::initializeManagers()
     }
 
     mTextureManager = new renderer::TextureManager(device);
+    mTextureManager->InitDefaultTexture();
+
     mResourceManager = new renderer::ResourceManager(device, mTextureManager, mImporter, mBufferManager);
 
-    mRenderer->SetManagers(mBufferManager, mTextureManager);
+    mRenderer->SetManagers(mBufferManager, mTextureManager, mShaderManager);
     renderer::MeshGenerator::Initialize(mBufferManager);
     return true;
 }
 
-void Application::updateScene(double deltaTime)
+void Application::processInput(double deltaTime)
 {
-    float speed = 10.0f;
+    mDirectInput->UpdateInput();
 
     /*
      *  direct input ver
@@ -279,150 +285,184 @@ void Application::updateScene(double deltaTime)
 
     unsigned char* gKeyboard = mDirectInput->GetKeyboardPress();
 
-    if (!(mDirectInput->GetControlMode() & (uint32)core::eControlFlags::KEYBOARD_MOVEMENT_MODE))
+    if (!(mDirectInput->GetControlMode() & static_cast<uint32_t>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE)))
     {
         int mouseX = 0;
         int mouseY = 0;
-        speed = 0.5f;
         mDirectInput->GetMouseDeltaPosition(mouseX, mouseY);
         if (!(mouseX == 0 && mouseY == 0))
         {
-            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * deltaTime * speed, XMConvertToRadians(static_cast<float>(mouseY)) * deltaTime * speed, *mRenderer);
+            constexpr float KEYBOARD_SPEED = 0.1f;
+            mCamera->RotateAxis(XMConvertToRadians(static_cast<float>(mouseX)) * static_cast<float>(deltaTime) * KEYBOARD_SPEED, XMConvertToRadians(static_cast<float>(mouseY)) * static_cast<float>(deltaTime) * KEYBOARD_SPEED);
         }
     }
     else
     {
+        constexpr float MOUSE_SPEED = 10.0f;
         if (gKeyboard[DIK_W] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(speed * deltaTime)), *mRenderer);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(-(MOUSE_SPEED * static_cast<float>(deltaTime))));
         }
 
         if (gKeyboard[DIK_S] & 0x80)
         {
-            mCamera->RotateAxis(0.0f, XMConvertToRadians(speed * deltaTime), *mRenderer);
+            mCamera->RotateAxis(0.0f, XMConvertToRadians(MOUSE_SPEED * static_cast<float>(deltaTime)));
         }
         if (gKeyboard[DIK_A] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(-(speed * deltaTime)), 0.0f, *mRenderer);
+            mCamera->RotateAxis(XMConvertToRadians(-(MOUSE_SPEED * static_cast<float>(deltaTime))), 0.0f);
         }
 
         if (gKeyboard[DIK_D] & 0x80)
         {
-            mCamera->RotateAxis(XMConvertToRadians(speed * deltaTime), 0.0f, *mRenderer);
+            mCamera->RotateAxis(XMConvertToRadians(MOUSE_SPEED * static_cast<float>(deltaTime)), 0.0f);
         }
     }
 
+    static bool bPressFKey = false;
+    if (!(gKeyboard[DIK_F] & 0x80 )&& bPressFKey)
+    {
+        // MEMO: 시스템을 어떻게 짜둘까? 매니저를 빨리 만들어야 할듯하다.
+        const int32_t curSubMeshCountFocusModel = mCharacter->GetSubMeshCount();
+        if(curSubMeshCountFocusModel > 0)
+        {
+            mCurSubMeshIndexFocusModel = (mCurSubMeshIndexFocusModel + 1) % curSubMeshCountFocusModel;
+        }
+        const XMFLOAT3 centerPoint = mCharacter->GetCenterPoint(mCurSubMeshIndexFocusModel);
+        mCamera->ChangeFocus(centerPoint);
+    }
+    bPressFKey = gKeyboard[DIK_F] & 0x80;
+
     // 마우스 휠 처리 이전에 임시용.
     // 카메라와 물체간의 거리 조절(구체 크기 확대/축소)
+    constexpr float MOVEMENT_SPEED = 0.01f;
     if (gKeyboard[DIK_Q] & 0x80)
     {
-        mCamera->AddRadiusSphere(deltaTime, *mRenderer);
+        mCamera->AddRadiusSphere(static_cast<float>(deltaTime * MOVEMENT_SPEED));
     }
 
     if (gKeyboard[DIK_E] & 0x80)
     {
-        mCamera->AddRadiusSphere(-deltaTime, *mRenderer);
+        mCamera->AddRadiusSphere(static_cast<float>(-deltaTime * MOVEMENT_SPEED));
     }
 
     // 키보드<-> 마우스 조작 전환
-    static bool bPressKey = false;
-    if (!(gKeyboard[DIK_C] & 0x80) && bPressKey)
+    static bool bPressCKey = false;
+    if (!(gKeyboard[DIK_C] & 0x80) && bPressCKey)
     {
-        mDirectInput->SetControlMode((uint32)core::eControlFlags::KEYBOARD_MOVEMENT_MODE);
+        mDirectInput->SetControlMode(static_cast<uint32_t>(core::eControlFlags::KEYBOARD_MOVEMENT_MODE));
     }
-    bPressKey = gKeyboard[DIK_C] & 0x80;
+    bPressCKey = gKeyboard[DIK_C] & 0x80;
 
     static bool bPressHKey = false;
-    static bool bHightlight = false;
+    static bool bHighlight = false;
     if (!(gKeyboard[DIK_H] & 0x80) && bPressHKey)
     {
-        bHightlight = !bHightlight;
-        mCharacter->SetHighlight(bHightlight);
+        bHighlight = !bHighlight;
+        mCharacter->SetHighlight(bHighlight);
     }
     bPressHKey = gKeyboard[DIK_H] & 0x80;
 
     if (gKeyboard[DIK_Z] & 0x80)
     {
-        mCamera->AddHeight(-deltaTime, *mRenderer);
+        mCamera->AddHeight(static_cast<float>(-deltaTime) * MOVEMENT_SPEED);
     }
 
     if (gKeyboard[DIK_X] & 0x80)
     {
-        mCamera->AddHeight(deltaTime, *mRenderer);
+        mCamera->AddHeight(static_cast<float>(deltaTime) * MOVEMENT_SPEED);
     }
 
     if (gKeyboard[DIK_ESCAPE] & 0x80)
     {
         SendMessage(mWindow->GetHandle(), WM_DESTROY, 0, 0);
     }
+}
 
+void Application::updateScene()
+{
+    // MEMO: 이후 작업들이 카메라 정보에 의존하므로 카메라를 먼저 업데이트
+    mCamera->Update();
 
+    // MEMO: Renderer가 예약한 CB들 업로드
     renderer::CbViewProj cbViewProj;
     cbViewProj.Matrix = XMMatrixTranspose(mCamera->GetViewProjectionMatrix());
-    mRenderer->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
+    mShaderManager->UpdateCB(renderer::eCbType::CbViewProj, &cbViewProj);
 
+    renderer::CbCameraPosition cbCameraPos = {};
+    cbCameraPos.Float3 = mCamera->GetEye();
+    mShaderManager->UpdateCB(renderer::eCbType::CbCameraPosition, &cbCameraPos);
 
-    mLight->SetupCascade(*mRenderer);
-    // TODO: improve - 이후에 창 크기 말고 viewport 사이즈로 바꾸는 것으로 검토(급하진 않음)
+    mLight->Update(*mRenderer);
+    renderer::CbLightViewProjMatrix cbLightVpMat;
+    cbLightVpMat.Matrix = XMMatrixTranspose(mLight->GetViewProjMatrix());
+    mShaderManager->UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
+
+    const XMFLOAT3 lightPosition(mLight->GetPosition());
+    renderer::CbLightProperty cbLightProperty;
+    cbLightProperty.First = mLight->GetColor();
+    cbLightProperty.Second = XMFLOAT4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
+    mShaderManager->UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
+
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
     renderer::CbScreenSpaceMatrix cbScreenSpaceMatrix = {};
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
-    mRenderer->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
+    mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
-    mLightIcon->SetPosition(mLight->GetPosition());
-    mLightIcon->UpdateScaleMatrix(*mCamera);
+    mLightIcon->SetPosition(lightPosition);
+    mLightIcon->UpdateScaleMatrix(mCamera->GetViewMatrix());
 
-    mSkybox->Update();
+    mSkybox->Update(mCamera->GetCameraPositionFloat());
     mCharacter->Update();
 
 
     mCommandList.clear();
 
-    mSkybox->Draw(mCommandList);
+    mSkybox->SubmitCommand(mCommandList);
 
-    mFloor->Draw(mCommandList);
+    mFloor->SubmitCommand(mCommandList);
 
-    mCharacter->DrawShadow(mCommandList);
-    mCharacter->Draw(mCommandList);
+    mCharacter->SubmitCommand(mCommandList);
 
-    mLight->DrawDebug(mCommandList);
-    mLightIcon->Draw(mCommandList);
+    mLight->SubmitDebugCommand(mCommandList);
+    mLightIcon->SubmitCommand(mCommandList);
 
-    mShadowDebugPanel->Draw(mCommandList);
+    mShadowDebugPanel->SubmitCommand(mCommandList);
 
-    for(auto& command : mCommandList)
-    {
-        renderer::Renderer::MakeSortKey(command);
-    }
-
-    std::sort(mCommandList.begin(), mCommandList.end(), RenderPacketCompareDecr);
+    std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }
 
 void Application::renderScene()
 {
-    // TODO: 이부분도 렌더링 전에 깔끔하게 세팅 될 수 있도록 해보자.
-    mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Shadow);
-    mRenderer->ClearScreenAndDepth(renderer::eRenderTarget::Default);
+    for(uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(renderer::eRenderTarget::RenderTargetCount); ++renderTarget)
+    {
+        mRenderer->ClearScreenAndDepth(static_cast<renderer::eRenderTarget>(renderTarget));
+    }
 
     for (auto& command : mCommandList)
     {
-        if (mCommandCache.RenderTargetType != command.RenderTargetType)
+        if (mCommandCache.RenderPass != command.RenderPass)
         {
-            mRenderer->BindRenderTargetTo(command.RenderTargetType);
-            mCommandCache.RenderTargetType = command.RenderTargetType;
+            const renderer::eRenderTarget renderTarget = mRenderer->GetRenderTargetByRenderPass(command.RenderPass);
+            if(renderTarget != mCommandCache.RenderTarget)
+            {
+                mRenderer->BindRenderTargetTo(renderTarget);
+                mCommandCache.RenderTarget = renderTarget;
 
-            // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
-            // TODO: 생각해보면 이게 Viewport인데 렌더 패킷에 고려하지 못한 것 같다. 현재 큰 문제는 없으나, 해당 부분은 천천히 작업 필요
-            mRenderer->SetViewport(command.RenderTargetType == renderer::eRenderTarget::Default);
+                // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
+                if (command.RenderState.bClearDepthStencilBuffer)
+                {
+                    mRenderer->ClearScreenAndDepth(renderTarget);
+                }
+
+                // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
+                mRenderer->SetViewport(renderTarget == renderer::eRenderTarget::Default);
+            }
+            mCommandCache.RenderPass = command.RenderPass;
+
         }
 
-        // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
-        if (command.RenderState.bClearDepthStencilBuffer)
-        {
-            mRenderer->ClearScreenAndDepth(mCommandCache.RenderTargetType);
-        }
-
-        bool bNeedBindBuffer = (mCommandCache.bUseDynamicBuffer != command.bUseDynamicBuffer) || (mCommandCache.Stride != command.Stride);
+        bool bNeedBindBuffer = (mCommandCache.BufferUsage != command.BufferUsage) || (mCommandCache.Stride != command.Stride);
 
         // MEMO: Buffer는 Stride 별로 Chunk가 나뉘어져 있기 때문에 Stride가 달라도 Bind를 다시 해줘야 함.
         if (mCommandCache.VertexFormat != command.VertexFormat)
@@ -435,7 +475,7 @@ void Application::renderScene()
         if(bNeedBindBuffer)
         {
             ASSERT(command.Stride > 0, "유효하지 않은 버퍼이거나 올바르지 않은 command. stride(%d)", command.Stride);
-            if (command.bUseDynamicBuffer)
+            if (command.BufferUsage == renderer::eBufferUsage::Dynamic)
             {
                 mRenderer->BindVertexBufferDynamic(command.Stride);
                 mRenderer->BindIndexBufferDynamic();
@@ -445,20 +485,20 @@ void Application::renderScene()
                 mRenderer->BindVertexBuffer(command.Stride);
                 mRenderer->BindIndexBuffer();
             }
-            mCommandCache.bUseDynamicBuffer = command.bUseDynamicBuffer;
+            mCommandCache.BufferUsage = command.BufferUsage;
             mCommandCache.Stride = command.Stride;
         }
 
-        if (mCommandCache.RenderState.TopologyType != command.RenderState.TopologyType)
+        if (mCommandCache.TopologyType != command.RenderState.TopologyType)
         {
             mRenderer->BindPrimitiveTopologyByType(command.RenderState.TopologyType);
-            mCommandCache.RenderState.TopologyType = command.RenderState.TopologyType;
+            mCommandCache.TopologyType = command.RenderState.TopologyType;
         }
 
-        if (mCommandCache.RenderState.ShaderType != command.RenderState.ShaderType)
+        if (mCommandCache.ShaderType != command.RenderState.ShaderType)
         {
             mRenderer->BindShaderTo(command.RenderState.ShaderType);
-            mCommandCache.RenderState.ShaderType = command.RenderState.ShaderType;
+            mCommandCache.ShaderType = command.RenderState.ShaderType;
 
             // MEMO: Renderer 예약 Slot 바인딩
             mRenderer->BindCbToVsByType(0, 1, renderer::eCbType::CbWorld);
@@ -482,48 +522,40 @@ void Application::renderScene()
                 continue;
             }
 
-            if (static_cast<renderer::eTextureType>(texture) == renderer::eTextureType::Shadow && command.RenderState.bUseShadowMap)
-            {
-                mRenderer->BindShadowTextureToPs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
-                mCommandCache.RenderState.bUseShadowMap = command.RenderState.bUseShadowMap;
-            }
-            else if (command.Material.TextureHashes[texture])
+            if (command.Material.TextureHashes[texture])
             {
                 mRenderer->BindTextureToPs(command.RenderState.TexBindingSlots[texture], command.Material.TextureHashes[texture]);
             }
         }
         
 
-        // TODO: 렌더큐 끝나면 이것도 좀 더 명확하게 개선해 봐야 할 항목.
-        // MEMO: 이름은 이상하지만 우선은 SkyBox 전용.
-        if(mCommandCache.RenderState.bUseDepthStencil != command.RenderState.bUseDepthStencil)
+        if(mCommandCache.DepthStencilUsage != command.RenderState.DepthStencilState)
         {
-            mRenderer->BindDepthStencilState(command.RenderState.bUseDepthStencil);
-            mCommandCache.RenderState.bUseDepthStencil = command.RenderState.bUseDepthStencil;
+            mRenderer->BindDepthStencilState(command.RenderState.DepthStencilState);
+            mCommandCache.DepthStencilUsage = command.RenderState.DepthStencilState;
         }
 
-        if (mCommandCache.RenderState.SamplerType != command.RenderState.SamplerType || mCommandCache.RenderState.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
+        if (mCommandCache.SamplerType != command.RenderState.SamplerType || mCommandCache.SamplerBindingSlot != command.RenderState.SamplerBindingSlot)
         {
-            // TODO: -1 일 때는 unbind나 기본값으로 하는 게 좋아보이는데, 이전 값을 그대로 쓰는게 더 나을지 조사가 필요함
             if(command.RenderState.SamplerBindingSlot >= 0)
             {
                 mRenderer->BindSamplerToPsByType(command.RenderState.SamplerBindingSlot, command.RenderState.SamplerType);
-                mCommandCache.RenderState.SamplerType = command.RenderState.SamplerType;
-                mCommandCache.RenderState.SamplerBindingSlot = command.RenderState.SamplerBindingSlot;
+                mCommandCache.SamplerType = command.RenderState.SamplerType;
+                mCommandCache.SamplerBindingSlot = command.RenderState.SamplerBindingSlot;
             }
         }
 
-        if (mCommandCache.RenderState.RasterType != command.RenderState.RasterType)
+        if (mCommandCache.RasterType != command.RenderState.RasterType)
         {
             mRenderer->BindRasterStateByType(command.RenderState.RasterType);
-            mCommandCache.RenderState.RasterType = command.RenderState.RasterType;
+            mCommandCache.RasterType = command.RenderState.RasterType;
         }
 
-        if (mCommandCache.RenderState.BlendHash != command.RenderState.BlendHash)
+        if (mCommandCache.BlendState != command.RenderState.BlendState)
         {
             // MEMO: blendFactor는 아직 사용하지 않음.
-            mRenderer->BindBlendStateByHash(command.RenderState.BlendHash, nullptr, 0xffffffff);
-            mCommandCache.RenderState.BlendHash = command.RenderState.BlendHash;
+            mRenderer->BindBlendStateByType(command.RenderState.BlendState);
+            mCommandCache.BlendState = command.RenderState.BlendState;
         }
 
         // MEMO: Material 식별자가 없는 상태이므로 우선은 매번 업로드
@@ -533,7 +565,7 @@ void Application::renderScene()
         }
 
         const renderer::CbWorld cbMatWorld = { command.MatWorld };
-        mRenderer->UpdateCB(renderer::eCbType::CbWorld, &cbMatWorld);
+        mShaderManager->UpdateCB(renderer::eCbType::CbWorld, &cbMatWorld);
 
         if(command.IndexRange.Count)
         {
@@ -544,11 +576,17 @@ void Application::renderScene()
             mRenderer->Draw(command.VertexRange.Count, command.VertexRange.StartIndex);
         }
 
-        // TODO: 자주 호출될 것 같은데, 확인해 보고 최대한 Bind-UnBind를 덜할 수 있는 방법을 다시 고민해보자.
         // MEMO: Shadow RenderTarget으로 써야 하므로 다시 Texture Slot에서 제거.
-        if (command.RenderState.bUseShadowMap)
+        if (static_cast<bool>(command.RenderState.UseShadowMapUsage))
         {
-            mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+            if(mCommandCache.RenderPass == renderer::eRenderPass::UI)
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
+            }
+            else
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+            }
         }
     }
 }

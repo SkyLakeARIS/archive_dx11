@@ -1,32 +1,28 @@
 #pragma once
-#include "../framework.h"
-#include "../Renderer/Resources/ModelData.h"
+#include "../Renderer/Resources/Mesh.h"
 
 namespace renderer
 {
     struct RenderPacket;
-    class Renderer;
     class TextureManager;
 }
 
 namespace scene
 {
-    class Camera;
 
     class Sky
     {
     public:
 
-        Sky(Camera& camera);
+        Sky();
         ~Sky();
 
-        HRESULT Initialize(uint32 latLines, uint32 lonLines, renderer::TextureManager* const texManager);
+        HRESULT Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager);
 
-        void Draw(std::vector<renderer::RenderPacket>& renderer);
-        void Update();
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
+        void Update(const XMFLOAT3& cameraPosition);
 
     private:
-        Camera* mCamera;
         renderer::Mesh mMesh;
         XMMATRIX mWorld;
     };

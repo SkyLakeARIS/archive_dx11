@@ -1,6 +1,5 @@
 #pragma once
-#include "../framework.h"
-#include "../Renderer/Resources/ModelData.h"
+#include "../Renderer/Resources/Mesh.h"
 
 namespace renderer
 {
@@ -16,7 +15,7 @@ namespace scene
         Floor(XMFLOAT2 startPoint, uint32_t gapEachLine, uint32_t numLineX, uint32_t numLineY);
         ~Floor();
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
     private:
         renderer::Mesh mMesh;
     };
