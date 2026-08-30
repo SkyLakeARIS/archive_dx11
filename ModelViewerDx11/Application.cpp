@@ -418,17 +418,16 @@ void Application::updateScene()
 
     mCommandList.clear();
 
-    mSkybox->Draw(mCommandList);
+    mSkybox->SubmitCommand(mCommandList);
 
-    mFloor->Draw(mCommandList);
+    mFloor->SubmitCommand(mCommandList);
 
-    mCharacter->DrawShadow(mCommandList);
-    mCharacter->Draw(mCommandList);
+    mCharacter->SubmitCommand(mCommandList);
 
-    mLight->DrawDebug(mCommandList);
-    mLightIcon->Draw(mCommandList);
+    mLight->SubmitDebugCommand(mCommandList);
+    mLightIcon->SubmitCommand(mCommandList);
 
-    mShadowDebugPanel->Draw(mCommandList);
+    mShadowDebugPanel->SubmitCommand(mCommandList);
 
     std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }

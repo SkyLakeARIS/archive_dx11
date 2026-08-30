@@ -14,7 +14,7 @@ namespace ui
         
     }
 
-    void DebugPanel::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void DebugPanel::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         for (const auto& subMesh : mMesh.SubMeshes)
         {

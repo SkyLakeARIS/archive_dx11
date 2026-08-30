@@ -18,7 +18,7 @@ namespace scene
         Light(XMFLOAT3 pos, XMFLOAT3 dir, XMFLOAT3 color, float nearPlane, float farPlane);
         ~Light();
 
-        void DrawDebug(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitDebugCommand(std::vector<renderer::RenderPacket>& commandList);
 
         void Update(renderer::Renderer& renderer);
 

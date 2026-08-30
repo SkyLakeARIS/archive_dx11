@@ -18,8 +18,7 @@ namespace renderer
         Model(scene::Camera* camera, BufferManager* bufferManager);
         ~Model();
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
-        void DrawShadow(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
 
         void Update();
 

@@ -102,7 +102,7 @@ namespace renderer
         void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type) const;
 
-        // Draw
+        // SubmitCommand
         void Draw(uint32_t vertexCount, uint32_t startVertexLocation) const;
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation) const;
 

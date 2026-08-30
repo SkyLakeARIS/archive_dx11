@@ -30,8 +30,34 @@ namespace renderer
         mBufferManager = nullptr;
     }
 
-    void Model::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void Model::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
+        // Shadow pass
+        for (const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                eVertexFormat::P,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderPass::Shadow,
+                mMatWorld,
+                renderer::eShader::Shadow,
+                renderer::eRasterType::Outline,
+                renderer::eSamplerType::SamplerCount,
+                eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                false,
+                eDepthStencilState::DepthOffStencilOff,
+                false
+            );
+
+            commandList.push_back(command);
+        }
+
         // outline
         if (mbHighlight)
         {
@@ -67,7 +93,7 @@ namespace renderer
             }
         }
 
-
+        // Main pass
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
@@ -94,35 +120,6 @@ namespace renderer
             {
                 command.Material.Factors.Emissive = XMFLOAT3(0.0f, 0.0f, 0.0f);
             }
-
-            commandList.push_back(command);
-        }
-    }
-
-    void Model::DrawShadow(std::vector<renderer::RenderPacket>& commandList)
-    {
-
-        for (const auto& subMesh : mMesh.SubMeshes)
-        {
-            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                eVertexFormat::P,
-                renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                renderer::eBufferUsage::Static,
-                false,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderPass::Shadow,
-                mMatWorld,
-                renderer::eShader::Shadow,
-                renderer::eRasterType::Outline,
-                renderer::eSamplerType::SamplerCount,
-                eBlendState::Opaque,
-                renderer::ePrimitiveTopology::Triangles,
-                false,
-                eDepthStencilState::DepthOffStencilOff,
-                false
-            );
 
             commandList.push_back(command);
         }

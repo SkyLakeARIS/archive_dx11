@@ -27,7 +27,7 @@ namespace scene
         renderer::MeshGenerator::CreatePlane(mMesh);
     }
 
-    void Billboard::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void Billboard::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         const XMMATRIX matTranslate = XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
         const XMMATRIX matWorld = mMatWorld * matTranslate;

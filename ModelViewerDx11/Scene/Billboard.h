@@ -20,7 +20,7 @@ namespace scene
 
         void Initialize(renderer::Renderer& renderer);
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
 
         void UpdateScaleMatrix(const XMMATRIX& viewMatrix);
 

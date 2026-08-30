@@ -23,7 +23,7 @@ namespace scene
     {
     }
 
-    void Light::DrawDebug(std::vector<renderer::RenderPacket>& commandList)
+    void Light::SubmitDebugCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         for (const auto& subMesh : mMeshDebug.SubMeshes)
         {

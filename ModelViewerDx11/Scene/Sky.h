@@ -19,7 +19,7 @@ namespace scene
 
         HRESULT Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager);
 
-        void Draw(std::vector<renderer::RenderPacket>& commandList);
+        void SubmitCommand(std::vector<renderer::RenderPacket>& commandList);
         void Update(const XMFLOAT3& cameraPosition);
 
     private:

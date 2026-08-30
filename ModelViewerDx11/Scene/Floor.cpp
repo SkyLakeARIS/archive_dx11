@@ -23,7 +23,7 @@ namespace scene
     {
     }
 
-    void Floor::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void Floor::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         XMMATRIX mat = XMMatrixIdentity();
         for (const auto& subMesh : mMesh.SubMeshes)

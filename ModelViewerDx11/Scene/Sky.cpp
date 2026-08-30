@@ -28,7 +28,7 @@ namespace scene
         return S_OK;
     }
 
-    void Sky::Draw(std::vector<renderer::RenderPacket>& commandList)
+    void Sky::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         for (const auto& subMesh : mMesh.SubMeshes)
         {
