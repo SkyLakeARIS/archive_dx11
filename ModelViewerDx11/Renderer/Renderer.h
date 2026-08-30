@@ -34,6 +34,13 @@ namespace renderer
             eDepthStencilState Type;
             D3D11_DEPTH_STENCIL_DESC Desc;
         };
+
+        struct BlendStatePreset
+        {
+            eBlendState Type;
+            int32_t SrcBlend;
+            int32_t DestBlend;
+        };
     public:
         Renderer();
         ~Renderer();
@@ -53,7 +60,6 @@ namespace renderer
         // init - program
         bool initialize(HWND handleWindow, int16_t width, int16_t height, int16_t frameRate);
 
-        HRESULT CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash);
         // Cate : texture 
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
 
@@ -82,7 +88,7 @@ namespace renderer
         void BindIndexBufferDynamic() const;
 
         void BindSamplerToPsByType(uint32_t slot, eSamplerType type) const;
-        void BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask);
+        void BindBlendStateByType(eBlendState type) const;
         void BindTextureToPs(uint32_t slot, HashID textureHash) const;
         void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;
@@ -107,8 +113,6 @@ namespace renderer
         void GetCurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY& outTopology) const;
         BufferManager* const GetBufferManager() const;
     public:
-        // MEMO: BlendState의 다양한 옵션을 대응하기 위해 비트 슬라이싱을 통해 해시 계산
-        static inline HashID GetBlendStateHash(D3D11_BLEND_DESC& desc);
         // Debug
         static void CheckLiveObjects();
     private:
@@ -118,6 +122,7 @@ namespace renderer
 
         bool    createRasterState();
         HRESULT createSamplerState();
+        bool    createPresetBlendStates();
 
     private:
 
@@ -154,8 +159,8 @@ namespace renderer
         // sampler state
         ID3D11SamplerState* mSamplerState[static_cast<uint8_t>(eSamplerType::SamplerCount)];
         // blend state
-        // MEMO: option이 많고, 블렌드 하는데 조합이 많을 것 같으니 Hash로 관리하는 게 나을 것 같다.
-        std::unordered_map<HashID, ID3D11BlendState*> mBlendStateMap;
+        // MEMO: 자주 쓰이는 옵션으로 Preset을 뽑아서 사용(XTK의 CommonState)
+        ID3D11BlendState* mBlendStates[static_cast<uint8_t>(eBlendState::StateCount)];
         // topology
         PrimitiveTopologyMap mPrimitiveTopologies[static_cast<uint8_t>(ePrimitiveTopology::TopologyCount)];
         // Managers

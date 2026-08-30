@@ -25,7 +25,7 @@ namespace renderer
             const eShader            shader,
             const eRasterType        rasterState,
             const eSamplerType       sampler,
-            const HashID&            blendHash,
+            const eBlendState        blendState,
             const ePrimitiveTopology topology,
             const bool               bUseShadowMap,
             eDepthStencilState       depthStencilState,
@@ -38,6 +38,7 @@ namespace renderer
             ASSERT(renderTargetType != eRenderTarget::RenderTargetCount, "renderTargetType 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(renderTargetType));
             ASSERT(shader != eShader::ShaderCount, "shader 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(shader));
             ASSERT(rasterState != eRasterType::RasterCount, "rasterState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(rasterState));
+            ASSERT(blendState != eBlendState::StateCount, "blendState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(blendState));
             // MEMO: sampler는 텍스처 여부에 따라 다르므로 우선 대상 제외
             ASSERT(topology != ePrimitiveTopology::TopologyCount, "topology 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(topology));
             ASSERT(depthStencilState != eDepthStencilState::StateCount, "depthStencilState 값이 설정되지 않음. 사용하지 않으려면 DepthOff를 지정해야 합니다. passed(%d)", static_cast<uint8_t>(depthStencilState));
@@ -57,7 +58,7 @@ namespace renderer
             ShaderManager::GetMaterialSamplerBindSlot(shader, command.RenderState.SamplerBindingSlot);
             command.RenderState.RasterType = rasterState;
             command.RenderState.SamplerType = sampler;
-            command.RenderState.BlendHash = blendHash;
+            command.RenderState.BlendState = blendState;
             command.RenderState.TopologyType = topology;
             command.RenderState.UseShadowMapUsage = static_cast<eShadowMapUsage>(bUseShadowMap);
             command.RenderState.DepthStencilState = depthStencilState;
@@ -142,7 +143,7 @@ namespace renderer
         eDepthStencilState DepthStencilUsage = eDepthStencilState::StateCount;
         eShadowMapUsage ShadowMapUsage = eShadowMapUsage::UsageCount;
         int8_t SamplerBindingSlot = -1;
-        HashID BlendHash = 0;
+        eBlendState BlendState = eBlendState::StateCount;
     };
 
     inline bool RenderPacketCompareDecr(const renderer::RenderPacket& lhs, const renderer::RenderPacket& rhs)

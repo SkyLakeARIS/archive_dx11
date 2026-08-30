@@ -546,11 +546,11 @@ void Application::renderScene()
             mCommandCache.RasterType = command.RenderState.RasterType;
         }
 
-        if (mCommandCache.BlendHash != command.RenderState.BlendHash)
+        if (mCommandCache.BlendState != command.RenderState.BlendState)
         {
             // MEMO: blendFactor는 아직 사용하지 않음.
-            mRenderer->BindBlendStateByHash(command.RenderState.BlendHash, nullptr, 0xffffffff);
-            mCommandCache.BlendHash = command.RenderState.BlendHash;
+            mRenderer->BindBlendStateByType(command.RenderState.BlendState);
+            mCommandCache.BlendState = command.RenderState.BlendState;
         }
 
         // MEMO: Material 식별자가 없는 상태이므로 우선은 매번 업로드

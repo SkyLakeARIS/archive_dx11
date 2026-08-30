@@ -23,16 +23,6 @@ namespace scene
 
     void Billboard::Initialize(renderer::Renderer& renderer)
     {
-        D3D11_BLEND_DESC blendDesc = {};
-        blendDesc.RenderTarget[0].BlendEnable = true;
-        blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-        blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-        blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-        blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-        blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-        blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-        blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-        renderer.CreateBlendState(blendDesc, mBlendHash);
 
         renderer::MeshGenerator::CreatePlane(mMesh);
     }
@@ -45,24 +35,24 @@ namespace scene
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                mMesh.VertexFormat,
-                renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                renderer::eBufferUsage::Static,
-                true,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderTarget::Default,
-                XMMatrixTranspose(matWorld),
-                renderer::eShader::Texture,
-                renderer::eRasterType::Basic,
-                renderer::eSamplerType::AnisotropicWrap,
-                mBlendHash,
-                renderer::ePrimitiveTopology::TriangleStrip,
-                false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
-            );
+                 mMesh.VertexFormat,
+                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                 renderer::eBufferUsage::Static,
+                 true,
+                 subMesh.VertexRange,
+                 subMesh.IndexRange,
+                 subMesh.Material,
+                 renderer::eRenderTarget::Default,
+                 XMMatrixTranspose(matWorld),
+                 renderer::eShader::Texture,
+                 renderer::eRasterType::Basic,
+                 renderer::eSamplerType::AnisotropicWrap,
+                 renderer::eBlendState::AlphaBlend,
+                 renderer::ePrimitiveTopology::TriangleStrip,
+                 false,
+                 renderer::eDepthStencilState::DepthOffStencilOff,
+                 false
+                );
             commandList.push_back(command);
         }
     }

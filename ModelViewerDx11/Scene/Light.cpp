@@ -28,24 +28,24 @@ namespace scene
         for (const auto& subMesh : mMeshDebug.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                mMeshDebug.VertexFormat,
-                renderer::GetVertexStrideSize(mMeshDebug.VertexFormat),
-                renderer::eBufferUsage::Dynamic,
-                false,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderTarget::Default,
-                XMMatrixIdentity(),
-                renderer::eShader::Color,
-                renderer::eRasterType::Basic,
-                renderer::eSamplerType::SamplerCount,
-                0,
-                renderer::ePrimitiveTopology::Lines,
-                false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
-            );
+                 mMeshDebug.VertexFormat,
+                 renderer::GetVertexStrideSize(mMeshDebug.VertexFormat),
+                 renderer::eBufferUsage::Dynamic,
+                 false,
+                 subMesh.VertexRange,
+                 subMesh.IndexRange,
+                 subMesh.Material,
+                 renderer::eRenderTarget::Default,
+                 XMMatrixIdentity(),
+                 renderer::eShader::Color,
+                 renderer::eRasterType::Basic,
+                 renderer::eSamplerType::SamplerCount,
+                renderer::eBlendState::Opaque,
+                 renderer::ePrimitiveTopology::Lines,
+                 false,
+                 renderer::eDepthStencilState::DepthOffStencilOff,
+                 false
+                );
 
             commandList.push_back(command);
         }

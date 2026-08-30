@@ -33,24 +33,24 @@ namespace scene
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                mMesh.VertexFormat,
-                renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                renderer::eBufferUsage::Static,
-                false,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderTarget::Default,
-                mWorld,
-                renderer::eShader::Skybox,
-                renderer::eRasterType::Skybox,
-                renderer::eSamplerType::AnisotropicWrap,
-                0,
-                renderer::ePrimitiveTopology::Triangles,
-                false,
-                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual,
-                false
-            );
+                 mMesh.VertexFormat,
+                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                 renderer::eBufferUsage::Static,
+                 false,
+                 subMesh.VertexRange,
+                 subMesh.IndexRange,
+                 subMesh.Material,
+                 renderer::eRenderTarget::Default,
+                 mWorld,
+                 renderer::eShader::Skybox,
+                 renderer::eRasterType::Skybox,
+                 renderer::eSamplerType::AnisotropicWrap,
+                renderer::eBlendState::Opaque,
+                 renderer::ePrimitiveTopology::Triangles,
+                 false,
+                 renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual,
+                 false
+                );
 
             commandList.push_back(command);
         }

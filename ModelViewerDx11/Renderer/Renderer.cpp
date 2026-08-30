@@ -153,21 +153,6 @@ namespace renderer
         return S_OK;
     }
 
-    HashID Renderer::GetBlendStateHash(D3D11_BLEND_DESC& desc)
-    {
-        HashID hash = 0;
-        hash |= static_cast<uint32_t>(desc.RenderTarget[0].BlendEnable);
-        hash |= (desc.RenderTarget[0].SrcBlend << 1);
-        hash |= (desc.RenderTarget[0].DestBlend << 6);
-        hash |= (desc.RenderTarget[0].SrcBlendAlpha << 11);
-        hash |= (desc.RenderTarget[0].DestBlendAlpha << 16);
-        hash |= (desc.RenderTarget[0].RenderTargetWriteMask << 21);
-        hash |= (desc.RenderTarget[0].BlendOp << 26);
-        hash |= (desc.RenderTarget[0].BlendOpAlpha << 29);
-
-        return hash;
-    }
-
     void Renderer::SetManagers(BufferManager* const bufferManager, TextureManager* const textureManager, ShaderManager* const shaderManager)
     {
         ASSERT(bufferManager, "bufferManager is nullptr");
@@ -386,6 +371,13 @@ namespace renderer
             return false;
         }
 
+        result = createPresetBlendStates();
+        if (FAILED(result))
+        {
+            ASSERT(false, "FAIL : create preset blendStates");
+            return false;
+        }
+
         constexpr PrimitiveTopologyMap TopologyMap[] =
         {
             {ePrimitiveTopology::Triangles, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST},
@@ -404,29 +396,37 @@ namespace renderer
         return true;
     }
 
-    HRESULT Renderer::CreateBlendState(D3D11_BLEND_DESC& desc, HashID& outHash)
+    bool Renderer::createPresetBlendStates()
     {
-        outHash = GetBlendStateHash(desc);
-        if (mBlendStateMap.find(outHash) == mBlendStateMap.end())
+        constexpr BlendStatePreset BlendStatePresetMap[] =
         {
-            ID3D11BlendState* newBlendState = nullptr;
-            if (FAILED(mDevice->CreateBlendState(&desc, &newBlendState)))
+            {eBlendState::Opaque, D3D11_BLEND_ONE, D3D11_BLEND_ZERO},
+            {eBlendState::AlphaBlend, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA},
+        };
+
+        for(const BlendStatePreset& preset : BlendStatePresetMap)
+        {
+            D3D11_BLEND_DESC desc = {};
+            desc.RenderTarget[0].BlendEnable = preset.Type != eBlendState::Opaque;
+            desc.RenderTarget[0].SrcBlend = static_cast<D3D11_BLEND>(preset.SrcBlend);
+            desc.RenderTarget[0].DestBlend = static_cast<D3D11_BLEND>(preset.DestBlend);
+            desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+            desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+            desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+            desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+            desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+
+            if (FAILED(mDevice->CreateBlendState(&desc, &mBlendStates[static_cast<int8_t>(preset.Type)])))
             {
-                ASSERT(false, "failed to create BlendState");
-                return E_FAIL;
+                ASSERT(false, "failed to create BlendState. Type(%d)", static_cast<int8_t>(preset.Type));
+                return false;
             }
-            mBlendStateMap.insert(std::make_pair(outHash, newBlendState));
         }
-        else
-        {
-            const auto& it = mBlendStateMap.find(outHash);
-            ASSERT(false, "hash collision detected or double insertion. Hash(%u)", it->first);
-        }
-        return S_OK;
+        return true;
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
-        ID3D11RenderTargetView** outRtv, const char* const debugTag) const
+                                             ID3D11RenderTargetView** outRtv, const char* const debugTag) const
     {
         ASSERT(texture != nullptr, "texture) do not pass nullptr");
         ASSERT(outRtv != nullptr, "outRtv) do not pass nullptr.");
@@ -647,18 +647,10 @@ namespace renderer
         mDeviceContext->PSSetSamplers(slot, 1, &mSamplerState[static_cast<int32_t>(type)]);
     }
 
-    void Renderer::BindBlendStateByHash(HashID hash, const float* const blendFactors, uint32_t mask)
+    void Renderer::BindBlendStateByType(eBlendState type) const
     {
-        const auto& it = mBlendStateMap.find(hash);
-        if (it != mBlendStateMap.end())
-        {
-            mDeviceContext->OMSetBlendState(it->second, blendFactors, mask);
-        }
-        else
-        {
-            ID3D11BlendState* const unbind = nullptr;
-            mDeviceContext->OMSetBlendState(unbind, blendFactors, mask);
-        }
+        ASSERT(type != eBlendState::StateCount, "올바르지 않은 type. type(%d)", static_cast<uint8_t>(type));
+        mDeviceContext->OMSetBlendState(mBlendStates[static_cast<uint8_t>(type)], nullptr, 0xffff'ffff);
     }
 
     void Renderer::BindTextureToPs(uint32_t slot, HashID textureHash) const
@@ -774,11 +766,10 @@ namespace renderer
             SAFETY_RELEASE(mSamplerState[i]);
         }
 
-        for (auto& it : mBlendStateMap)
+        for (uint32_t i = 0; i < static_cast<uint8_t>(eBlendState::StateCount); ++i)
         {
-            SAFETY_RELEASE(it.second);
+            SAFETY_RELEASE(mBlendStates[i]);
         }
-        mBlendStateMap.clear();
 
         for (uint32_t i = 0; i < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++i)
         {

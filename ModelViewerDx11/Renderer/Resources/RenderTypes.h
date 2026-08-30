@@ -63,6 +63,13 @@ namespace renderer
         UsageCount
     };
 
+    enum eBlendState : uint8_t
+    {
+        Opaque,
+        AlphaBlend,
+        StateCount
+    };
+
     struct RenderState
     {
         // MEMO: 셰이더
@@ -78,7 +85,7 @@ namespace renderer
         eRasterType RasterType;
         eSamplerType SamplerType;
         ePrimitiveTopology TopologyType;
-        HashID BlendHash;
+        eBlendState BlendState;
         eDepthStencilState DepthStencilState;
         eShadowMapUsage UseShadowMapUsage;
         bool bClearDepthStencilBuffer;
