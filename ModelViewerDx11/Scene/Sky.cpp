@@ -40,7 +40,7 @@ namespace scene
                 subMesh.VertexRange,
                 subMesh.IndexRange,
                 subMesh.Material,
-                renderer::eRenderTarget::Default,
+                renderer::eRenderPass::Main,
                 mWorld,
                 renderer::eShader::Skybox,
                 renderer::eRasterType::Skybox,

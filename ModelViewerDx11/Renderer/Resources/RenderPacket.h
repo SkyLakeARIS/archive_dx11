@@ -20,7 +20,7 @@ namespace renderer
             const BufferRange&       vertexRange,
             const BufferRange&       indexRange,
             const SemiMaterial&      material,
-            const eRenderTarget      renderTargetType,
+            const eRenderPass        renderPass,
             const XMMATRIX&          matWorld,
             const eShader            shader,
             const eRasterType        rasterState,
@@ -35,7 +35,7 @@ namespace renderer
             ASSERT(vertexFormat != eVertexFormat::FormatCount, "vertexFormat 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(vertexFormat));
             ASSERT(stride > 0 , "stride 값이 올바르지 않음. stride > 0 이어야 합니다. passed(%d)", stride);
             ASSERT(bufferUsage != eBufferUsage::UsageCount, "bufferUsage는 반드시 Static/Dynamic 중 하나로 지정되어야 함.");
-            ASSERT(renderTargetType != eRenderTarget::RenderTargetCount, "renderTargetType 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(renderTargetType));
+            ASSERT(renderPass != eRenderPass::PassCount, "renderPass 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(renderPass));
             ASSERT(shader != eShader::ShaderCount, "shader 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(shader));
             ASSERT(rasterState != eRasterType::RasterCount, "rasterState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(rasterState));
             ASSERT(blendState != eBlendState::StateCount, "blendState 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(blendState));
@@ -50,7 +50,7 @@ namespace renderer
             command.VertexRange = vertexRange;
             command.IndexRange = indexRange;
             command.Material = material;
-            command.RenderTargetType = renderTargetType;
+            command.RenderPass = renderPass;
             command.MatWorld = matWorld;
             command.RenderState.ShaderType = shader;
             ShaderManager::GetMaterialCbBindingDesc(shader, command.RenderState.CbBindingDesc);
@@ -76,7 +76,7 @@ namespace renderer
 
             // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
             // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
-            // MEMO: 패스는 렌더타겟보다 상위여야 할지? 하위여야 할지? - 현재 프로젝트에서는 렌더타겟 == 패스이므로 패스는 무시.
+            // MEMO: 렌더 패스는 최상위 비트 할당. 렌더 패스 타입에 따라 내부적으로 적절한 렌더타켓을 바인드하도록 한다.
             // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
             // MEMO: 투명/불투명 여부도 중간 비트를 사용한다. 중간에서 가장 최상위로 둔다.
             // MEMO: 셰이더는 우선 낮은 비트를 사용하되, 중간 비트로 올릴지 고민
@@ -84,15 +84,17 @@ namespace renderer
             // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
 
 
-            constexpr uint64_t RenderTargetPriority[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)] =
+            constexpr uint64_t RenderPassPriority[] =
             {
-                0,
                 1,
+                2,
+                0,
             };
+            static_assert(sizeof(RenderPassPriority) / sizeof(RenderPassPriority[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassPriority와 eRenderPass의 갯수가 서로 맞아야 합니다.");
 
             uint64_t sortKey = 0;
             // MEMO: 상위 비트 영역
-            sortKey |= (RenderTargetPriority[static_cast<uint8_t>(command.RenderTargetType)] << 63);
+            sortKey |= (RenderPassPriority[static_cast<uint8_t>(command.RenderPass)] << 62);
             // MEMO: 중간 비트 영역
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
             sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54;
@@ -121,8 +123,7 @@ namespace renderer
         BufferRange VertexRange;
         BufferRange IndexRange;
         SemiMaterial Material;
-        // shadow, normal pass
-        eRenderTarget RenderTargetType;
+        eRenderPass RenderPass;
         XMMATRIX MatWorld;
         RenderState RenderState;
         uint64_t SortKey;
@@ -135,7 +136,8 @@ namespace renderer
         int16_t Stride = 0;
         eVertexFormat VertexFormat = eVertexFormat::FormatCount;
         eBufferUsage BufferUsage = eBufferUsage::UsageCount;
-        eRenderTarget RenderTargetType = eRenderTarget::RenderTargetCount;
+        eRenderPass RenderPass = eRenderPass::PassCount;
+        eRenderTarget RenderTarget = eRenderTarget::RenderTargetCount;
         eShader ShaderType = renderer::eShader::ShaderCount;
         eRasterType RasterType = renderer::eRasterType::RasterCount;
         eSamplerType SamplerType = renderer::eSamplerType::SamplerCount;

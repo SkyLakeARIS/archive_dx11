@@ -47,6 +47,14 @@ namespace renderer
         RenderTargetCount
     };
 
+    enum class eRenderPass : uint8_t
+    {
+        Main,
+        Shadow,
+        UI,
+        PassCount
+    };
+
     // MEMO: 우선은 캐시 변수가 unbind 상태로 초기화 될 수 있도록 열거형으로 변경
     enum class eDepthStencilState
     {

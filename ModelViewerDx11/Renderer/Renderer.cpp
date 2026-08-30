@@ -48,6 +48,18 @@ namespace renderer
         return mBufferManager;
     }
 
+    eRenderTarget Renderer::GetRenderTargetByRenderPass(eRenderPass renderPass) const
+    {
+        constexpr eRenderTarget RenderPassRenderTargetMap[] =
+        {
+            eRenderTarget::Default,
+            eRenderTarget::Shadow,
+            eRenderTarget::Default
+        };
+        static_assert(sizeof(RenderPassRenderTargetMap) / sizeof(RenderPassRenderTargetMap[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassRenderTargetMap와 eRenderPass의 갯수가 서로 맞아야 합니다.");
+        return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
+    }
+
     void Renderer::registerShadowTexture()
     {
         mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);

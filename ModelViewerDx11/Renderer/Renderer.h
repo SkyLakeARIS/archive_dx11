@@ -112,6 +112,7 @@ namespace renderer
 
         void GetCurrentPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY& outTopology) const;
         BufferManager* const GetBufferManager() const;
+        eRenderTarget GetRenderTargetByRenderPass(eRenderPass renderPass) const;
     public:
         // Debug
         static void CheckLiveObjects();

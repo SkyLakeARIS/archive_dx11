@@ -442,19 +442,25 @@ void Application::renderScene()
 
     for (auto& command : mCommandList)
     {
-        if (mCommandCache.RenderTargetType != command.RenderTargetType)
+        if (mCommandCache.RenderPass != command.RenderPass)
         {
-            mRenderer->BindRenderTargetTo(command.RenderTargetType);
-            mCommandCache.RenderTargetType = command.RenderTargetType;
+            const renderer::eRenderTarget renderTarget = mRenderer->GetRenderTargetByRenderPass(command.RenderPass);
+            if(renderTarget != mCommandCache.RenderTarget)
+            {
+                mRenderer->BindRenderTargetTo(renderTarget);
+                mCommandCache.RenderTarget = renderTarget;
 
-            // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
-            mRenderer->SetViewport(command.RenderTargetType == renderer::eRenderTarget::Default);
-        }
+                // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
+                if (command.RenderState.bClearDepthStencilBuffer)
+                {
+                    mRenderer->ClearScreenAndDepth(renderTarget);
+                }
 
-        // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
-        if (command.RenderState.bClearDepthStencilBuffer)
-        {
-            mRenderer->ClearScreenAndDepth(mCommandCache.RenderTargetType);
+                // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
+                mRenderer->SetViewport(renderTarget == renderer::eRenderTarget::Default);
+            }
+            mCommandCache.RenderPass = command.RenderPass;
+
         }
 
         bool bNeedBindBuffer = (mCommandCache.BufferUsage != command.BufferUsage) || (mCommandCache.Stride != command.Stride);
@@ -574,7 +580,14 @@ void Application::renderScene()
         // MEMO: Shadow RenderTarget으로 써야 하므로 다시 Texture Slot에서 제거.
         if (static_cast<bool>(command.RenderState.UseShadowMapUsage))
         {
-            mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+            if(mCommandCache.RenderPass == renderer::eRenderPass::UI)
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
+            }
+            else
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+            }
         }
     }
 }

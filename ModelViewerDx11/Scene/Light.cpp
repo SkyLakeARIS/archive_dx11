@@ -35,7 +35,7 @@ namespace scene
                 subMesh.VertexRange,
                 subMesh.IndexRange,
                 subMesh.Material,
-                renderer::eRenderTarget::Default,
+                renderer::eRenderPass::Main,
                 XMMatrixIdentity(),
                 renderer::eShader::Color,
                 renderer::eRasterType::Basic,

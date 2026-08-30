@@ -26,14 +26,14 @@ namespace ui
                 subMesh.VertexRange,
                 subMesh.IndexRange,
                 subMesh.Material,
-                renderer::eRenderTarget::Default,
+                renderer::eRenderPass::UI,
                 XMMatrixIdentity(),
                 renderer::eShader::DebugHUD,
                 renderer::eRasterType::Basic,
                 renderer::eSamplerType::AnisotropicWrap,
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::TriangleStrip,
-                false,
+                true,
                 renderer::eDepthStencilState::DepthOffStencilOff,
                 false
             );

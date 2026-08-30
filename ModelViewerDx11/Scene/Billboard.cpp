@@ -42,7 +42,7 @@ namespace scene
                 subMesh.VertexRange,
                 subMesh.IndexRange,
                 subMesh.Material,
-                renderer::eRenderTarget::Default,
+                renderer::eRenderPass::Main,
                 XMMatrixTranspose(matWorld),
                 renderer::eShader::Texture,
                 renderer::eRasterType::Basic,
