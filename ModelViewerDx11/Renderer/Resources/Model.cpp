@@ -39,24 +39,24 @@ namespace renderer
             for (const auto& subMesh : mMesh.SubMeshes)
             {
                 renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                     mMesh.VertexFormat,
-                     renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                     renderer::eBufferUsage::Static,
-                     false,
-                     subMesh.VertexRange,
-                     subMesh.IndexRange,
-                     subMesh.Material,
-                     renderer::eRenderTarget::Default,
-                     mMatWorld,
-                     renderer::eShader::Outline,
-                     renderer::eRasterType::CullBack,
-                     renderer::eSamplerType::SamplerCount,
-                     eBlendState::Opaque,
-                     renderer::ePrimitiveTopology::Triangles,
-                     false,
-                     eDepthStencilState::DepthOnMaskAllCompLessEqual,
-                     true
-                    );
+                    mMesh.VertexFormat,
+                    renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                    renderer::eBufferUsage::Static,
+                    false,
+                    subMesh.VertexRange,
+                    subMesh.IndexRange,
+                    subMesh.Material,
+                    renderer::eRenderTarget::Default,
+                    mMatWorld,
+                    renderer::eShader::Outline,
+                    renderer::eRasterType::CullBack,
+                    renderer::eSamplerType::SamplerCount,
+                    eBlendState::Opaque,
+                    renderer::ePrimitiveTopology::Triangles,
+                    false,
+                    eDepthStencilState::DepthOnMaskAllCompLessEqual,
+                    true
+                );
 
                 if (!mbActiveEmissive)
                 {
@@ -71,24 +71,24 @@ namespace renderer
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                 mMesh.VertexFormat,
-                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                 renderer::eBufferUsage::Static,
-                 false,
-                 subMesh.VertexRange,
-                 subMesh.IndexRange,
-                 subMesh.Material,
-                 renderer::eRenderTarget::Default,
-                 mMatWorld,
-                 renderer::eShader::BasicWithShadow,
-                 renderer::eRasterType::Basic,
-                 renderer::eSamplerType::AnisotropicWrap,
-                 eBlendState::Opaque,
-                 renderer::ePrimitiveTopology::Triangles,
-                 true,
-                 eDepthStencilState::DepthOffStencilOff,
-                 false
-                );
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                mMatWorld,
+                renderer::eShader::BasicWithShadow,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::AnisotropicWrap,
+                eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                true,
+                eDepthStencilState::DepthOffStencilOff,
+                false
+            );
 
             if (!mbActiveEmissive)
             {
@@ -105,24 +105,24 @@ namespace renderer
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                 eVertexFormat::P,
-                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                 renderer::eBufferUsage::Static,
-                 false,
-                 subMesh.VertexRange,
-                 subMesh.IndexRange,
-                 subMesh.Material,
-                 renderer::eRenderTarget::Shadow,
-                 mMatWorld,
-                 renderer::eShader::Shadow,
-                 renderer::eRasterType::Outline,
-                 renderer::eSamplerType::SamplerCount,
-                 eBlendState::Opaque,
-                 renderer::ePrimitiveTopology::Triangles,
-                 false,
-                 eDepthStencilState::DepthOffStencilOff,
-                 false
-                );
+                eVertexFormat::P,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Shadow,
+                mMatWorld,
+                renderer::eShader::Shadow,
+                renderer::eRasterType::Outline,
+                renderer::eSamplerType::SamplerCount,
+                eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                false,
+                eDepthStencilState::DepthOffStencilOff,
+                false
+            );
 
             commandList.push_back(command);
         }

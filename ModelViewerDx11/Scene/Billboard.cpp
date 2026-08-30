@@ -35,24 +35,24 @@ namespace scene
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                 mMesh.VertexFormat,
-                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                 renderer::eBufferUsage::Static,
-                 true,
-                 subMesh.VertexRange,
-                 subMesh.IndexRange,
-                 subMesh.Material,
-                 renderer::eRenderTarget::Default,
-                 XMMatrixTranspose(matWorld),
-                 renderer::eShader::Texture,
-                 renderer::eRasterType::Basic,
-                 renderer::eSamplerType::AnisotropicWrap,
-                 renderer::eBlendState::AlphaBlend,
-                 renderer::ePrimitiveTopology::TriangleStrip,
-                 false,
-                 renderer::eDepthStencilState::DepthOffStencilOff,
-                 false
-                );
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                true,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                XMMatrixTranspose(matWorld),
+                renderer::eShader::Texture,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::AnisotropicWrap,
+                renderer::eBlendState::AlphaBlend,
+                renderer::ePrimitiveTopology::TriangleStrip,
+                false,
+                renderer::eDepthStencilState::DepthOffStencilOff,
+                false
+            );
             commandList.push_back(command);
         }
     }

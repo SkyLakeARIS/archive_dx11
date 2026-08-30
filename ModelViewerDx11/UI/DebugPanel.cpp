@@ -19,24 +19,24 @@ namespace ui
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                 mMesh.VertexFormat,
-                 renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                 renderer::eBufferUsage::Static,
-                 false,
-                 subMesh.VertexRange,
-                 subMesh.IndexRange,
-                 subMesh.Material,
-                 renderer::eRenderTarget::Default,
-                 XMMatrixIdentity(),
-                 renderer::eShader::DebugHUD,
-                 renderer::eRasterType::Basic,
-                 renderer::eSamplerType::AnisotropicWrap,
+                mMesh.VertexFormat,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderTarget::Default,
+                XMMatrixIdentity(),
+                renderer::eShader::DebugHUD,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::AnisotropicWrap,
                 renderer::eBlendState::Opaque,
-                 renderer::ePrimitiveTopology::TriangleStrip,
-                 false,
-                 renderer::eDepthStencilState::DepthOffStencilOff,
-                 false
-                );
+                renderer::ePrimitiveTopology::TriangleStrip,
+                false,
+                renderer::eDepthStencilState::DepthOffStencilOff,
+                false
+            );
 
 
             commandList.push_back(command);
