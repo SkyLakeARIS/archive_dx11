@@ -360,14 +360,14 @@ namespace renderer
         result = CreateShadowRenderTarget();
         if (FAILED(result))
         {
-            ASSERT(false, "FAIL : FAIL : CreateShadowRenderTarget");
+            ASSERT(false, "FAIL : CreateShadowRenderTarget");
             return false;
         }
 
         result = createSamplerState();
         if (FAILED(result))
         {
-            ASSERT(false, "FAIL : FAIL : createSamplerState");
+            ASSERT(false, "FAIL : createSamplerState");
             return false;
         }
 
