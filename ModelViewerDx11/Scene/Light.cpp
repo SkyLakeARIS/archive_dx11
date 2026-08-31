@@ -43,8 +43,7 @@ namespace scene
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Lines,
                 false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
 
             commandList.push_back(command);

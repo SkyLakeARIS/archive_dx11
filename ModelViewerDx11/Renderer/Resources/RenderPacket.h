@@ -28,8 +28,7 @@ namespace renderer
             const eBlendState        blendState,
             const ePrimitiveTopology topology,
             const bool               bUseShadowMap,
-            eDepthStencilState       depthStencilState,
-            const bool               bClearDepthStencilBuffer
+            eDepthStencilState       depthStencilState
             )
         {
             ASSERT(vertexFormat != eVertexFormat::FormatCount, "vertexFormat 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(vertexFormat));
@@ -62,7 +61,6 @@ namespace renderer
             command.RenderState.TopologyType = topology;
             command.RenderState.UseShadowMapUsage = static_cast<eShadowMapUsage>(bUseShadowMap);
             command.RenderState.DepthStencilState = depthStencilState;
-            command.RenderState.bClearDepthStencilBuffer = bClearDepthStencilBuffer;
 
             // MEMO: 잘못된 조합 체크. MaterialCb, Texture는 -1이면 사용 안함으로 간주
             ASSERT((sampler != eSamplerType::SamplerCount && command.RenderState.SamplerBindingSlot != -1) || (sampler == eSamplerType::SamplerCount && command.RenderState.SamplerBindingSlot == -1),
@@ -102,7 +100,6 @@ namespace renderer
             // MEMO: 하위 비트 영역
             sortKey |= static_cast<uint64_t>(command.BufferUsage) << 18;
             sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 17;
-            sortKey |= static_cast<uint64_t>(command.RenderState.bClearDepthStencilBuffer) << 16;
             sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 15;
             sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 11;
             sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8;

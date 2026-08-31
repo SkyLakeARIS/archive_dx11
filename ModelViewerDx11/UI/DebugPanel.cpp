@@ -34,8 +34,7 @@ namespace ui
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 true,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
 
 

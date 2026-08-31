@@ -48,8 +48,7 @@ namespace scene
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Triangles,
                 false,
-                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual,
-                false
+                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual
             );
 
             commandList.push_back(command);

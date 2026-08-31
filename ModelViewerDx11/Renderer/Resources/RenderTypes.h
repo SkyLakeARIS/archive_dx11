@@ -102,6 +102,5 @@ namespace renderer
         eBlendState BlendState;
         eDepthStencilState DepthStencilState;
         eShadowMapUsage UseShadowMapUsage;
-        bool bClearDepthStencilBuffer;
     };
 }

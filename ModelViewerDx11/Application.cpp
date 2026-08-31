@@ -449,12 +449,6 @@ void Application::renderScene()
                 mRenderer->BindRenderTargetTo(renderTarget);
                 mCommandCache.RenderTarget = renderTarget;
 
-                // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
-                if (command.RenderState.bClearDepthStencilBuffer)
-                {
-                    mRenderer->ClearScreenAndDepth(renderTarget);
-                }
-
                 // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
                 mRenderer->SetViewport(renderTarget == renderer::eRenderTarget::Default);
             }

@@ -50,8 +50,7 @@ namespace scene
                 renderer::eBlendState::AlphaBlend,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
             commandList.push_back(command);
         }
