@@ -96,12 +96,12 @@ namespace renderer
             // MEMO: 중간 비트 영역
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
             sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54;
-            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 20;
+            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 50;
+            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 16;
             // MEMO: 하위 비트 영역
-            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 18;
-            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 17;
-            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 15;
-            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 11;
+            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 14;
+            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 13;
+            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 11;
             sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8;
             sortKey |= static_cast<uint64_t>(command.RenderState.RasterType) << 4;
             sortKey |= static_cast<uint64_t>(command.RenderState.TopologyType) << 0;
