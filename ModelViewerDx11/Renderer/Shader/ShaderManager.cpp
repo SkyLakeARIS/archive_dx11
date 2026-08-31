@@ -226,7 +226,7 @@ namespace renderer
         case eCbType::CbOutlineProperty:
         {
             CbOutlineProperty CbOutlineProperty = {};
-            CbOutlineProperty.Float3 = material.OutlineWidth;
+            CbOutlineProperty.Float = material.OutlineWidth;
             UpdateCB(type, reinterpret_cast<void*>(&CbOutlineProperty));
             break;
         }

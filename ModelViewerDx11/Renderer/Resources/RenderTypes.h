@@ -12,11 +12,17 @@ namespace renderer
         XMMATRIX Matrix;
     }CbWorld, CbViewProj, CbLightViewProjMatrix, CbScreenSpaceMatrix;
 
+    typedef struct CbFloat
+    {
+        float    Float;
+        XMFLOAT3 Reserve;
+    } CbOutlineProperty;
+
     typedef struct CbFloat3
     {
         XMFLOAT3    Float3;
         float       Reserve;
-    } CbCameraPosition, CbOutlineProperty, CbColor;
+    } CbCameraPosition, CbColor;
 
     typedef struct CbTwoVec4
     {

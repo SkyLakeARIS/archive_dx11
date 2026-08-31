@@ -26,7 +26,7 @@ namespace renderer
         // MEMO: 재질
         // MEMO: 네이밍을 glTF 표준 관례로 따름.
         MaterialFactors Factors;
-        XMFLOAT3 OutlineWidth;
+        float OutlineWidth;
         // MEMO: 텍스처
         HashID TextureHashes[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
         int16_t TextureSerials[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
