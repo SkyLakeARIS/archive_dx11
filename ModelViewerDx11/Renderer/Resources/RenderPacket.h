@@ -92,19 +92,19 @@ namespace renderer
 
             uint64_t sortKey = 0;
             // MEMO: 상위 비트 영역
-            sortKey |= (RenderPassPriority[static_cast<uint8_t>(command.RenderPass)] << 62);
+            sortKey |= (RenderPassPriority[static_cast<uint8_t>(command.RenderPass)] << 62); // 2bit
             // MEMO: 중간 비트 영역
             // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
-            sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54;
-            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 50;
-            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 16;
+            sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54; // 1bit
+            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 50; // 4bit
+            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 16; // 16bit
             // MEMO: 하위 비트 영역
-            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 14;
-            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 13;
-            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 11;
-            sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8;
-            sortKey |= static_cast<uint64_t>(command.RenderState.RasterType) << 4;
-            sortKey |= static_cast<uint64_t>(command.RenderState.TopologyType) << 0;
+            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 14; // 1bit
+            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 13; // 1bit
+            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 11; // 1bit
+            sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8; // 3bit
+            sortKey |= static_cast<uint64_t>(command.RenderState.RasterType) << 4; // 4bit
+            sortKey |= static_cast<uint64_t>(command.RenderState.TopologyType) << 0; // 4 bit
 
             command.SortKey = sortKey;
 
