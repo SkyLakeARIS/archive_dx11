@@ -54,7 +54,9 @@ namespace renderer
         {
             eRenderTarget::Default,
             eRenderTarget::Shadow,
-            eRenderTarget::Default
+            eRenderTarget::Default,
+            // MEMO: 대표적인 렌더타겟 반환
+            eRenderTarget::GBufferColor
         };
         static_assert(sizeof(RenderPassRenderTargetMap) / sizeof(RenderPassRenderTargetMap[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassRenderTargetMap와 eRenderPass의 갯수가 서로 맞아야 합니다.");
         return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
@@ -68,6 +70,8 @@ namespace renderer
 
     Renderer::Renderer()
         : mRefCount(1)
+        , mWindowHeight(0)
+        , mWindowWidth(0)
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
         , mSwapChain(nullptr)
@@ -76,6 +80,7 @@ namespace renderer
         , mRenderTargetViewList{nullptr}
         , mDepthStencilViewList{nullptr}
         , mRtvDsMapTable{}
+        , mRenderTargetSRVs{}
         , mTexShadow(nullptr)
         , mTexColor(nullptr)
         , mShadowSrv(nullptr)
@@ -346,6 +351,9 @@ namespace renderer
     {
         HRESULT result = S_OK;
 
+        mWindowWidth = width;
+        mWindowHeight = height;
+
         DXGI_SWAP_CHAIN_DESC swapDesc;
         ZeroMemory(&swapDesc, sizeof(swapDesc));
         swapDesc.BufferCount = 1;
@@ -368,6 +376,12 @@ namespace renderer
         }
 
         // set default resources
+
+        if (!createGBufferRenderTargets())
+        {
+            ASSERT(false, "FAIL : createGBufferRenderTargets");
+            return false;
+        }
 
         result = CreateShadowRenderTarget();
         if (FAILED(result))
@@ -435,6 +449,72 @@ namespace renderer
             }
         }
         return true;
+    }
+
+    bool Renderer::createGBufferRenderTargets()
+    {
+        bool bSuccess = false;
+
+        constexpr DXGI_FORMAT TexFormatByBufferType[] =
+        {
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_R32G32B32A32_FLOAT,
+            DXGI_FORMAT_R16G16B16A16_FLOAT,
+            // MEMO: DXGI_FORMAT_R32_TYPELESS 는 허용되지 않음
+            DXGI_FORMAT_R32_FLOAT
+        };
+        static_assert(std::size(TexFormatByBufferType) == static_cast<size_t>(eRenderTarget::RenderTargetCount), "Format 테이블은 RenderTarget 수와 일치해야 합니다.");
+
+        D3D11_TEXTURE2D_DESC texDesc = {};
+        texDesc.Width = mWindowWidth;
+        texDesc.Height = mWindowHeight;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = 1;
+        texDesc.SampleDesc.Count = 1;                      // 멀티샘플링 수
+        texDesc.SampleDesc.Quality = 0;                    // 멀티샘플링 퀼리티
+        texDesc.Usage = D3D11_USAGE_DEFAULT;               // 디폴트로 사용
+        texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        texDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
+        texDesc.MiscFlags = 0;
+        for (uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++renderTarget)
+        {
+            if (TexFormatByBufferType[renderTarget] == DXGI_FORMAT_UNKNOWN)
+            {
+                continue;
+            }
+
+            texDesc.Format = TexFormatByBufferType[renderTarget];
+            ID3D11Texture2D* tex = nullptr;
+            const bool bTexCreated = SUCCEEDED(CreateTexture2D(texDesc, &tex, "Renderer::GBufferTex"));
+
+            D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+            rtvDesc.Format = TexFormatByBufferType[renderTarget];
+            rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+            rtvDesc.Texture2D.MipSlice = 0;
+            const bool bRenderTargetCreated= SUCCEEDED(CreateRenderTargetView(tex, &rtvDesc, &mRenderTargetViewList[renderTarget]));
+            SET_PRIVATE_DATA(mRenderTargetViewList[renderTarget], "eRenderTarget::GBufferRT");
+
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = TexFormatByBufferType[renderTarget];
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            const bool bShaderResourceCreated = SUCCEEDED(mDevice->CreateShaderResourceView(tex, &srvDesc, &mRenderTargetSRVs[renderTarget]));
+            SET_PRIVATE_DATA(mRenderTargetSRVs[renderTarget], "eRenderTarget::GBufferSRV");
+
+            bSuccess = bTexCreated && bRenderTargetCreated && bShaderResourceCreated;
+            SAFETY_RELEASE(tex);
+            if (bSuccess == false)
+            {
+                ASSERT(false, "GBuffer 생성 실패. RenderTarget(%u) state TexCreated(%d), RtCreated(%d), SrvCreated(%d)", renderTarget, static_cast<int32_t>(bTexCreated), static_cast<int32_t>(bRenderTargetCreated), static_cast<int32_t>(bShaderResourceCreated));
+                SAFETY_RELEASE(mRenderTargetViewList[renderTarget]);
+                SAFETY_RELEASE(mRenderTargetSRVs[renderTarget]);
+                break;
+            }
+        }
+        return bSuccess;
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
@@ -787,6 +867,7 @@ namespace renderer
         {
             SAFETY_RELEASE(mRenderTargetViewList[i]);
             SAFETY_RELEASE(mDepthStencilViewList[i]);
+            SAFETY_RELEASE(mRenderTargetSRVs[i]);
         }
 
         SAFETY_RELEASE(mTexShadow);

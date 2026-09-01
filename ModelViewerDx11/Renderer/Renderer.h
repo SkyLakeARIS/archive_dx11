@@ -124,11 +124,14 @@ namespace renderer
         bool    createRasterState();
         HRESULT createSamplerState();
         bool    createPresetBlendStates();
-
+        bool    createGBufferRenderTargets();
     private:
 
 
         ULONG                       mRefCount;
+
+        int16_t mWindowHeight;
+        int16_t mWindowWidth;
 
         // D3D Device
         ID3D11Device*               mDevice;
@@ -145,7 +148,7 @@ namespace renderer
         ID3D11RenderTargetView* mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
         ID3D11DepthStencilView* mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
         RtvDsMap mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
-
+        ID3D11ShaderResourceView* mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
         // shadow
         ID3D11Texture2D*           mTexShadow;
         ID3D11Texture2D*           mTexColor;

@@ -50,6 +50,9 @@ namespace renderer
     {
         Default,
         Shadow,
+        GBufferColor,
+        GBufferNormal,
+        GBufferDepth,
         RenderTargetCount
     };
 
@@ -58,6 +61,7 @@ namespace renderer
         Main,
         Shadow,
         UI,
+        GPass,
         PassCount
     };
 
