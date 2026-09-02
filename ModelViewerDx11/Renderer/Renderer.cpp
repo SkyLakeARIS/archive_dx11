@@ -89,6 +89,7 @@ namespace renderer
         , mViewportTex()
         , mRasterStates{nullptr}
         , mSamplerState{}
+        , mBlendStates{}
         , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
