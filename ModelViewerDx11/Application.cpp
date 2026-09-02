@@ -468,7 +468,7 @@ void Application::renderScene()
                 mCommandCache.RenderTarget = renderTarget;
 
                 // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
-                mRenderer->SetViewport(renderTarget == renderer::eRenderTarget::Default);
+                mRenderer->SetViewport(renderTarget != renderer::eRenderTarget::Shadow);
             }
             mCommandCache.RenderPass = command.RenderPass;
 
