@@ -32,6 +32,12 @@ namespace renderer
         // MEMO: Renderer가 예약한 텍스처
         static HashID sShadowTexHash;
         static int16_t sShadowTexSerialID;
+        static HashID sGBufferColorTexHash;
+        static int16_t sGBufferColorTexSerialID;
+        static HashID sGBufferNormalTexHash;
+        static int16_t sGBufferNormalTexSerialID;
+        static HashID sGBufferDepthTexHash;
+        static int16_t sGBufferDepthTexSerialID;
     private:
         static HashID sDefaultTexHash;
     private:

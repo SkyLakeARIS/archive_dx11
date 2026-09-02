@@ -128,7 +128,7 @@ namespace renderer
         static void CheckLiveObjects();
     private:
         // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
-        void registerShadowTexture();
+        void registerSrvTexture();
 
 
         bool    createRasterState();

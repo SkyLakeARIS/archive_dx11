@@ -62,10 +62,19 @@ namespace renderer
         return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
     }
 
-    void Renderer::registerShadowTexture()
+    void Renderer::registerSrvTexture()
     {
         mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);
         TextureManager::sShadowTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sShadowTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferColorTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferColor)]);
+        TextureManager::sGBufferColorTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferColorTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferNormalTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferNormal)]);
+        TextureManager::sGBufferNormalTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferNormalTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferDepthTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferDepth)]);
+        TextureManager::sGBufferDepthTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferDepthTexHash);
     }
 
     Renderer::Renderer()
@@ -180,7 +189,7 @@ namespace renderer
         mTextureManager = textureManager;
         mShaderManager = shaderManager;
 
-        registerShadowTexture();
+        registerSrvTexture();
     }
 
     HRESULT Renderer::CreateDeviceAndSetup(

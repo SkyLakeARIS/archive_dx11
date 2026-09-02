@@ -43,6 +43,9 @@ Application::Application()
     , mShaderManager(nullptr)
     , mDirectInput(nullptr)
     , mShadowDebugPanel(nullptr)
+    , mGBufferColorDebugPanel(nullptr)
+    , mGBufferNormalDebugPanel(nullptr)
+    , mGBufferDepthDebugPanel(nullptr)
 {
     mRenderer = new renderer::Renderer();
     mImporter = new renderer::ModelImporter();
@@ -53,6 +56,9 @@ Application::~Application()
 {
     std::vector<renderer::RenderPacket>().swap(mCommandList);
     delete mShadowDebugPanel;
+    delete mGBufferColorDebugPanel;
+    delete mGBufferNormalDebugPanel;
+    delete mGBufferDepthDebugPanel;
     mDirectInput->Release();
     delete mDirectInput;
     mDirectInput = nullptr;
@@ -222,6 +228,18 @@ bool Application::initializeScene()
     mShadowDebugPanel = new ui::DebugPanel(0, 0, 200, 200);
     const int16_t shadowTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sShadowTexHash);
     mShadowDebugPanel->SetDebugType(renderer::TextureManager::sShadowTexHash, shadowTexSerial);
+
+    mGBufferColorDebugPanel = new ui::DebugPanel(200, 0, 200, 200);
+    const int16_t gBufferColorTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferColorTexHash);
+    mGBufferColorDebugPanel->SetDebugType(renderer::TextureManager::sGBufferColorTexHash, gBufferColorTexSerial);
+
+    mGBufferNormalDebugPanel = new ui::DebugPanel(400, 0, 200, 200);
+    const int16_t gBufferNormalTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferNormalTexHash);
+    mGBufferNormalDebugPanel->SetDebugType(renderer::TextureManager::sGBufferNormalTexHash, gBufferNormalTexSerial);
+
+    mGBufferDepthDebugPanel = new ui::DebugPanel(600, 0, 200, 200);
+    const int16_t gBufferDepthTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferDepthTexHash);
+    mGBufferDepthDebugPanel->SetDebugType(renderer::TextureManager::sGBufferDepthTexHash, gBufferDepthTexSerial);
 
     mLightIcon = new scene::Billboard();
     mLightIcon->Initialize(*mRenderer);
@@ -428,6 +446,9 @@ void Application::updateScene()
     mLightIcon->SubmitCommand(mCommandList);
 
     mShadowDebugPanel->SubmitCommand(mCommandList);
+    mGBufferColorDebugPanel->SubmitCommand(mCommandList);
+    mGBufferNormalDebugPanel->SubmitCommand(mCommandList);
+    mGBufferDepthDebugPanel->SubmitCommand(mCommandList);
 
     std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }

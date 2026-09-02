@@ -7,6 +7,12 @@ namespace renderer
 {
     HashID TextureManager::sShadowTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/ShadowMap.tex"));
     int16_t TextureManager::sShadowTexSerialID = -1;
+    HashID TextureManager::sGBufferColorTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferColorMap.tex"));
+    int16_t TextureManager::sGBufferColorTexSerialID = -1;
+    HashID TextureManager::sGBufferNormalTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferNormalMap.tex"));
+    int16_t TextureManager::sGBufferNormalTexSerialID = -1;
+    HashID TextureManager::sGBufferDepthTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferDepthMap.tex"));
+    int16_t TextureManager::sGBufferDepthTexSerialID = -1;
     HashID TextureManager::sDefaultTexHash = 0;
     
     TextureManager::TextureManager(ID3D11Device* device)

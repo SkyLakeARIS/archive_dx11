@@ -79,4 +79,7 @@ private:
     renderer::ShaderManager* mShaderManager;
     core::DirectInput* mDirectInput;
     ui::DebugPanel* mShadowDebugPanel;
+    ui::DebugPanel* mGBufferColorDebugPanel;
+    ui::DebugPanel* mGBufferNormalDebugPanel;
+    ui::DebugPanel* mGBufferDepthDebugPanel;
 };
