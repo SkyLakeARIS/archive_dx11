@@ -36,8 +36,8 @@ struct PsInput
 PsInput main(VsInput vsInput)
 {
     PsInput psInput = (PsInput)0;
-    vsInput.Pos = mul(MatWorld, vsInput.Pos);
-    psInput.Pos = mul(MatViewProj, vsInput.Pos);
+    vsInput.Pos = mul(vsInput.Pos, MatWorld);
+    psInput.Pos = mul(vsInput.Pos, MatViewProj);
     psInput.UV = vsInput.Tex;
 	return psInput;
 }
