@@ -73,7 +73,7 @@ namespace renderer
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
 
         // Renderer 
-        void ClearScreenAndDepth(eRenderTarget type) const;
+        void ClearAllScreenAndDepth() const;
         void ClearDepthBuffer() const;
         void Present() const;
 

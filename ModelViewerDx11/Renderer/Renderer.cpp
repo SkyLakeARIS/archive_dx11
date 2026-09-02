@@ -837,13 +837,17 @@ namespace renderer
         mDeviceContext->OMSetDepthStencilState(mDepthStencilStates[static_cast<uint8_t>(type)], 0);
     }
 
-    void Renderer::ClearScreenAndDepth(eRenderTarget type) const
+    void Renderer::ClearAllScreenAndDepth() const
     {
         constexpr float CLEAR_COLOR[] = { 0.4f, 0.6f, 1.0f, 1.0f };
-        RtvDsMap rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
-
-        mDeviceContext->ClearRenderTargetView(mRenderTargetViewList[rtvDs.RenderTargetIndex], CLEAR_COLOR);
-        mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[rtvDs.DepthStencilIndex], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+        for (uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(renderer::eRenderTarget::RenderTargetCount); ++renderTarget)
+        {
+            mDeviceContext->ClearRenderTargetView(mRenderTargetViewList[renderTarget], CLEAR_COLOR);
+            if(mDepthStencilViewList[renderTarget])
+            {
+                mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[renderTarget], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+            }
+        }
     }
 
     void Renderer::ClearDepthBuffer() const

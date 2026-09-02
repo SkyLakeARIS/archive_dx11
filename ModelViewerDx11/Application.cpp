@@ -434,10 +434,7 @@ void Application::updateScene()
 
 void Application::renderScene()
 {
-    for(uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(renderer::eRenderTarget::RenderTargetCount); ++renderTarget)
-    {
-        mRenderer->ClearScreenAndDepth(static_cast<renderer::eRenderTarget>(renderTarget));
-    }
+    mRenderer->ClearAllScreenAndDepth();
 
     for (auto& command : mCommandList)
     {
