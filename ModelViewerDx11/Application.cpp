@@ -446,7 +446,7 @@ void Application::renderScene()
             const renderer::eRenderTarget renderTarget = mRenderer->GetRenderTargetByRenderPass(command.RenderPass);
             if(renderTarget != mCommandCache.RenderTarget)
             {
-                mRenderer->BindRenderTargetTo(renderTarget);
+                mRenderer->BindRenderTargetByRenderPass(command.RenderPass);
                 mCommandCache.RenderTarget = renderTarget;
 
                 // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.

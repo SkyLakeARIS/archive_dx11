@@ -15,6 +15,15 @@ namespace renderer
     class Renderer final : IUnknown
     {
     private:
+        static constexpr uint8_t MAX_RENDER_TARGET_VIEW = 8;
+        struct RenderTargetBindDesc
+        {
+            eRenderPass RenderPass;
+            uint32_t ViewCount;
+            ID3D11RenderTargetView* RenderTargetViews[MAX_RENDER_TARGET_VIEW];
+            ID3D11DepthStencilView* DepthStencilViews;
+        };
+
         struct RenderTargetDepthStencilMap
         {
             uint32_t RenderTargetIndex;
@@ -99,6 +108,7 @@ namespace renderer
         void BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const;
         void BindPrimitiveTopologyByType(ePrimitiveTopology topology) const;
         void BindRenderTargetTo(eRenderTarget type);
+        void BindRenderTargetByRenderPass(eRenderPass pass);
         void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type) const;
 
@@ -149,6 +159,7 @@ namespace renderer
         ID3D11DepthStencilView* mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
         RtvDsMap mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
         ID3D11ShaderResourceView* mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
+        RenderTargetBindDesc mRenderTargetBindDescMap[static_cast<uint8_t>(eRenderPass::PassCount)];
         // shadow
         ID3D11Texture2D*           mTexShadow;
         ID3D11Texture2D*           mTexColor;

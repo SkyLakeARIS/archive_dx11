@@ -420,6 +420,42 @@ namespace renderer
 #endif
         (void)memcpy(mPrimitiveTopologies, TopologyMap, sizeof(TopologyMap));
 
+
+        const RenderTargetBindDesc BindDescMap[] =
+        {
+            {eRenderPass::Main,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
+            },
+            {eRenderPass::Shadow,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]
+            },
+            {eRenderPass::UI,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
+            },
+            {eRenderPass::GPass,
+                3,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferDepth)], nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                nullptr
+            },
+        };
+        static_assert(std::size(BindDescMap) == static_cast<uint8_t>(eRenderPass::PassCount), "RenderPass와 BindDescMap의 짝이 맞아야 합니다.");
+#ifdef _DEBUG
+        for(uint8_t renderPass = 0; renderPass < static_cast<uint8_t>(eRenderPass::PassCount); ++renderPass)
+        {
+            if(static_cast<eRenderPass>(renderPass) != BindDescMap[renderPass].RenderPass)
+            {
+                ASSERT(false, "eRenderPass 멤버 순서와 BindDescMap 요소 순서는 일치해야 합니다.");
+            }
+        }
+#endif
+
+        (void)memcpy(mRenderTargetBindDescMap, BindDescMap, sizeof(BindDescMap));
         return true;
     }
 
@@ -557,6 +593,14 @@ namespace renderer
         RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
 
         mDeviceContext->OMSetRenderTargets(rtvDs.NumViews, &mRenderTargetViewList[rtvDs.RenderTargetIndex], mDepthStencilViewList[rtvDs.DepthStencilIndex]);
+    }
+
+    void Renderer::BindRenderTargetByRenderPass(eRenderPass pass)
+    {
+        ASSERT(pass != eRenderPass::PassCount, "올바르지 않은 RenderPass Type. pass(%d)", static_cast<uint8_t>(pass));
+
+        const uint8_t passIndex = static_cast<uint8_t>(pass);
+        mDeviceContext->OMSetRenderTargets(mRenderTargetBindDescMap[passIndex].ViewCount, mRenderTargetBindDescMap[passIndex].RenderTargetViews, mRenderTargetBindDescMap[passIndex].DepthStencilViews);
     }
 
     void Renderer::BindInputLayoutTo(eVertexFormat type) const
