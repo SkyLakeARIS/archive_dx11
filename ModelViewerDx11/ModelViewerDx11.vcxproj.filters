@@ -225,6 +225,8 @@
     <FxCompile Include="Renderer\Shaders\VsSkybox.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsScreen.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsShadow.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsGeometry.hlsl" />
+    <FxCompile Include="Renderer\Shaders\PsGeometry.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

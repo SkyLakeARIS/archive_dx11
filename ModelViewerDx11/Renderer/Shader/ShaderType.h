@@ -26,6 +26,7 @@ namespace renderer
         Texture,
         Color,
         DebugHUD,
+        Geometry,
         ShaderCount
     };
 

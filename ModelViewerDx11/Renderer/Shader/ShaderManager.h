@@ -21,6 +21,7 @@ namespace renderer
             VsSkybox,
             VsScreen,
             VsShadow,
+            VsGeometry,
             VertexShaderCount
         };
 
@@ -32,6 +33,7 @@ namespace renderer
             PsSkybox,
             PsTexture,
             PsColor,
+            PsGeometry,
             PixelShaderCount
         };
 
