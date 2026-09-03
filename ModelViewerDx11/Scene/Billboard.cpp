@@ -54,31 +54,6 @@ namespace scene
             );
             commandList.push_back(command);
         }
-
-        // Geometry pass
-        for (const auto& subMesh : mMesh.SubMeshes)
-        {
-            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                renderer::eVertexFormat::PT,
-                renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                renderer::eBufferUsage::Static,
-                false,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderPass::GPass,
-                XMMatrixTranspose(matWorld),
-                renderer::eShader::Geometry,
-                renderer::eRasterType::Skybox,
-                renderer::eSamplerType::AnisotropicWrap,
-                renderer::eBlendState::Opaque,
-                renderer::ePrimitiveTopology::Triangles,
-                false,
-                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual
-            );
-
-            commandList.push_back(command);
-        }
     }
 
     void Billboard::UpdateScaleMatrix(const XMMATRIX& viewMatrix)

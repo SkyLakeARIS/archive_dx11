@@ -32,31 +32,6 @@ namespace renderer
 
     void Model::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
-        // Geometry pass
-        for (const auto& subMesh : mMesh.SubMeshes)
-        {
-            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
-                eVertexFormat::PT,
-                renderer::GetVertexStrideSize(mMesh.VertexFormat),
-                renderer::eBufferUsage::Static,
-                false,
-                subMesh.VertexRange,
-                subMesh.IndexRange,
-                subMesh.Material,
-                renderer::eRenderPass::GPass,
-                mMatWorld,
-                renderer::eShader::Geometry,
-                renderer::eRasterType::Basic,
-                renderer::eSamplerType::AnisotropicWrap,
-                eBlendState::Opaque,
-                renderer::ePrimitiveTopology::Triangles,
-                false,
-                eDepthStencilState::DepthOffStencilOff
-            );
-
-            commandList.push_back(command);
-        }
-
         // Shadow pass
         for (const auto& subMesh : mMesh.SubMeshes)
         {
