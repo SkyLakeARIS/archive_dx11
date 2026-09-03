@@ -25,55 +25,23 @@ struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
     float2 UV : TEXCOORD0;
-    float3 LightColor : TEXCOORD1;
-    float3 LightDir : TEXCOORD2;
-    float3 CameraDir : TEXCOORD3;
-    float4 ClipPosition: TEXCOORD4;
 };
 
-float4 main(PS_INPUT input) : SV_TARGET
+struct PsOutput
 {
-    float4 finalColor = texModel.Sample(samLinear, input.UV);
-    float3 normal = texNormal.Sample(samLinear, input.UV); // face는 _N 텍스쳐가 없음.
+    float3 Color : SV_TARGET0;
+    float3 Normal : SV_TARGET1;
+    float Depth : SV_TARGET2;
+};
 
-    float3 shadowCoord = input.ClipPosition.xyz / input.ClipPosition.w;
-    float depth = shadowCoord.z;
 
-   // shadowCoord.y = -shadowCoord.y;
-    shadowCoord.x = shadowCoord.x * 0.5 + 0.5;
-    shadowCoord.y = -(shadowCoord.y * 0.5) + 0.5;
-    float depthShadow = texShadow.Sample(samLinear, shadowCoord.xy).r;
+PsOutput main(PS_INPUT input)
+{
+    PsOutput psOutput = (PsOutput)0;
 
-   // if (depth < depthShadow - 0.0001)
-    if (depth < depthShadow + 0.00001)
-    {
-        normal.z = sqrt(1.0 - (normal.x * normal.x + normal.y * normal.y));
+    psOutput.Color = texModel.Sample(samLinear, input.UV);
+    psOutput.Normal = texNormal.Sample(samLinear, input.UV); // face는 _N 텍스쳐가 없음.
+    psOutput.Depth = input.Pos.z;
 
-    // 1. VS에서 계산한 노말값 사용할 때
-        float3 diffuse = dot(normalize(normal), -normalize(input.LightDir));
-    // 2. 텍스쳐가 노말맵이라고 가정하고 사용할 때
-    //float3 diffuse = dot(normal, -input.LightDir);
-        float3 specular = float3(0.0f, 0.0f, 0.0f);
-        if (diffuse.x > 0)
-        {
-            float3 reflection = normalize(reflect(input.LightDir, normalize(normal)));
-            specular = saturate(dot(reflection, normalize(-input.CameraDir)));
-            specular = pow(specular, Shininess) * Reflectivity;
-            specular *= Specular * input.LightColor.xyz;
-        }
-
-        diffuse = saturate(diffuse) * input.LightColor.xyz * Reflectivity;
-
-        float3 ambient = Ambient * input.LightColor;
-   // finalColor.xyz *= (specular + diffuse + ambient + Emissive); // 빛나는 효과 == Emissive. 켜고 끌 수 있는 기능 추가 필요
-        finalColor.xyz *= (specular + diffuse + ambient);
-        finalColor.a = Opacity;
-    }
-    else // shadow
-    {
-        finalColor.xyz *= float3(0.4f, 0.4f, 0.4f);
-        finalColor.a = Opacity;
-    }
-    finalColor.xyz = finalColor.xyz / (finalColor.xyz + 1);
-    return finalColor;
+    return psOutput;
 }
