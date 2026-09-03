@@ -34,6 +34,7 @@ namespace renderer
             PsTexture,
             PsColor,
             PsGeometry,
+            PsTextureMRT,
             PixelShaderCount
         };
 

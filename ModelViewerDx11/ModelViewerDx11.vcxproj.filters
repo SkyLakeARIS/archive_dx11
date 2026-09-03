@@ -227,6 +227,7 @@
     <FxCompile Include="Renderer\Shaders\VsShadow.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsGeometry.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsGeometry.hlsl" />
+    <FxCompile Include="Renderer\Shaders\PsTextureMRT.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

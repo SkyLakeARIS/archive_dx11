@@ -75,7 +75,8 @@ namespace renderer
             L"Renderer/Shaders/PsTexture.hlsl",
             L"Renderer/Shaders/PsSkybox.hlsl",
             L"Renderer/Shaders/PsColor.hlsl",
-            L"Renderer/Shaders/PsGeometry.hlsl"
+            L"Renderer/Shaders/PsGeometry.hlsl",
+            L"Renderer/Shaders/PsTextureMRT.hlsl",
         };
 
         struct PixelShaderContainer
@@ -125,6 +126,7 @@ namespace renderer
             {ePixelShader::PsSkybox, 4U},
             {ePixelShader::PsColor, 5U},
             {ePixelShader::PsGeometry, 6U},
+            {ePixelShader::PsTextureMRT, 7U},
         };
 
 
@@ -135,7 +137,7 @@ namespace renderer
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox},
             { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTexture},
+            {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTextureMRT},
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
             {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsTexture},
             {eShader::Geometry,  eVertexShader::VsGeometry, ePixelShader::PsGeometry},
