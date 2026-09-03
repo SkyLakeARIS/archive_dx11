@@ -61,7 +61,7 @@ namespace renderer
         Main,
         Shadow,
         UI,
-        GPass,
+        Deferred, // MEMO: renderer only
         PassCount
     };
 

@@ -52,11 +52,11 @@ namespace renderer
     {
         constexpr eRenderTarget RenderPassRenderTargetMap[] =
         {
-            eRenderTarget::Default,
+            eRenderTarget::GBufferColor,
             eRenderTarget::Shadow,
             eRenderTarget::Default,
             // MEMO: 대표적인 렌더타겟 반환
-            eRenderTarget::GBufferColor
+            eRenderTarget::Default
         };
         static_assert(sizeof(RenderPassRenderTargetMap) / sizeof(RenderPassRenderTargetMap[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassRenderTargetMap와 eRenderPass의 갯수가 서로 맞아야 합니다.");
         return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
@@ -433,8 +433,8 @@ namespace renderer
         const RenderTargetBindDesc BindDescMap[] =
         {
             {eRenderPass::Main,
-                1,
-                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+             3,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferDepth)], nullptr, nullptr, nullptr, nullptr, nullptr} ,
                 mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
             },
             {eRenderPass::Shadow,
@@ -447,9 +447,9 @@ namespace renderer
                 {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
                 mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
             },
-            {eRenderPass::GPass,
-                3,
-                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferDepth)], nullptr, nullptr, nullptr, nullptr, nullptr} ,
+            {eRenderPass::Deferred,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
                 nullptr
             },
         };

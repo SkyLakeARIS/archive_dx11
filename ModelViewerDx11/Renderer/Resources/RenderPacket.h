@@ -84,10 +84,10 @@ namespace renderer
 
             constexpr uint64_t RenderPassPriority[] =
             {
-                1,
-                2,
-                0,
-                3,
+                2, // Main(GPass)
+                3, // Shadow
+                0, // UI
+                1, // Deferred
             };
             static_assert(sizeof(RenderPassPriority) / sizeof(RenderPassPriority[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassPriority와 eRenderPass의 갯수가 서로 맞아야 합니다.");
 
