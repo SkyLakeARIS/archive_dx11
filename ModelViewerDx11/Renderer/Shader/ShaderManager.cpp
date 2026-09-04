@@ -65,7 +65,7 @@ namespace renderer
             L"Renderer/Shaders/VsTexture.hlsl",
             L"Renderer/Shaders/VsScreen.hlsl",
             L"Renderer/Shaders/VsShadow.hlsl",
-            L"Renderer/Shaders/VsGeometry.hlsl",
+            L"Renderer/Shaders/VsDeferred.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
@@ -75,7 +75,7 @@ namespace renderer
             L"Renderer/Shaders/PsTexture.hlsl",
             L"Renderer/Shaders/PsSkybox.hlsl",
             L"Renderer/Shaders/PsColor.hlsl",
-            L"Renderer/Shaders/PsGeometry.hlsl",
+            L"Renderer/Shaders/PsDeferred.hlsl",
             L"Renderer/Shaders/PsTextureMRT.hlsl",
         };
 
@@ -114,7 +114,7 @@ namespace renderer
             {eVertexShader::VsSkybox, 3U},
             {eVertexShader::VsScreen, 5U},
             {eVertexShader::VsShadow, 6U},
-            {eVertexShader::VsGeometry, 7U},
+            {eVertexShader::VsDeferred, 7U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -125,7 +125,7 @@ namespace renderer
             {ePixelShader::PsShadow, 2U},
             {ePixelShader::PsSkybox, 4U},
             {ePixelShader::PsColor, 5U},
-            {ePixelShader::PsGeometry, 6U},
+            {ePixelShader::PsDeferred, 6U},
             {ePixelShader::PsTextureMRT, 7U},
         };
 
@@ -140,7 +140,7 @@ namespace renderer
             {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTextureMRT},
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
             {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsTexture},
-            {eShader::Geometry,  eVertexShader::VsGeometry, ePixelShader::PsGeometry},
+            {eShader::Deferred,  eVertexShader::VsDeferred, ePixelShader::PsDeferred},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -278,7 +278,7 @@ namespace renderer
             { eCbType::ConstantBufferCount, false, -1 }, // Texture
             { eCbType::CbColor,             true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD
-            { eCbType::ConstantBufferCount, false, -1 }, // Geometry
+            { eCbType::ConstantBufferCount, false, -1 }, // Deferred
         };
         static_assert(sizeof(MaterialCbTableEachShader) / sizeof(MaterialCbBinding) == static_cast<uint8_t>(eShader::ShaderCount), "셰이더 수와 Table 수가 맞지 않음.");
         outBindingDesc = MaterialCbTableEachShader[static_cast<uint8_t>(type)];
@@ -296,7 +296,7 @@ namespace renderer
             {  0, -1, -1 }, // Texture
             { -1, -1, -1 }, // Color
             {  0, -1, -1 }, // DebugHUD
-            {  0, 1, -1 }, // Geometry
+            {  0, 1, 2 }, // Deferred
         };
         static_assert(sizeof(TexBindingSlotsEachShader) / sizeof(TexBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");
@@ -316,7 +316,7 @@ namespace renderer
             {  0 }, // Texture
             { -1 }, // Color
             {  0 }, // DebugHUD
-            {  0 }, // Geometry
+            {  0 }, // Deferred
         };
         static_assert(sizeof(SamplerBindingSlotsEachShader) / sizeof(SamplerBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");

@@ -19,7 +19,22 @@ cbuffer CbMatViewProj : register(b1)
     matrix MatViewProj;
 }
 
+cbuffer CbMatLightViewProj : register(b2)
+{
+    matrix MatLightViewProj;
+}
 
+cbuffer CbLightProperty : register(b3)
+{
+    float4 vLightColor;
+    float4 vLightDir;
+}
+
+cbuffer CbCamera : register(b4)
+{
+    float3 Position;
+    float Reserve;
+}
 
 struct VsInput
 {
@@ -36,8 +51,7 @@ struct PsInput
 PsInput main(VsInput vsInput)
 {
     PsInput psInput = (PsInput)0;
-    vsInput.Pos = mul(vsInput.Pos, MatWorld);
-    psInput.Pos = mul(vsInput.Pos, MatViewProj);
+    psInput.Pos = vsInput.Pos;
     psInput.UV = vsInput.Tex;
 	return psInput;
 }

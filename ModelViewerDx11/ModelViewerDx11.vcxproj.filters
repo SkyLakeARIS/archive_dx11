@@ -225,8 +225,8 @@
     <FxCompile Include="Renderer\Shaders\VsSkybox.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsScreen.hlsl" />
     <FxCompile Include="Renderer\Shaders\VsShadow.hlsl" />
-    <FxCompile Include="Renderer\Shaders\VsGeometry.hlsl" />
-    <FxCompile Include="Renderer\Shaders\PsGeometry.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsDeferred.hlsl" />
+    <FxCompile Include="Renderer\Shaders\PsDeferred.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsTextureMRT.hlsl" />
   </ItemGroup>
   <ItemGroup>

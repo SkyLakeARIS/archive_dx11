@@ -26,7 +26,7 @@ namespace renderer
         Texture,
         Color,
         DebugHUD,
-        Geometry,
+        Deferred,
         ShaderCount
     };
 
