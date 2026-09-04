@@ -27,6 +27,7 @@ Application::Application()
     , mWindowHeight(720)
     , mAppFrameRate(120)
     , mWindow(nullptr)
+    , mNdcMeshDeferred{}
     , mCurSubMeshIndexFocusModel(0)
     , mCommandCache()
     , mRenderer(nullptr)
@@ -254,6 +255,16 @@ bool Application::initializeScene()
 
     mLightIcon->SetTexture(lightIconTexID, lightIconSerialID);
 
+    renderer::MeshGenerator::CreateNdcPlane(mNdcMeshDeferred);
+    renderer:renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Diffuse)] = renderer::TextureManager::sGBufferColorTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Diffuse)] = renderer::TextureManager::sGBufferColorTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Normal)] = renderer::TextureManager::sGBufferNormalTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Normal)] = renderer::TextureManager::sGBufferNormalTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sGBufferDepthTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sGBufferNormalTexSerialID;
     return true;
 }
 
@@ -458,6 +469,28 @@ void Application::updateScene()
             ASSERT(false, "Deferred는 Renderer 내부에서만 사용하므로 외부에서 사용할 수 없습니다.");
         }
     }
+
+    renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
+    renderer::RenderPacket deferredCommand = renderer::RenderPacket::MakeCommand(
+        renderer::eVertexFormat::PT,
+        renderer::GetVertexStrideSize(renderer::eVertexFormat::PT),
+        renderer::eBufferUsage::Static,
+        false,
+        subMeshNdcPlane.VertexRange,
+        subMeshNdcPlane.IndexRange,
+        subMeshNdcPlane.Material,
+        renderer::eRenderPass::Deferred,
+        XMMatrixIdentity(),
+        renderer::eShader::Deferred,
+        renderer::eRasterType::Basic,
+        renderer::eSamplerType::AnisotropicWrap,
+        renderer::eBlendState::Opaque,
+        renderer::ePrimitiveTopology::Triangles,
+        true,
+        renderer::eDepthStencilState::DepthOffStencilOff
+    );
+    mCommandList.push_back(deferredCommand);
+
     std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }
 
@@ -602,6 +635,12 @@ void Application::renderScene()
             if(mCommandCache.RenderPass == renderer::eRenderPass::UI)
             {
                 mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
+            }
+            else if (mCommandCache.RenderPass == renderer::eRenderPass::Deferred)
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Normal)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
             }
             else
             {

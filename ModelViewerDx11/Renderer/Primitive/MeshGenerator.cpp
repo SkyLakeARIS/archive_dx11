@@ -291,4 +291,48 @@ namespace renderer
 
         outMesh.SubMeshes.push_back(std::move(newSubMesh));
     }
+
+    void MeshGenerator::CreateNdcPlane(Mesh& outMesh)
+    {
+        const VertexPT vertices[] =
+        {
+            {XMFLOAT3(-1.0f, -1.0f, 0.0f), XMFLOAT2(0.0f, 1.0f)}, // lb
+            {XMFLOAT3(-1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f)}, // lt
+            {XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(1.0f, 0.0f)}, // rt
+            {XMFLOAT3(1.0f, -1.0f, 0.0f), XMFLOAT2(1.0f, 1.0f)}, // rb
+        };
+
+        constexpr uint32_t indices[] =
+        {
+            0,
+            1,
+            2,
+            0,
+            2,
+            3,
+        };
+
+        outMesh.VertexFormat = eVertexFormat::PT;
+        SubMesh newSubMesh = {};
+
+        int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
+        const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_NdcPlane.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH));
+        ASSERT(pathLength < util::MAX_PATH_LENGTH, "file path too long. length(%d), limit(%d)", pathLength, util::MAX_PATH_LENGTH);
+
+        (void)memcpy(outMesh.MeshName, virtualFilePath, pathLength + 1);
+        (void)memcpy(newSubMesh.SubMeshName, virtualFilePath, pathLength + 1);
+        outMesh.MeshHash = util::GetDjb2Hash(virtualFilePath);
+        newSubMesh.SubMeshHash = outMesh.MeshHash;
+
+        const int16_t strideVertex = GetVertexStrideSize(outMesh.VertexFormat);
+        const int16_t strideIndex = sBufferManager->GetIndexStrideSize();
+
+        sBufferManager->AddVertex(reinterpret_cast<const int8_t*>(vertices), sizeof(vertices), newSubMesh.SubMeshHash, strideVertex, newSubMesh.VertexRange);
+        sBufferManager->AddIndex(reinterpret_cast<const int8_t*>(indices), sizeof(indices), newSubMesh.SubMeshHash, strideIndex, newSubMesh.IndexRange);
+
+        outMesh.VertexRange = newSubMesh.VertexRange;
+        outMesh.IndexRange = newSubMesh.IndexRange;
+
+        outMesh.SubMeshes.push_back(std::move(newSubMesh));
+    }
 }
