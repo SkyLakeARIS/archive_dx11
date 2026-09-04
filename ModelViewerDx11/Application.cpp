@@ -450,6 +450,14 @@ void Application::updateScene()
     mGBufferNormalDebugPanel->SubmitCommand(mCommandList);
     mGBufferDepthDebugPanel->SubmitCommand(mCommandList);
 
+    // MEMO: Renderer 전용 pass를 사용하는 command가 존재하는지 검사하여 assertion.
+    for(renderer::RenderPacket& command : mCommandList)
+    {
+        if(command.RenderPass == renderer::eRenderPass::Deferred)
+        {
+            ASSERT(false, "Deferred는 Renderer 내부에서만 사용하므로 외부에서 사용할 수 없습니다.");
+        }
+    }
     std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }
 
