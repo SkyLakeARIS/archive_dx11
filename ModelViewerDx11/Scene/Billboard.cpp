@@ -25,6 +25,7 @@ namespace scene
     {
 
         renderer::MeshGenerator::CreatePlane(mMesh);
+        mMesh.SubMeshes.front().Material.Factors.IsLitOn = static_cast<float>(false);
     }
 
     void Billboard::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)

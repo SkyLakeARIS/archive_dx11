@@ -135,6 +135,7 @@ namespace scene
             (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
             newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
             newSubMesh.Material.Factors.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);
+            newSubMesh.Material.Factors.IsLitOn = static_cast<float>(false);
 
             mMeshDebug.SubMeshes.push_back(std::move(newSubMesh));
         }

@@ -16,6 +16,7 @@ namespace scene
         for (auto& subMesh : mMesh.SubMeshes)
         {
             subMesh.Material.Factors.Diffuse = XMFLOAT3(0.0f, 1.0f, 0.0f);
+            subMesh.Material.Factors.IsLitOn = static_cast<float>(true);
         }
     }
 

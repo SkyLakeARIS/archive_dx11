@@ -68,7 +68,7 @@ namespace renderer
             newSubMesh.MaxBound = std::move(subMesh.MaxBound);
 
             newSubMesh.Material.Factors = std::move(subMesh.MaterialParam);
-
+            newSubMesh.Material.Factors.IsLitOn = static_cast<float>(true);
 
             for (int32_t tex = 0; tex < static_cast<int32_t>(eTextureType::TextureTypeCount); ++tex)
             {
