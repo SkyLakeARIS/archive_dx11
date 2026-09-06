@@ -60,7 +60,7 @@ PS_INPUT main(VS_INPUT input)
     PS_INPUT output = (PS_INPUT) 0;
 
     output.Pos = mul(input.Pos, MatWorld);
-    output.WorldNormal = mul(float4(input.Pos.xyz, 0.0), MatWorld);
+    output.WorldNormal = mul(float4(input.Norm, 0.0), MatWorld);
     output.WorldPosition = output.Pos;
     output.Pos = mul(output.Pos, MatViewProj);
 

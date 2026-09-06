@@ -52,7 +52,11 @@ namespace scene
 
     void Light::Update(renderer::Renderer& renderer)
     {
-        mMatView = XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&mDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
+        XMVECTOR vPosition = XMLoadFloat3(&mPosition);
+        XMVECTOR vDirection = XMLoadFloat3(&mDirection);
+        XMFLOAT3 lookAt;
+        XMStoreFloat3(&lookAt, (vPosition + vDirection));
+        mMatView = XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&lookAt), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
         mMatProj = XMMatrixOrthographicLH(-10.0f, 10.0f, mNearPlane, mFarPlane);
         mMatViewProj = mMatView * mMatProj;
 

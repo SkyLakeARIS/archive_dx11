@@ -225,7 +225,13 @@ bool Application::initializeScene()
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(0), XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
+    const XMFLOAT3 lightPosition = XMFLOAT3(0.0f, 20.0f, 50.0f);
+    const XMFLOAT3 lightLookAt = mCharacter->GetCenterPoint(0);
+    const XMVECTOR vLightPosition = XMLoadFloat3(&lightPosition);
+    const XMVECTOR vLightLookAt = XMLoadFloat3(&lightLookAt);
+    XMFLOAT3 lightDir;
+    XMStoreFloat3(&lightDir, vLightLookAt - vLightPosition);
+    mLight = new scene::Light(lightPosition, lightDir, XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
     mLight->Update(*mRenderer);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
@@ -445,10 +451,10 @@ void Application::updateScene()
     cbLightVpMat.Matrix = XMMatrixTranspose(mLight->GetViewProjMatrix());
     mShaderManager->UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
 
-    const XMFLOAT3 lightPosition(mLight->GetPosition());
+    const XMFLOAT4 lightDirection(mLight->GetDirection());
     renderer::CbLightProperty cbLightProperty;
     cbLightProperty.First = mLight->GetColor();
-    cbLightProperty.Second = XMFLOAT4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
+    cbLightProperty.Second = XMFLOAT4(lightDirection.x, lightDirection.y, lightDirection.z, 0.0f);
     mShaderManager->UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
 
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
@@ -456,6 +462,7 @@ void Application::updateScene()
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
     mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
+    const XMFLOAT3 lightPosition(mLight->GetPosition());
     mLightIcon->SetPosition(lightPosition);
     mLightIcon->UpdateScaleMatrix(mCamera->GetViewMatrix());
 
