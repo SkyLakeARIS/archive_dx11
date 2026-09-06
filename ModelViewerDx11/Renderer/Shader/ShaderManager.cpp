@@ -272,11 +272,11 @@ namespace renderer
         constexpr MaterialCbBinding MaterialCbTableEachShader[] =
         {
             { eCbType::CbOutlineProperty,   false,  6 }, // Outline
-            { eCbType::ConstantBufferCount, false, -1 }, // Skybox
+            { eCbType::CbMaterialFactors,   true,   0 }, // Skybox
             { eCbType::ConstantBufferCount, false, -1 }, // Shadow
-            { eCbType::CbMaterialFactors,          true,   0 }, // BasicWithShadow
-            { eCbType::ConstantBufferCount, false, -1 }, // Texture
-            { eCbType::CbColor,             true,   0 }, // Color
+            { eCbType::CbMaterialFactors,   true,   0 }, // BasicWithShadow
+            { eCbType::CbMaterialFactors,   true,   0 }, // Texture
+            { eCbType::CbMaterialFactors,   true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD
             { eCbType::ConstantBufferCount, false, -1 }, // Deferred
         };
@@ -288,15 +288,15 @@ namespace renderer
     {
         constexpr int8_t TexBindingSlotsEachShader[static_cast<uint8_t>(eShader::ShaderCount)][static_cast<uint8_t>(eTextureType::TextureTypeCount)] =
         {
-            // Diffuse, Normal, Shadow
-            { -1, -1, -1 }, // Outline
-            {  0, -1, -1 }, // Skybox
-            { -1, -1, -1 }, // Shadow
-            {  0,  1,  2 }, // BasicWithShadow
-            {  0, -1, -1 }, // Texture
-            { -1, -1, -1 }, // Color
-            {  0, -1, -1 }, // DebugHUD
-            {  0, 1, 2 }, // Deferred
+            // Diffuse, Normal, Shadow, GColor, GNormal, GPosition, GSpecular, GAmbient
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Outline
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // Skybox
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Shadow
+            {  0,  1,  2, -1, -1, -1, -1, -1 }, // BasicWithShadow
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // Texture
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Color
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // DebugHUD
+            { -1, -1, -1,  0,  1,  2,  3,  4}, // Deferred
         };
         static_assert(sizeof(TexBindingSlotsEachShader) / sizeof(TexBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");

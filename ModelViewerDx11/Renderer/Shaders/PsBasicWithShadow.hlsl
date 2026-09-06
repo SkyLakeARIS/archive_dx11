@@ -18,20 +18,24 @@ cbuffer cbMaterialFactors : register(b0)
     float3 Specular;  // 스페큘러 거듭제곱 값
     float Shininess;
     float3 Emissive;
-    float Reserve1;
+    float IsLitOn;
 }
 
 struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
     float2 UV : TEXCOORD0;
+    float3 WorldNormal : TEXCOORD1;
+    float3 WorldPosition : TEXCOORD2;
 };
 
 struct PsOutput
 {
-    float3 Color : SV_TARGET0;
-    float3 Normal : SV_TARGET1;
-    float Depth : SV_TARGET2;
+    float4 Color : SV_TARGET0;      // w - reserved
+    float4 Normal : SV_TARGET1;     // w - reserved
+    float4 Position: SV_TARGET2;    // w - Lit On/Off
+    float4 Specular : SV_TARGET3;   // w - Shininess
+    float4 Ambient: SV_TARGET4;     // w - reserved
 };
 
 
@@ -39,9 +43,12 @@ PsOutput main(PS_INPUT input)
 {
     PsOutput psOutput = (PsOutput)0;
 
+    const float Reserved = 0.0;
     psOutput.Color = texModel.Sample(samLinear, input.UV);
-    psOutput.Normal = texNormal.Sample(samLinear, input.UV); // face는 _N 텍스쳐가 없음.
-    psOutput.Depth = input.Pos.z;
+    psOutput.Position = float4(input.WorldPosition, IsLitOn);
+    psOutput.Normal = float4(input.WorldNormal, Reserved);
+    psOutput.Specular = float4(Specular, Shininess);
+    psOutput.Ambient = float4(Ambient, Reserved);
 
     return psOutput;
 }

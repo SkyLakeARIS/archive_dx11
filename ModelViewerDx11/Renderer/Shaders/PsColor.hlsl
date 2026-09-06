@@ -1,27 +1,38 @@
-cbuffer cbColor : register(b0)
+cbuffer cbMaterialFactors : register(b0)
 {
-    float3 Color;
-    float Reserve;
+    float3 Diffuse;
+    float Opacity;
+    float3 Ambient;
+    float Reflectivity;
+    float3 Specular;
+    float Shininess;
+    float3 Emissive;
+    float IsLitOn;
 }
-
 
 struct PsInput
 {
     float4 Pos : SV_POSITION;
+    float3 WorldPosition : TEXCOORD2;
 };
 
 struct PsOutput
 {
-    float3 Color : SV_TARGET0;
-    float3 Normal : SV_TARGET1;
-    float Depth : SV_TARGET2;
+    float4 Color : SV_TARGET0;      // w - reserved
+    float4 Normal : SV_TARGET1;     // w - reserved
+    float4 Position : SV_TARGET2;    // w - Lit On/Off
+    float4 Specular : SV_TARGET3;   // w - Shininess
+    float4 Ambient : SV_TARGET4;     // w - reserved
 };
 
 PsOutput main(PsInput input)
 {
     PsOutput psOutput = (PsOutput)0;
-    psOutput.Color = Color;
-    psOutput.Normal = float3(1.0, 0.0, 0.0);
-    psOutput.Depth = input.Pos.z;
+    const float Reserved = 0.0;
+    psOutput.Color = float4(Diffuse, Reserved);
+    psOutput.Normal = float4(0.0, 0.0, 0.0, Reserved);
+    psOutput.Position = float4(input.WorldPosition, IsLitOn);
+    psOutput.Specular = float4(0.0, 0.0, 0.0, 0.0);
+    psOutput.Ambient = float4(0.0, 0.0, 0.0, Reserved);
     return psOutput;
 }

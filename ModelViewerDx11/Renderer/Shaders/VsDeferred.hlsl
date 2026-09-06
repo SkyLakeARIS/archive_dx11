@@ -46,6 +46,9 @@ struct PsInput
 {
     float4 Pos : SV_POSITION;
     float2 UV : TEXCOORD0;
+    nointerpolation float3 CameraPosition : TEXCOORD1;
+    nointerpolation float4 LightColor : TEXCOORD2;
+    nointerpolation float4 LightDir : TEXCOORD3;
 };
 
 PsInput main(VsInput vsInput)
@@ -53,5 +56,8 @@ PsInput main(VsInput vsInput)
     PsInput psInput = (PsInput)0;
     psInput.Pos = vsInput.Pos;
     psInput.UV = vsInput.Tex;
+    psInput.CameraPosition = Position;
+    psInput.LightColor = vLightColor;
+    psInput.LightDir = vLightDir;
 	return psInput;
 }

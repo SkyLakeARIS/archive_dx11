@@ -562,9 +562,16 @@ void Application::renderScene()
             mRenderer->BindCbToVsByType(5, 1, renderer::eCbType::CbOrthoMatrix);
 
             // MEMO: Material 바인딩
-            if (command.RenderState.CbBindingDesc.BindSlot >= 0)
+            if(command.RenderState.CbBindingDesc.BindSlot >= 0)
             {
-                mRenderer->BindCbToPs(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                if (command.RenderState.CbBindingDesc.bBindPixelShader)
+                {
+                    mRenderer->BindCbToPs(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                }
+                else
+                {
+                    mRenderer->BindCbToVsByType(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                }
             }
         }
 

@@ -48,6 +48,8 @@ struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
     float2 UV : TEXCOORD0;
+    float3 WorldNormal : TEXCOORD1;
+    float3 WorldPosition : TEXCOORD2;
 };
 
 //--------------------------------------------------------------------------------------
@@ -58,6 +60,8 @@ PS_INPUT main(VS_INPUT input)
     PS_INPUT output = (PS_INPUT) 0;
 
     output.Pos = mul(input.Pos, MatWorld);
+    output.WorldNormal = mul(float4(input.Pos.xyz, 0.0), MatWorld);
+    output.WorldPosition = output.Pos;
     output.Pos = mul(output.Pos, MatViewProj);
 
     output.UV = input.Tex;

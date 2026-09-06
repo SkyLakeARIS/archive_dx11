@@ -27,12 +27,14 @@ struct VsInput
 struct PsInput
 {
     float4 Pos : SV_POSITION;
+    float3 WorldPosition : TEXCOORD2;
 };
 
 PsInput main(VsInput input)
 {
     PsInput output;
     output.Pos = mul(input.Pos, MatWorld);
+    output.WorldPosition = output.Pos;
     output.Pos = mul(output.Pos, MatViewProj);
     return output;
 }

@@ -14,7 +14,7 @@ namespace renderer
         XMFLOAT3 Specular;  // 스페큘러 거듭제곱 값
         float    Shininess;
         XMFLOAT3 Emissive;
-        float    Reserve1;
+        float    IsLitOn; // MEMO: Lighting을 받을건지? - 모든 SubMesh가 가지는 값이므로 Reserved 공간을 활용
     };
     typedef MaterialFactors CbMaterialFactors;
 
