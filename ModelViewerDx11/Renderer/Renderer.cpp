@@ -64,7 +64,7 @@ namespace renderer
 
     void Renderer::registerSrvTexture()
     {
-        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);
+        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
         TextureManager::sShadowTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sShadowTexHash);
 
         mTextureManager->AddTextureByHash(TextureManager::sGBufferColorTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferColor)]);
@@ -73,8 +73,14 @@ namespace renderer
         mTextureManager->AddTextureByHash(TextureManager::sGBufferNormalTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferNormal)]);
         TextureManager::sGBufferNormalTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferNormalTexHash);
 
-        mTextureManager->AddTextureByHash(TextureManager::sGBufferDepthTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferDepth)]);
-        TextureManager::sGBufferDepthTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferDepthTexHash);
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferPositionTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferPosition)]);
+        TextureManager::sGBufferPositionTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferPositionTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferSpecularTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferSpecular)]);
+        TextureManager::sGBufferSpecularTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferSpecularTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferAmbientTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferAmbient)]);
+        TextureManager::sGBufferAmbientTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferAmbientTexHash);
     }
 
     Renderer::Renderer()
@@ -433,8 +439,14 @@ namespace renderer
         const RenderTargetBindDesc BindDescMap[] =
         {
             {eRenderPass::Main,
-             3,
-                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)], mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferDepth)], nullptr, nullptr, nullptr, nullptr, nullptr} ,
+             5,
+                {
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferPosition)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferSpecular)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferAmbient)],
+                    nullptr, nullptr, nullptr} ,
                 mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
             },
             {eRenderPass::Shadow,
@@ -505,10 +517,11 @@ namespace renderer
         {
             DXGI_FORMAT_UNKNOWN,
             DXGI_FORMAT_UNKNOWN,
-            DXGI_FORMAT_R32G32B32A32_FLOAT,
-            DXGI_FORMAT_R16G16B16A16_FLOAT,
-            // MEMO: DXGI_FORMAT_R32_TYPELESS 는 허용되지 않음
-            DXGI_FORMAT_R32_FLOAT
+            DXGI_FORMAT_R32G32B32A32_FLOAT, // GBufferColor
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferNormal
+            DXGI_FORMAT_R32G32B32A32_FLOAT, // GBufferPosition
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferSpecular
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferAmbient
         };
         static_assert(std::size(TexFormatByBufferType) == static_cast<size_t>(eRenderTarget::RenderTargetCount), "Format 테이블은 RenderTarget 수와 일치해야 합니다.");
 
@@ -727,7 +740,7 @@ namespace renderer
         desc.Texture2D.MipLevels = 1;
         desc.Texture2D.MostDetailedMip = 0;
         desc.Format = DXGI_FORMAT_R32_FLOAT;
-        result = mDevice->CreateShaderResourceView(mTexShadow, &desc, &mShadowSrv);
+        result = mDevice->CreateShaderResourceView(mTexShadow, &desc, &mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
         if (FAILED(result))
         {
             ASSERT(false, "Failed to create mTexShadow");

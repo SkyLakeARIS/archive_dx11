@@ -52,7 +52,9 @@ namespace renderer
         Shadow,
         GBufferColor,
         GBufferNormal,
-        GBufferDepth,
+        GBufferPosition,
+        GBufferSpecular,
+        GBufferAmbient,
         RenderTargetCount
     };
 

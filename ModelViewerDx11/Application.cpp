@@ -638,9 +638,11 @@ void Application::renderScene()
             }
             else if (mCommandCache.RenderPass == renderer::eRenderPass::Deferred)
             {
-                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
-                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Normal)]);
-                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)]);
             }
             else
             {

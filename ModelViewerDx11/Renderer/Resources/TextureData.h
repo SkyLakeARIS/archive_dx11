@@ -9,6 +9,11 @@ namespace renderer
         Diffuse,
         Normal,
         Shadow,
+        GBufferColor,
+        GBufferNormal,
+        GBufferPosition,
+        GBufferSpecular,
+        GBufferAmbient,
         TextureTypeCount,
     };
 
