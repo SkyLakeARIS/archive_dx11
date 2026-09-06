@@ -36,8 +36,12 @@ namespace renderer
         static int16_t sGBufferColorTexSerialID;
         static HashID sGBufferNormalTexHash;
         static int16_t sGBufferNormalTexSerialID;
-        static HashID sGBufferDepthTexHash;
-        static int16_t sGBufferDepthTexSerialID;
+        static HashID sGBufferPositionTexHash;
+        static int16_t sGBufferPositionTexSerialID;
+        static HashID sGBufferSpecularTexHash;
+        static int16_t sGBufferSpecularTexSerialID;
+        static HashID sGBufferAmbientTexHash;
+        static int16_t sGBufferAmbientTexSerialID;
     private:
         static HashID sDefaultTexHash;
     private:

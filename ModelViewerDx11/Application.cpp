@@ -46,7 +46,9 @@ Application::Application()
     , mShadowDebugPanel(nullptr)
     , mGBufferColorDebugPanel(nullptr)
     , mGBufferNormalDebugPanel(nullptr)
-    , mGBufferDepthDebugPanel(nullptr)
+    , mGBufferPositionDebugPanel(nullptr)
+    , mGBufferSpecularDebugPanel(nullptr)
+    , mGBufferAmbientDebugPanel(nullptr)
 {
     mRenderer = new renderer::Renderer();
     mImporter = new renderer::ModelImporter();
@@ -59,7 +61,9 @@ Application::~Application()
     delete mShadowDebugPanel;
     delete mGBufferColorDebugPanel;
     delete mGBufferNormalDebugPanel;
-    delete mGBufferDepthDebugPanel;
+    delete mGBufferPositionDebugPanel;
+    delete mGBufferSpecularDebugPanel;
+    delete mGBufferAmbientDebugPanel;
     mDirectInput->Release();
     delete mDirectInput;
     mDirectInput = nullptr;
@@ -238,9 +242,17 @@ bool Application::initializeScene()
     const int16_t gBufferNormalTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferNormalTexHash);
     mGBufferNormalDebugPanel->SetDebugType(renderer::TextureManager::sGBufferNormalTexHash, gBufferNormalTexSerial);
 
-    mGBufferDepthDebugPanel = new ui::DebugPanel(600, 0, 200, 200);
-    const int16_t gBufferDepthTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferDepthTexHash);
-    mGBufferDepthDebugPanel->SetDebugType(renderer::TextureManager::sGBufferDepthTexHash, gBufferDepthTexSerial);
+    mGBufferPositionDebugPanel = new ui::DebugPanel(600, 0, 200, 200);
+    const int16_t gBufferDepthTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferPositionTexHash);
+    mGBufferPositionDebugPanel->SetDebugType(renderer::TextureManager::sGBufferPositionTexHash, gBufferDepthTexSerial);
+
+    mGBufferSpecularDebugPanel= new ui::DebugPanel(800, 0, 200, 200);
+    const int16_t gBufferSpecularTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferSpecularTexHash);
+    mGBufferSpecularDebugPanel->SetDebugType(renderer::TextureManager::sGBufferSpecularTexHash, gBufferSpecularTexSerial);
+
+    mGBufferAmbientDebugPanel= new ui::DebugPanel(1000, 0, 200, 200);
+    const int16_t gBufferAmbientTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferAmbientTexHash);
+    mGBufferAmbientDebugPanel->SetDebugType(renderer::TextureManager::sGBufferAmbientTexHash, gBufferAmbientTexSerial);
 
     mLightIcon = new scene::Billboard();
     mLightIcon->Initialize(*mRenderer);
@@ -257,14 +269,20 @@ bool Application::initializeScene()
 
     renderer::MeshGenerator::CreateNdcPlane(mNdcMeshDeferred);
     renderer:renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
-    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Diffuse)] = renderer::TextureManager::sGBufferColorTexHash;
-    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Diffuse)] = renderer::TextureManager::sGBufferColorTexSerialID;
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexSerialID;
 
-    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Normal)] = renderer::TextureManager::sGBufferNormalTexHash;
-    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Normal)] = renderer::TextureManager::sGBufferNormalTexSerialID;
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)] = renderer::TextureManager::sGBufferNormalTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)] = renderer::TextureManager::sGBufferNormalTexSerialID;
 
-    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sGBufferDepthTexHash;
-    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sGBufferNormalTexSerialID;
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)] = renderer::TextureManager::sGBufferPositionTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)] = renderer::TextureManager::sGBufferPositionTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)] = renderer::TextureManager::sGBufferSpecularTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)] = renderer::TextureManager::sGBufferSpecularTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)] = renderer::TextureManager::sGBufferAmbientTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)] = renderer::TextureManager::sGBufferAmbientTexSerialID;
     return true;
 }
 
@@ -459,7 +477,9 @@ void Application::updateScene()
     mShadowDebugPanel->SubmitCommand(mCommandList);
     mGBufferColorDebugPanel->SubmitCommand(mCommandList);
     mGBufferNormalDebugPanel->SubmitCommand(mCommandList);
-    mGBufferDepthDebugPanel->SubmitCommand(mCommandList);
+    mGBufferPositionDebugPanel->SubmitCommand(mCommandList);
+    mGBufferSpecularDebugPanel->SubmitCommand(mCommandList);
+    mGBufferAmbientDebugPanel->SubmitCommand(mCommandList);
 
     // MEMO: Renderer 전용 pass를 사용하는 command가 존재하는지 검사하여 assertion.
     for(renderer::RenderPacket& command : mCommandList)

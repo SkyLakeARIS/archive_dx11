@@ -83,5 +83,7 @@ private:
     ui::DebugPanel* mShadowDebugPanel;
     ui::DebugPanel* mGBufferColorDebugPanel;
     ui::DebugPanel* mGBufferNormalDebugPanel;
-    ui::DebugPanel* mGBufferDepthDebugPanel;
+    ui::DebugPanel* mGBufferPositionDebugPanel;
+    ui::DebugPanel* mGBufferSpecularDebugPanel;
+    ui::DebugPanel* mGBufferAmbientDebugPanel;
 };
