@@ -36,7 +36,7 @@ PsOutput main(PsInput psInput)
     PsOutput psOutput;
     psOutput.Color = cubeTexture.Sample(cubeSampler, psInput.TexCoord);
     const float Reserved = 0.0f;
-    psOutput.Normal = float4(0.0f, 0.0f, 0.0f, Reserved);
+    psOutput.Normal = float4(1.0f, 0.0f, 0.0f, Reserved);
     psOutput.Position = float4(psInput.WorldPosition, IsLitOn);
     psOutput.Specular = float4(0.0f, 0.0f, 0.0f, 0.0f);
     psOutput.Ambient = float4(0.0f, 0.0f, 0.0f, Reserved);
