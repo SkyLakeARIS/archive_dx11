@@ -49,6 +49,7 @@ struct PsInput
     nointerpolation float3 CameraPosition : TEXCOORD1;
     nointerpolation float4 LightColor : TEXCOORD2;
     nointerpolation float4 LightDir : TEXCOORD3;
+    nointerpolation matrix MatLightViewProj : TEXCOORD4;
 };
 
 PsInput main(VsInput vsInput)
@@ -59,5 +60,6 @@ PsInput main(VsInput vsInput)
     psInput.CameraPosition = Position;
     psInput.LightColor = vLightColor;
     psInput.LightDir = vLightDir;
+    psInput.MatLightViewProj = MatLightViewProj;
 	return psInput;
 }

@@ -296,7 +296,7 @@ namespace renderer
             {  0, -1, -1, -1, -1, -1, -1, -1 }, // Texture
             { -1, -1, -1, -1, -1, -1, -1, -1 }, // Color
             {  0, -1, -1, -1, -1, -1, -1, -1 }, // DebugHUD
-            { -1, -1, -1,  0,  1,  2,  3,  4}, // Deferred
+            { -1, -1, 5,  0,  1,  2,  3,  4}, // Deferred
         };
         static_assert(sizeof(TexBindingSlotsEachShader) / sizeof(TexBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");

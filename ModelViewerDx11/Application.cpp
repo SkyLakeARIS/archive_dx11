@@ -275,6 +275,9 @@ bool Application::initializeScene()
 
     renderer::MeshGenerator::CreateNdcPlane(mNdcMeshDeferred);
     renderer:renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sShadowTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sShadowTexSerialID;
+
     subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexHash;
     subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexSerialID;
 
@@ -672,6 +675,7 @@ void Application::renderScene()
             }
             else if (mCommandCache.RenderPass == renderer::eRenderPass::Deferred)
             {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
                 mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)]);
                 mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)]);
                 mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)]);
