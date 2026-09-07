@@ -307,22 +307,22 @@ namespace renderer
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
         depthDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
         depthDesc.MiscFlags = 0;
-
-        CreateTexture2D(depthDesc, &mDepthStencilTexture, "Renderer::DepthStencilTexture");
+        ID3D11Texture2D* depthStencilTexture = nullptr;
+        CreateTexture2D(depthDesc, &depthStencilTexture, "Renderer::depthStencilTexture");
 
         D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
         depthStencilViewDesc.Format = depthDesc.Format;
         depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
         depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-        result = CreateDepthStencilView(mDepthStencilTexture, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]);
+        result = CreateDepthStencilView(depthStencilTexture, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]);
         if (FAILED(result))
         {
             ASSERT(false, "mDepthStencilView 생성 실패");
             return E_FAIL;
         }
         SET_PRIVATE_DATA(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], "eRenderTarget::Default");
-
+        SAFETY_RELEASE(depthStencilTexture);
         uint32_t index = static_cast<uint8_t>(eRenderTarget::Default);
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].RenderTargetIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].DepthStencilIndex = index;
