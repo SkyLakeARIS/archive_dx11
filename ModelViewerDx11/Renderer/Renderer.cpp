@@ -686,21 +686,21 @@ namespace renderer
         depthDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
         depthDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
         depthDesc.MiscFlags = 0;
-
-        CreateTexture2D(depthDesc, &mTexColor, "Renderer::mTexColor"); // mTexShadow
+        ID3D11Texture2D* texColor = nullptr;
+        CreateTexture2D(depthDesc, &texColor, "Renderer::texColor"); // mTexShadow
 
 
         D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
         rtvDesc.Format = depthDesc.Format;
         rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
         rtvDesc.Texture2D.MipSlice = 0;
-        HRESULT result = CreateRenderTargetView(mTexColor, &rtvDesc, &mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowRtv
+        HRESULT result = CreateRenderTargetView(texColor, &rtvDesc, &mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowRtv
         if (FAILED(result))
         {
             return E_FAIL;
         }
         SET_PRIVATE_DATA(mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)], "eRenderTarget::Shadow");
-        SAFETY_RELEASE(mTexColor);
+        SAFETY_RELEASE(texColor);
 
         mViewportTex.Width    = static_cast<float>(texWidth);
         mViewportTex.Height   = static_cast<float>(texHeight);
@@ -714,14 +714,15 @@ namespace renderer
      
         depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-        CreateTexture2D(depthDesc, &mTexShadow, "Renderer::mTexShadow"); // mTexShadow
+        ID3D11Texture2D* texShadow = nullptr;
+        CreateTexture2D(depthDesc, &texShadow, "Renderer::texShadow"); // mTexShadow
 
         D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
         depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
         depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
         depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-        result = CreateDepthStencilView(mTexShadow, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowDsv
+        result = CreateDepthStencilView(texShadow, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowDsv
         if (FAILED(result))
         {
             ASSERT(false, "mShadowDsv 생성 실패");
@@ -740,13 +741,13 @@ namespace renderer
         desc.Texture2D.MipLevels = 1;
         desc.Texture2D.MostDetailedMip = 0;
         desc.Format = DXGI_FORMAT_R32_FLOAT;
-        result = mDevice->CreateShaderResourceView(mTexShadow, &desc, &mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
+        result = mDevice->CreateShaderResourceView(texShadow, &desc, &mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
         if (FAILED(result))
         {
-            ASSERT(false, "Failed to create mTexShadow");
+            ASSERT(false, "Failed to create texShadow");
         }
 
-        SAFETY_RELEASE(mTexShadow);
+        SAFETY_RELEASE(texShadow);
 
         return S_OK;
     }
