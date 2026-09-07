@@ -220,7 +220,7 @@ bool Application::initializeScene()
     mSkybox = new scene::Sky();
     mSkybox->Initialize(10, 10, mTextureManager);
 
-    mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    mRenderer->BindPrimitiveTopologyByType(renderer::ePrimitiveTopology::Triangles);
     mCamera->ChangeFocus(mCharacter->GetCenterPoint(0));
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);

@@ -3,8 +3,6 @@
 // 여러개 만들어도 된다. 컴파일 할 때 함수명만 잘 지정해두면. (여러 셰이더 컴파일 해두고, blob만 바꿔서 런타임에 쓰도록 하는것?)
 //--------------------------------------------------------------------------------------
 Texture2D texModel : register(t0);
-Texture2D texNormal : register(t1);
-Texture2D texShadow : register(t2);
 
 SamplerState texSampler : register(s0);
 

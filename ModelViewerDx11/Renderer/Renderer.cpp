@@ -90,16 +90,11 @@ namespace renderer
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
         , mSwapChain(nullptr)
-        , mDepthStencilTexture(nullptr)
         , mDepthStencilStates{}
         , mRenderTargetViewList{nullptr}
         , mDepthStencilViewList{nullptr}
         , mRtvDsMapTable{}
         , mRenderTargetSRVs{}
-        , mTexShadow(nullptr)
-        , mTexColor(nullptr)
-        , mShadowSrv(nullptr)
-        , mCascadeShadowSrvList(nullptr)
         , mViewportFull()
         , mViewportTex()
         , mRasterStates{nullptr}
@@ -610,13 +605,6 @@ namespace renderer
         return result;
     }
 
-    void Renderer::BindRenderTargetTo(eRenderTarget type)
-    {
-        RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
-
-        mDeviceContext->OMSetRenderTargets(rtvDs.NumViews, &mRenderTargetViewList[rtvDs.RenderTargetIndex], mDepthStencilViewList[rtvDs.DepthStencilIndex]);
-    }
-
     void Renderer::BindRenderTargetByRenderPass(eRenderPass pass)
     {
         ASSERT(pass != eRenderPass::PassCount, "올바르지 않은 RenderPass Type. pass(%d)", static_cast<uint8_t>(pass));
@@ -823,24 +811,10 @@ namespace renderer
         }
     }
 
-    void Renderer::BindDefaultTextureToPs(uint32_t slot) const
-    {
-        HashID hash = 0;
-        int16_t serial = 0;
-        mTextureManager->GetDefaultTexture(hash, serial);
-        ID3D11ShaderResourceView* const srv = mTextureManager->GetTextureByHash(hash);
-        mDeviceContext->PSSetShaderResources(slot, 1, &srv);
-    }
-
     void Renderer::UnbindTexturePs(uint32_t slot) const
     {
         ID3D11ShaderResourceView* unbindSRV = nullptr;
         mDeviceContext->PSSetShaderResources(slot, 1, &unbindSRV);
-    }
-
-    void Renderer::BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const
-    {
-        mDeviceContext->IASetPrimitiveTopology(topology);
     }
 
     void Renderer::BindPrimitiveTopologyByType(ePrimitiveTopology topology) const
@@ -942,10 +916,6 @@ namespace renderer
             SAFETY_RELEASE(mRenderTargetSRVs[i]);
         }
 
-        SAFETY_RELEASE(mTexShadow);
-        SAFETY_RELEASE(mTexColor);
-        SAFETY_RELEASE(mShadowSrv);
-        SAFETY_RELEASE(mDepthStencilTexture);
         for (uint32_t state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
         {
             SAFETY_RELEASE(mDepthStencilStates[state]);
