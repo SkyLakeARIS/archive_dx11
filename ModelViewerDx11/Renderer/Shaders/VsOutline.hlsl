@@ -37,12 +37,12 @@ struct PsInput
     float2 TexCoord : TEXCOORD0;
 };
 
-PsInput main(VsInput input)
+PsInput main(VsInput vsInput)
 {
-    PsInput output;
+    PsInput psInput;
     float outlineWidth = 0.01f;
-    output.Position = mul(float4(input.Normal.xyz * outlineWidth + input.Position.xyz, 1), MatWorld);
-    output.Position = mul(float4(output.Position.xyz, 1), MatViewProj);
-    output.TexCoord = input.TexCoord;
-	return output;
+    psInput.Position = mul(float4(vsInput.Normal.xyz * outlineWidth + vsInput.Position.xyz, 1.0f), MatWorld);
+    psInput.Position = mul(float4(psInput.Position.xyz, 1.0f), MatViewProj);
+    psInput.TexCoord = vsInput.TexCoord;
+	return psInput;
 }

@@ -38,14 +38,14 @@ cbuffer CbCamera : register(b4)
 
 struct VsInput
 {
-    float4 Pos : POSITION;
-    float2 Tex : TEXCOORD0;
+    float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
 };
 
 struct PsInput
 {
-    float4 Pos : SV_POSITION;
-    float2 UV : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
     nointerpolation float3 CameraPosition : TEXCOORD1;
     nointerpolation float4 LightColor : TEXCOORD2;
     nointerpolation float4 LightDir : TEXCOORD3;
@@ -54,9 +54,9 @@ struct PsInput
 
 PsInput main(VsInput vsInput)
 {
-    PsInput psInput = (PsInput)0;
-    psInput.Pos = vsInput.Pos;
-    psInput.UV = vsInput.Tex;
+    PsInput psInput;
+    psInput.Position = vsInput.Position;
+    psInput.TexCoord = vsInput.TexCoord;
     psInput.CameraPosition = Position;
     psInput.LightColor = vLightColor;
     psInput.LightDir = vLightDir;

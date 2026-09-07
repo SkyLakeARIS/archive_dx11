@@ -37,17 +37,17 @@ cbuffer CbCamera : register(b4)
 }
 
 
-struct VS_INPUT
+struct VsInput
 {
-    float4 Pos : POSITION;
-    float2 Tex : TEXCOORD0;
-    float3 Norm : NORMAL;
+    float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 Normal : NORMAL;
 };
 
-struct PS_INPUT
+struct PsInput
 {
-    float4 Pos : SV_POSITION;
-    float2 UV : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
     float3 WorldNormal : TEXCOORD1;
     float3 WorldPosition : TEXCOORD2;
 };
@@ -55,16 +55,16 @@ struct PS_INPUT
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
-PS_INPUT main(VS_INPUT input)
+PsInput main(VsInput vsInput)
 {
-    PS_INPUT output = (PS_INPUT) 0;
+    PsInput psInput;
 
-    output.Pos = mul(input.Pos, MatWorld);
-    output.WorldNormal = mul(float4(input.Norm, 0.0), MatWorld);
-    output.WorldPosition = output.Pos;
-    output.Pos = mul(output.Pos, MatViewProj);
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldNormal = mul(float4(vsInput.Normal, 0.0f), MatWorld);
+    psInput.WorldPosition = psInput.Position;
+    psInput.Position = mul(psInput.Position, MatViewProj);
 
-    output.UV = input.Tex;
+    psInput.TexCoord = vsInput.TexCoord;
 
-    return output;
+    return psInput;
 }

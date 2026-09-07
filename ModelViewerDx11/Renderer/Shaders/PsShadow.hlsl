@@ -2,9 +2,9 @@
 
 struct PsInput
 {
-    float4 Pos : SV_POSITION;
+    float4 Position : SV_POSITION;
 };
 
-void main(PsInput input) 
+void main(PsInput psInput)
 {
 }

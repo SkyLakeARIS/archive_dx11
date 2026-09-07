@@ -6,7 +6,7 @@ Texture2D texModel : register(t0);
 Texture2D texNormal : register(t1);
 Texture2D texShadow : register(t2);
 
-SamplerState samLinear : register(s0);
+SamplerState texSampler : register(s0);
 
 
 cbuffer cbMaterialFactors : register(b0)
@@ -21,10 +21,10 @@ cbuffer cbMaterialFactors : register(b0)
     float IsLitOn;
 }
 
-struct PS_INPUT
+struct PsInput
 {
-    float4 Pos : SV_POSITION;
-    float2 UV : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
     float3 WorldNormal : TEXCOORD1;
     float3 WorldPosition : TEXCOORD2;
 };
@@ -39,14 +39,14 @@ struct PsOutput
 };
 
 
-PsOutput main(PS_INPUT input)
+PsOutput main(PsInput psInput)
 {
-    PsOutput psOutput = (PsOutput)0;
+    PsOutput psOutput;
 
-    const float Reserved = 0.0;
-    psOutput.Color = texModel.Sample(samLinear, input.UV);
-    psOutput.Position = float4(input.WorldPosition, IsLitOn);
-    psOutput.Normal = float4(input.WorldNormal, Reserved);
+    const float Reserved = 0.0f;
+    psOutput.Color = texModel.Sample(texSampler, psInput.TexCoord);
+    psOutput.Position = float4(psInput.WorldPosition, IsLitOn);
+    psOutput.Normal = float4(psInput.WorldNormal, Reserved);
     psOutput.Specular = float4(Specular, Shininess);
     psOutput.Ambient = float4(Ambient, Reserved);
 

@@ -20,30 +20,30 @@ cbuffer CbMatOrtho : register(b5)
 }
 
 
-struct VS_INPUT
+struct VsInput
 {
-    float4 Pos : POSITION;
-    float2 Tex : TEXCOORD0;
+    float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
 };
 
 
-struct PS_INPUT
+struct PsInput
 {
-    float4 Pos : SV_POSITION;
-    float2 Tex : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
     float3 WorldPosition : TEXCOORD2;
 };
 
 
 
-PS_INPUT main(VS_INPUT input)
+PsInput main(VsInput vsInput)
 {
-    PS_INPUT output;
+    PsInput psInput;
 
-    output.Pos = mul(input.Pos, MatWorld);
-    output.WorldPosition = output.Pos;
-    output.Pos = mul(output.Pos, MatOrtho);
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldPosition = psInput.Position;
+    psInput.Position = mul(psInput.Position, MatOrtho);
 
-    output.Tex = input.Tex;
-    return output;
+    psInput.TexCoord = vsInput.TexCoord;
+    return psInput;
 }

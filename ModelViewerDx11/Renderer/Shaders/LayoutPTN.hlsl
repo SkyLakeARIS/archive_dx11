@@ -1,12 +1,12 @@
-struct VS_INPUT
+struct VsInput
 {
-    float4 Pos : POSITION;
-    float2 Tex : TEXCOORD0;
-    float3 Norm : NORMAL;
+    float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 Normal : NORMAL;
 };
 
 
-float4 main(VS_INPUT input ) : SV_POSITION
+float4 main(VsInput vsInput) : SV_POSITION
 {
-	return input.Pos;
+	return vsInput.Position;
 }

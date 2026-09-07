@@ -1,7 +1,7 @@
 
 Texture2D txDiffuse : register(t0);
 
-SamplerState samLinear : register(s0);
+SamplerState texSampler : register(s0);
 
 cbuffer cbMaterialFactors : register(b0)
 {
@@ -15,10 +15,10 @@ cbuffer cbMaterialFactors : register(b0)
     float IsLitOn;
 }
 
-struct PS_INPUT
+struct PsInput
 {
-    float4 Pos : SV_POSITION;
-    float2 Tex : TEXCOORD0;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
     float3 WorldPosition : TEXCOORD2;
 };
 
@@ -31,14 +31,14 @@ struct PsOutput
     float4 Ambient : SV_TARGET4;     // w - reserved
 };
 
-PsOutput main(PS_INPUT input)
+PsOutput main(PsInput psInput)
 {
-    PsOutput psOutput = (PsOutput)0;
-    psOutput.Color = txDiffuse.Sample(samLinear, input.Tex);
-    const float Reserved = 0.0;
-    psOutput.Normal = float4(0.0, 0.0, 0.0, Reserved);
-    psOutput.Position = float4(input.WorldPosition, IsLitOn);
-    psOutput.Specular = float4(0.0, 0.0, 0.0, 0.0);
-    psOutput.Ambient = float4(0.0, 0.0, 0.0, Reserved);
+    PsOutput psOutput;
+    psOutput.Color = txDiffuse.Sample(texSampler, psInput.TexCoord);
+    const float Reserved = 0.0f;
+    psOutput.Normal = float4(0.0f, 0.0f, 0.0f, Reserved);
+    psOutput.Position = float4(psInput.WorldPosition, IsLitOn);
+    psOutput.Specular = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    psOutput.Ambient = float4(0.0f, 0.0f, 0.0f, Reserved);
     return psOutput;
 }

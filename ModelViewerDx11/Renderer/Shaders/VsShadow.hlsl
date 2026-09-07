@@ -21,18 +21,18 @@ cbuffer CbMatLightViewProj : register(b2)
 
 struct VsInput
 {
-    float4 Pos : POSITION;
+    float4 Position : POSITION;
 };
 
 struct PsInput
 {
-    float4 Pos : SV_POSITION;
+    float4 Position : SV_POSITION;
 };
 
-PsInput main(VsInput input)
+PsInput main(VsInput vsInput)
 {
-    PsInput output;
-    output.Pos = mul(input.Pos, MatWorld);
-    output.Pos = mul(output.Pos, MatLightViewProj);
-    return output;
+    PsInput psInput;
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.Position = mul(psInput.Position, MatLightViewProj);
+    return psInput;
 }

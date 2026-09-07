@@ -31,14 +31,14 @@ struct PsOutput
     float4 Ambient : SV_TARGET4;     // w - reserved
 };
 
-PsOutput main(PsInput input)
+PsOutput main(PsInput psInput)
 {
-    PsOutput psOutput = (PsOutput)0;
-    psOutput.Color = cubeTexture.Sample(cubeSampler, input.TexCoord);
-    const float Reserved = 0.0;
-    psOutput.Normal = float4(0.0, 0.0, 0.0, Reserved);
-    psOutput.Position = float4(input.WorldPosition, IsLitOn);
-    psOutput.Specular = float4(0.0, 0.0, 0.0, 0.0);
-    psOutput.Ambient = float4(0.0, 0.0, 0.0, Reserved);
+    PsOutput psOutput;
+    psOutput.Color = cubeTexture.Sample(cubeSampler, psInput.TexCoord);
+    const float Reserved = 0.0f;
+    psOutput.Normal = float4(0.0f, 0.0f, 0.0f, Reserved);
+    psOutput.Position = float4(psInput.WorldPosition, IsLitOn);
+    psOutput.Specular = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    psOutput.Ambient = float4(0.0f, 0.0f, 0.0f, Reserved);
     return psOutput;
 }

@@ -4,7 +4,7 @@ struct VsInput
     float2 TexCoord : TEXCOORD0;
 };
 
-float4 main(VsInput input  ) : SV_POSITION
+float4 main(VsInput vsInput) : SV_POSITION
 {
-	return input.Position;
+	return vsInput.Position;
 }

@@ -12,7 +12,7 @@ cbuffer cbMaterialFactors : register(b0)
 
 struct PsInput
 {
-    float4 Pos : SV_POSITION;
+    float4 Position : SV_POSITION;
     float3 WorldPosition : TEXCOORD2;
 };
 
@@ -25,14 +25,14 @@ struct PsOutput
     float4 Ambient : SV_TARGET4;     // w - reserved
 };
 
-PsOutput main(PsInput input)
+PsOutput main(PsInput psInput)
 {
-    PsOutput psOutput = (PsOutput)0;
-    const float Reserved = 0.0;
+    PsOutput psOutput;
+    const float Reserved = 0.0f;
     psOutput.Color = float4(Diffuse, Reserved);
-    psOutput.Normal = float4(0.0, 0.0, 0.0, Reserved);
-    psOutput.Position = float4(input.WorldPosition, IsLitOn);
-    psOutput.Specular = float4(0.0, 0.0, 0.0, 0.0);
-    psOutput.Ambient = float4(0.0, 0.0, 0.0, Reserved);
+    psOutput.Normal = float4(0.0f, 0.0f, 0.0f, Reserved);
+    psOutput.Position = float4(psInput.WorldPosition, IsLitOn);
+    psOutput.Specular = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    psOutput.Ambient = float4(0.0f, 0.0f, 0.0f, Reserved);
     return psOutput;
 }
