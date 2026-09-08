@@ -109,7 +109,7 @@ namespace renderer
                 renderer::eSamplerType::AnisotropicWrap,
                 eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Triangles,
-                true,
+                false,
                 eDepthStencilState::DepthOffStencilOff
             );
 
