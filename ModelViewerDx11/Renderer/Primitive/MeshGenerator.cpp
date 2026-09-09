@@ -148,36 +148,88 @@ namespace renderer
         ASSERT(gapEachLine >= 1, "gapEachLine must be 1 or greater");
 
         const uint32_t numRows = horizontalLines - 1;
-        const int32_t numVertices = (verticalLines * 2) * numRows + (numRows - 1) * 2;
-        std::unique_ptr<XMFLOAT3[]> vertices = std::make_unique<XMFLOAT3[]>(numVertices);
+        const int32_t numVertices = (verticalLines * 2) * numRows;
+        const int32_t numIndices = numRows * (verticalLines - 1) * 6;
 
-        XMFLOAT3* cur = vertices.get();
+        std::unique_ptr<VertexPTN[]> vertices = std::make_unique<VertexPTN[]>(numVertices);
+        std::unique_ptr<uint32_t[]> indices = std::make_unique<uint32_t[]>(numIndices);
+
+        VertexPTN* curVertices = vertices.get();
         XMFLOAT2  pos(startPoint);
         for (uint32_t lineY = 0; lineY < horizontalLines - 1; ++lineY)
         {
             for (uint32_t lineX = 0; lineX < verticalLines; ++lineX)
             {
                 // triangle-strip
-                *cur = XMFLOAT3(pos.x, 0.0f, pos.y);
-                ++cur;
-                *cur = XMFLOAT3(pos.x, 0.0f, pos.y + gapEachLine);
-                ++cur;
+                curVertices->Position = XMFLOAT3(pos.x, 0.0f, pos.y);
+                curVertices->TexCoord = XMFLOAT2(0.0f, 0.0f);
+                ++curVertices;
+                curVertices->Position = XMFLOAT3(pos.x, 0.0f, pos.y + gapEachLine);
+                curVertices->TexCoord = XMFLOAT2(0.0f, 0.0f);
+                ++curVertices;
                 pos.x += gapEachLine;
             }
             if (lineY < numRows - 1)
             {
-                *cur = *(cur - 1);
-                ++cur;
                 pos.x = startPoint.x;
                 pos.y += gapEachLine;
-                *cur = XMFLOAT3(pos.x, 0.0f, pos.y);
-                ++cur;
             }
         }
 
-        outMesh.VertexFormat = eVertexFormat::P;
-        SubMesh newSubMesh = {};
+        // MEMO: IndexList 생성 부분
+        uint32_t* curIndices = indices.get();
+        const uint32_t numVertexEachLine = (verticalLines * 2);
+        for(uint32_t vertexIndex = 0; vertexIndex < numVertices -1; ++vertexIndex)
+        {
+            if(vertexIndex & 0x01)
+            {
+                *curIndices = vertexIndex;
+                ++curIndices;
+                *curIndices = vertexIndex + 2;
+                ++curIndices;
+                *curIndices = vertexIndex + 1;
+                ++curIndices;
+            }
+            else
+            {
+                *curIndices = vertexIndex;
+                ++curIndices;
+                *curIndices = vertexIndex + 1;
+                ++curIndices;
+                *curIndices = vertexIndex + 2;
+                ++curIndices;
+            }
 
+            if ((vertexIndex + 3) % numVertexEachLine == 0)
+            {
+                vertexIndex += 2;
+            }
+        }
+
+        // MEMO: Normal 데이터 생성 부분
+        // MEMO: 한 평면 위의 점들이니 전부 같은 Normal로 세팅한다.
+        // MEMO: 규칙: winding이 시계방향이므로, 노멀도 왼손감기 기준으로 생성
+        curVertices = vertices.get();
+
+        XMVECTOR point1; // MEMO: pivot
+        XMVECTOR point2;
+        XMVECTOR point3;
+        point1 = XMLoadFloat3(&(curVertices)->Position);
+        point2 = XMLoadFloat3(&(curVertices + 1)->Position);
+        point3 = XMLoadFloat3(&(curVertices + 2)->Position);
+
+        XMVECTOR vP1ToP2 = point2 - point1;
+        XMVECTOR vP1ToP3 = point3 - point1;
+        XMVECTOR vNormal = XMVector3Cross(vP1ToP2, vP1ToP3);
+        vNormal = XMVector3Normalize(vNormal);
+        for (uint32_t index = 0; index < numVertices; ++index)
+        {
+            XMStoreFloat3(&(curVertices + index)->Normal, vNormal);
+        }
+
+        outMesh.VertexFormat = eVertexFormat::PTN;
+        const int16_t strideVertex = GetVertexStrideSize(outMesh.VertexFormat);
+        SubMesh newSubMesh = {};
         int8_t virtualFilePath[util::MAX_PATH_LENGTH] = {};
         const int32_t pathLength = sprintf_s(reinterpret_cast<char*>(virtualFilePath), util::MAX_PATH_LENGTH, "%sPrimitive_Grid_%d_%d.mesh", reinterpret_cast<const char*>(VIRTUAL_ROOT_PATH), verticalLines, horizontalLines);
         ASSERT(pathLength < util::MAX_PATH_LENGTH, "file path too long. length(%d), limit(%d)", pathLength, util::MAX_PATH_LENGTH);
@@ -187,12 +239,16 @@ namespace renderer
         outMesh.MeshHash = util::GetDjb2Hash(virtualFilePath);
         newSubMesh.SubMeshHash = outMesh.MeshHash;
 
-        const int16_t strideVertex = GetVertexStrideSize(outMesh.VertexFormat);
 
         sBufferManager->AddVertex(reinterpret_cast<int8_t*>(vertices.get()), strideVertex * numVertices, newSubMesh.SubMeshHash, strideVertex, newSubMesh.VertexRange);
 
+        const int16_t strideIndex = sBufferManager->GetIndexStrideSize();
+        sBufferManager->AddIndex(reinterpret_cast<int8_t*>(indices.get()), strideIndex * numIndices, newSubMesh.SubMeshHash, strideIndex, newSubMesh.IndexRange);
+
         outMesh.VertexRange = newSubMesh.VertexRange;
-        outMesh.IndexRange = {};
+        outMesh.IndexRange = newSubMesh.IndexRange;
+
+        newSubMesh.Material.Factors.IsLitOn = static_cast<float>(true);
 
         outMesh.SubMeshes.push_back(std::move(newSubMesh));
     }

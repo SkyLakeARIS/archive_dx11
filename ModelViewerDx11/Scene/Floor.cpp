@@ -17,6 +17,9 @@ namespace scene
         {
             subMesh.Material.Factors.Diffuse = XMFLOAT3(0.0f, 1.0f, 0.0f);
             subMesh.Material.Factors.IsLitOn = static_cast<float>(true);
+            subMesh.Material.Factors.Ambient = XMFLOAT3(0.2f, 0.2f, 0.2f);
+            subMesh.Material.Factors.Shininess = 1;
+            subMesh.Material.Factors.Specular = XMFLOAT3(0.0f, 0.8f, 0.0f);
         }
     }
 
@@ -27,6 +30,31 @@ namespace scene
     void Floor::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
     {
         XMMATRIX mat = XMMatrixIdentity();
+
+        for (const auto& subMesh : mMesh.SubMeshes)
+        {
+            renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
+                renderer::eVertexFormat::P,
+                renderer::GetVertexStrideSize(mMesh.VertexFormat),
+                renderer::eBufferUsage::Static,
+                false,
+                subMesh.VertexRange,
+                subMesh.IndexRange,
+                subMesh.Material,
+                renderer::eRenderPass::Shadow,
+                mat,
+                renderer::eShader::Shadow,
+                renderer::eRasterType::Basic,
+                renderer::eSamplerType::SamplerCount,
+                renderer::eBlendState::Opaque,
+                renderer::ePrimitiveTopology::Triangles,
+                false,
+                renderer::eDepthStencilState::DepthOffStencilOff
+            );
+
+            commandList.push_back(command);
+        }
+
         for (const auto& subMesh : mMesh.SubMeshes)
         {
             renderer::RenderPacket command = renderer::RenderPacket::MakeCommand(
@@ -43,7 +71,7 @@ namespace scene
                 renderer::eRasterType::Basic,
                 renderer::eSamplerType::SamplerCount,
                 renderer::eBlendState::Opaque,
-                renderer::ePrimitiveTopology::TriangleStrip,
+                renderer::ePrimitiveTopology::Triangles,
                 false,
                 renderer::eDepthStencilState::DepthOffStencilOff
             );

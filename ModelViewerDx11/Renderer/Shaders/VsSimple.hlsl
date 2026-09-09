@@ -22,11 +22,15 @@ cbuffer CbMatViewProj : register(b1)
 struct VsInput
 {
     float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 Normal : NORMAL;
 };
 
 struct PsInput
 {
     float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 WorldNormal : TEXCOORD1;
     float3 WorldPosition : TEXCOORD2;
 };
 
@@ -34,7 +38,10 @@ PsInput main(VsInput vsInput)
 {
     PsInput psInput;
     psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldNormal = mul(float4(vsInput.Normal, 0.0f), MatWorld);
     psInput.WorldPosition = psInput.Position;
     psInput.Position = mul(psInput.Position, MatViewProj);
+
+    psInput.TexCoord = vsInput.TexCoord;
     return psInput;
 }
