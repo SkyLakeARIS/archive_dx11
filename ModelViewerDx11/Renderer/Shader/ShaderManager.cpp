@@ -66,6 +66,7 @@ namespace renderer
             L"Renderer/Shaders/VsScreen.hlsl",
             L"Renderer/Shaders/VsShadow.hlsl",
             L"Renderer/Shaders/VsDeferred.hlsl",
+            L"Renderer/Shaders/VsDebugColor.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
@@ -115,6 +116,7 @@ namespace renderer
             {eVertexShader::VsScreen, 5U},
             {eVertexShader::VsShadow, 6U},
             {eVertexShader::VsDeferred, 7U},
+            {eVertexShader::VsDebugColor, 8U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -141,6 +143,7 @@ namespace renderer
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
             {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsTexture},
             {eShader::Deferred,  eVertexShader::VsDeferred, ePixelShader::PsDeferred},
+            {eShader::DebugHUD,  eVertexShader::VsDebugColor, ePixelShader::PsColor},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -279,6 +282,7 @@ namespace renderer
             { eCbType::CbMaterialFactors,   true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD
             { eCbType::ConstantBufferCount, false, -1 }, // Deferred
+            { eCbType::CbMaterialFactors, true, 0 },     // DebugColor
         };
         static_assert(sizeof(MaterialCbTableEachShader) / sizeof(MaterialCbBinding) == static_cast<uint8_t>(eShader::ShaderCount), "셰이더 수와 Table 수가 맞지 않음.");
         outBindingDesc = MaterialCbTableEachShader[static_cast<uint8_t>(type)];
@@ -296,7 +300,9 @@ namespace renderer
             {  0, -1, -1, -1, -1, -1, -1, -1 }, // Texture
             { -1, -1, -1, -1, -1, -1, -1, -1 }, // Color
             {  0, -1, -1, -1, -1, -1, -1, -1 }, // DebugHUD
-            { -1, -1, 5,  0,  1,  2,  3,  4}, // Deferred
+            { -1, -1, 5,  0,  1,  2,  3,  4},   // Deferred
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // DebugColor
+
         };
         static_assert(sizeof(TexBindingSlotsEachShader) / sizeof(TexBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");
@@ -317,6 +323,7 @@ namespace renderer
             { -1 }, // Color
             {  0 }, // DebugHUD
             {  0 }, // Deferred
+            { -1 }, // DebugColor
         };
         static_assert(sizeof(SamplerBindingSlotsEachShader) / sizeof(SamplerBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");

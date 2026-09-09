@@ -37,7 +37,7 @@ namespace scene
                 subMesh.Material,
                 renderer::eRenderPass::Main,
                 XMMatrixIdentity(),
-                renderer::eShader::Color,
+                renderer::eShader::DebugColor,
                 renderer::eRasterType::Basic,
                 renderer::eSamplerType::SamplerCount,
                 renderer::eBlendState::Opaque,

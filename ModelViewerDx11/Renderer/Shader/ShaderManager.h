@@ -22,6 +22,7 @@ namespace renderer
             VsScreen,
             VsShadow,
             VsDeferred,
+            VsDebugColor,
             VertexShaderCount
         };
 

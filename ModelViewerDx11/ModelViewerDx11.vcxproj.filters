@@ -228,6 +228,7 @@
     <FxCompile Include="Renderer\Shaders\VsDeferred.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsDeferred.hlsl" />
     <FxCompile Include="Renderer\Shaders\PsTextureMRT.hlsl" />
+    <FxCompile Include="Renderer\Shaders\VsDebugColor.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
