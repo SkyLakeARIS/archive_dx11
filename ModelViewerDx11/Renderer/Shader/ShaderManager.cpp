@@ -51,33 +51,33 @@ namespace renderer
 
         const wchar_t* InputLayoutSourceList[] =
         {
-            L"Renderer/Shaders/LayoutPTN.hlsl",
-            L"Renderer/Shaders/LayoutPT.hlsl",
-            L"Renderer/Shaders/LayoutP.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutPTN.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutPT.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutP.hlsl",
         };
 
         const wchar_t* VertexShaderSourceList[] =
         {
-            L"Renderer/Shaders/VsOutline.hlsl",
-            L"Renderer/Shaders/VsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/VsSimple.hlsl",
-            L"Renderer/Shaders/VsSkybox.hlsl",
-            L"Renderer/Shaders/VsTexture.hlsl",
-            L"Renderer/Shaders/VsScreen.hlsl",
-            L"Renderer/Shaders/VsShadow.hlsl",
-            L"Renderer/Shaders/VsDeferred.hlsl",
-            L"Renderer/Shaders/VsDebugColor.hlsl",
+            L"Renderer/Shader/ShaderSources/VsOutline.hlsl",
+            L"Renderer/Shader/ShaderSources/VsBasicWithShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/VsSimple.hlsl",
+            L"Renderer/Shader/ShaderSources/VsSkybox.hlsl",
+            L"Renderer/Shader/ShaderSources/VsTexture.hlsl",
+            L"Renderer/Shader/ShaderSources/VsScreen.hlsl",
+            L"Renderer/Shader/ShaderSources/VsShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/VsDeferred.hlsl",
+            L"Renderer/Shader/ShaderSources/VsDebugColor.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
-            L"Renderer/Shaders/PsOutline.hlsl",
-            L"Renderer/Shaders/PsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/PsShadow.hlsl",
-            L"Renderer/Shaders/PsTexture.hlsl",
-            L"Renderer/Shaders/PsSkybox.hlsl",
-            L"Renderer/Shaders/PsColor.hlsl",
-            L"Renderer/Shaders/PsDeferred.hlsl",
-            L"Renderer/Shaders/PsTextureMRT.hlsl",
+            L"Renderer/Shader/ShaderSources/PsOutline.hlsl",
+            L"Renderer/Shader/ShaderSources/PsBasicWithShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/PsShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/PsTexture.hlsl",
+            L"Renderer/Shader/ShaderSources/PsSkybox.hlsl",
+            L"Renderer/Shader/ShaderSources/PsColor.hlsl",
+            L"Renderer/Shader/ShaderSources/PsDeferred.hlsl",
+            L"Renderer/Shader/ShaderSources/PsTextureMRT.hlsl",
         };
 
         struct PixelShaderContainer
