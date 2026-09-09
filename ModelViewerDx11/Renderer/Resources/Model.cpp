@@ -51,8 +51,7 @@ namespace renderer
                 eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Triangles,
                 false,
-                eDepthStencilState::DepthOffStencilOff,
-                false
+                eDepthStencilState::DepthOffStencilOff
             );
 
             commandList.push_back(command);
@@ -80,8 +79,7 @@ namespace renderer
                     eBlendState::Opaque,
                     renderer::ePrimitiveTopology::Triangles,
                     false,
-                    eDepthStencilState::DepthOnMaskAllCompLessEqual,
-                    true
+                    eDepthStencilState::DepthOnMaskAllCompLessEqual
                 );
 
                 if (!mbActiveEmissive)
@@ -111,9 +109,8 @@ namespace renderer
                 renderer::eSamplerType::AnisotropicWrap,
                 eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Triangles,
-                true,
-                eDepthStencilState::DepthOffStencilOff,
-                false
+                false,
+                eDepthStencilState::DepthOffStencilOff
             );
 
             if (!mbActiveEmissive)

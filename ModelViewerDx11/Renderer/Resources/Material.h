@@ -14,7 +14,7 @@ namespace renderer
         XMFLOAT3 Specular;  // 스페큘러 거듭제곱 값
         float    Shininess;
         XMFLOAT3 Emissive;
-        float    Reserve1;
+        float    IsLitOn; // MEMO: Lighting을 받을건지? - 모든 SubMesh가 가지는 값이므로 Reserved 공간을 활용
     };
     typedef MaterialFactors CbMaterialFactors;
 
@@ -26,7 +26,7 @@ namespace renderer
         // MEMO: 재질
         // MEMO: 네이밍을 glTF 표준 관례로 따름.
         MaterialFactors Factors;
-        XMFLOAT3 OutlineWidth;
+        float OutlineWidth;
         // MEMO: 텍스처
         HashID TextureHashes[static_cast<uint8_t>(eTextureType::TextureTypeCount)];
         int16_t TextureSerials[static_cast<uint8_t>(eTextureType::TextureTypeCount)];

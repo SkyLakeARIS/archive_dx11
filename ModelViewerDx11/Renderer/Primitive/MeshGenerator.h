@@ -19,6 +19,7 @@ namespace renderer
         static void CreatePlane(Mesh& outMesh);
         // MEMO: origin is LeftTop of Rect(Screen)
         static void CreateScreenPlane(int16_t originX, int16_t originY, int16_t width, int16_t height, Mesh& outMesh);
+        static void CreateNdcPlane(Mesh& outMesh);
     public:
         static const int8_t* const VIRTUAL_ROOT_PATH;
     private:

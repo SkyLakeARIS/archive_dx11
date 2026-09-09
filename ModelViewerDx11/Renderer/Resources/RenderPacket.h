@@ -7,6 +7,20 @@
 namespace renderer
 {
     struct SubMesh;
+
+    template<typename  T>
+    constexpr uint64_t GetBitCount(T type)
+    {
+        int32_t bit = 1;
+        uint64_t count = 0;
+        while (bit <= static_cast<uint32_t>(type))
+        {
+            bit <<= 1;
+            ++count;
+        }
+        return count;
+    }
+
     // MEMO: 일단 현재 필요한 정보들만 모아놓는다.
     struct RenderPacket
     {
@@ -28,8 +42,7 @@ namespace renderer
             const eBlendState        blendState,
             const ePrimitiveTopology topology,
             const bool               bUseShadowMap,
-            eDepthStencilState       depthStencilState,
-            const bool               bClearDepthStencilBuffer
+            eDepthStencilState       depthStencilState
             )
         {
             ASSERT(vertexFormat != eVertexFormat::FormatCount, "vertexFormat 값이 설정되지 않음. 반드시 설정되어야 합니다. passed(%d)", static_cast<uint8_t>(vertexFormat));
@@ -62,52 +75,67 @@ namespace renderer
             command.RenderState.TopologyType = topology;
             command.RenderState.UseShadowMapUsage = static_cast<eShadowMapUsage>(bUseShadowMap);
             command.RenderState.DepthStencilState = depthStencilState;
-            command.RenderState.bClearDepthStencilBuffer = bClearDepthStencilBuffer;
 
             // MEMO: 잘못된 조합 체크. MaterialCb, Texture는 -1이면 사용 안함으로 간주
             ASSERT((sampler != eSamplerType::SamplerCount && command.RenderState.SamplerBindingSlot != -1) || (sampler == eSamplerType::SamplerCount && command.RenderState.SamplerBindingSlot == -1),
                 "Sampler가 사용되지만 지정하지 않았거나, Sampler를 지정했지만 사용되지 않습니다. shader(%d), sampler(%d) bindingSlot(%d)", shader, sampler, command.RenderState.SamplerBindingSlot);
 
+
             // MEMO: 64bit, 내림차순 정렬(값이 큰 순서로 렌더링)
-            // MEMO:  높은 쪽 <-----------> 낮은 쪽
-            // MEMO: 상위 비트 (63-55) | 중간 비트 (54-20) | 하위 비트 (19-0)
-
-            // MEMO: 추후에 작업하면서 필요에 따라 Bit 수, 순서 조정하면서 정답을 찾아가기.
-
-            // MEMO: 렌더타겟이 가장 최상위여야 함. - 물체들이 결국 어느 한 렌더타겟에 그려져야 하므로 렌더타겟에 종속적.
-            // MEMO: 뷰포트는 렌더타겟에 종속적으로 판단됨. 그러나 프로젝트에서 사용하지 않으므로 제외.
-            // MEMO: 렌더 패스는 최상위 비트 할당. 렌더 패스 타입에 따라 내부적으로 적절한 렌더타켓을 바인드하도록 한다.
-            // MEMO: 머티리얼은 우선, 중간 비트를 사용한다. -> 그러나 아직 머티리얼 식별자가 없으므로 제외한다. 조만간 바로 작업 들어가야 함.
-            // MEMO: 투명/불투명 여부도 중간 비트를 사용한다. 중간에서 가장 최상위로 둔다.
-            // MEMO: 셰이더는 우선 낮은 비트를 사용하되, 중간 비트로 올릴지 고민
-            // 현재는 머티리얼당 셰이더 하나와 대응되어 의미 없지만 같은 셰이더를 공유하는 머티리얼이 있다면 대응이 될 수 있는 구조로 판단됨.
-            // MEMO: 나머지 렌더 상태는 하위 비트를 쓴다. 현재 구조에 따라서 잘 안 바뀔 것 같은 것을 높은쪽에 둔다.
-
-
             constexpr uint64_t RenderPassPriority[] =
             {
-                1,
-                2,
-                0,
+                2, // Main(GPass)
+                3, // Shadow
+                0, // UI
+                1, // Deferred
             };
             static_assert(sizeof(RenderPassPriority) / sizeof(RenderPassPriority[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassPriority와 eRenderPass의 갯수가 서로 맞아야 합니다.");
 
+            // MEMO: 이 함수 전용으로 사용
+            struct SortKeyField
+            {
+                uint64_t Value;
+                uint64_t BitWidth;
+            };
+
+            // MEMO: 상위부터 차례대로 잘라서 사용하도록 개선.
+            // MEMO: 순서만 지켜서 레이아웃에 추가하면 나머지 필요한 비트 수와 위치는 자동으로 계산되어 SortKey를 생성.
+            const SortKeyField SortKeyLayout[] =
+            {
+                // MEMO: 상위 비트 영역
+                {RenderPassPriority[static_cast<uint8_t>(command.RenderPass)], GetBitCount(eRenderPass::PassCount)},
+                // MEMO: 중간 비트 영역
+                {command.bTransparency == false, 1},
+                {static_cast<uint64_t>(command.RenderState.ShaderType), GetBitCount(eShader::ShaderCount)},
+                {static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]), 16},
+                // MEMO: 하위 비트 영역
+                {static_cast<uint64_t>(command.BufferUsage), GetBitCount(eBufferUsage::UsageCount)},
+                {static_cast<uint64_t>(command.RenderState.DepthStencilState), GetBitCount(eDepthStencilState::StateCount)},
+                {static_cast<uint64_t>(command.RenderState.UseShadowMapUsage), GetBitCount(eShadowMapUsage::UsageCount)},
+                {static_cast<uint64_t>(command.VertexFormat), GetBitCount(eVertexFormat::FormatCount)},
+                {static_cast<uint64_t>(command.RenderState.RasterType), GetBitCount(eRasterType::RasterCount)},
+                {static_cast<uint64_t>(command.RenderState.TopologyType), GetBitCount(ePrimitiveTopology::TopologyCount)},
+            };
+
+
+#ifdef _DEBUG
+            // MEMO: 사용된 Bit들을 전부 합했을 때 자료형을 넘는지 검사
+            uint64_t validBitCount = 0;
+            for(auto& element : SortKeyLayout)
+            {
+                validBitCount += element.BitWidth;
+            }
+            ASSERT(validBitCount <= 64, "SortKey가 표현할 수 있는 비트 수를 넘었습니다. 계산된 비트 사용량(%llu)", validBitCount);
+#endif
+
+            // MEMO: SortKey를 생성
+            uint64_t bitShiftCursor = 64;
             uint64_t sortKey = 0;
-            // MEMO: 상위 비트 영역
-            sortKey |= (RenderPassPriority[static_cast<uint8_t>(command.RenderPass)] << 62);
-            // MEMO: 중간 비트 영역
-            // MEMO: 내림자순이므로, 값이 반전되도록 해야 불투명을 먼저 그림
-            sortKey |= static_cast<uint64_t>(command.bTransparency == false) << 54;
-            sortKey |= static_cast<uint64_t>(command.Material.TextureSerials[static_cast<uint8_t>(eTextureType::Diffuse)]) << 20;
-            // MEMO: 하위 비트 영역
-            sortKey |= static_cast<uint64_t>(command.BufferUsage) << 18;
-            sortKey |= static_cast<uint64_t>(command.RenderState.DepthStencilState) << 17;
-            sortKey |= static_cast<uint64_t>(command.RenderState.bClearDepthStencilBuffer) << 16;
-            sortKey |= static_cast<uint64_t>(command.RenderState.UseShadowMapUsage) << 15;
-            sortKey |= static_cast<uint64_t>(command.RenderState.ShaderType) << 11;
-            sortKey |= static_cast<uint64_t>(command.VertexFormat) << 8;
-            sortKey |= static_cast<uint64_t>(command.RenderState.RasterType) << 4;
-            sortKey |= static_cast<uint64_t>(command.RenderState.TopologyType) << 0;
+            for (auto& element : SortKeyLayout)
+            {
+                bitShiftCursor -= element.BitWidth;
+                sortKey |= element.Value << bitShiftCursor;
+            }
 
             command.SortKey = sortKey;
 

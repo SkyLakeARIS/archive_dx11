@@ -27,6 +27,7 @@ Application::Application()
     , mWindowHeight(720)
     , mAppFrameRate(120)
     , mWindow(nullptr)
+    , mNdcMeshDeferred{}
     , mCurSubMeshIndexFocusModel(0)
     , mCommandCache()
     , mRenderer(nullptr)
@@ -43,6 +44,11 @@ Application::Application()
     , mShaderManager(nullptr)
     , mDirectInput(nullptr)
     , mShadowDebugPanel(nullptr)
+    , mGBufferColorDebugPanel(nullptr)
+    , mGBufferNormalDebugPanel(nullptr)
+    , mGBufferPositionDebugPanel(nullptr)
+    , mGBufferSpecularDebugPanel(nullptr)
+    , mGBufferAmbientDebugPanel(nullptr)
 {
     mRenderer = new renderer::Renderer();
     mImporter = new renderer::ModelImporter();
@@ -53,6 +59,11 @@ Application::~Application()
 {
     std::vector<renderer::RenderPacket>().swap(mCommandList);
     delete mShadowDebugPanel;
+    delete mGBufferColorDebugPanel;
+    delete mGBufferNormalDebugPanel;
+    delete mGBufferPositionDebugPanel;
+    delete mGBufferSpecularDebugPanel;
+    delete mGBufferAmbientDebugPanel;
     mDirectInput->Release();
     delete mDirectInput;
     mDirectInput = nullptr;
@@ -209,12 +220,18 @@ bool Application::initializeScene()
     mSkybox = new scene::Sky();
     mSkybox->Initialize(10, 10, mTextureManager);
 
-    mRenderer->BindPrimitiveTopologyTo(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    mRenderer->BindPrimitiveTopologyByType(renderer::ePrimitiveTopology::Triangles);
     mCamera->ChangeFocus(mCharacter->GetCenterPoint(0));
     // MEMO Light 위치값 막 바꾸면 안됨. 그림자 제대로 안그려질 수 있음. 나중에 개선해야 할 항목 중 하나(cascade)
   //  gLight = new Light(XMFLOAT3(0.0f, 50.0f, 70.0f), gCharacter->GetCenterPoint(), XMFLOAT3(1.0f, 1.0f, 1.0f), gCamera, 0.1f, 300.0f);
 
-    mLight = new scene::Light(XMFLOAT3(0.0f, 20.0f, 50.0f), mCharacter->GetCenterPoint(0), XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
+    const XMFLOAT3 lightPosition = XMFLOAT3(0.0f, 20.0f, 50.0f);
+    const XMFLOAT3 lightLookAt = mCharacter->GetCenterPoint(0);
+    const XMVECTOR vLightPosition = XMLoadFloat3(&lightPosition);
+    const XMVECTOR vLightLookAt = XMLoadFloat3(&lightLookAt);
+    XMFLOAT3 lightDir;
+    XMStoreFloat3(&lightDir, vLightLookAt - vLightPosition);
+    mLight = new scene::Light(lightPosition, lightDir, XMFLOAT3(1.0f, 1.0f, 1.0f), 0.1f, 500.0f);
     mLight->Update(*mRenderer);
 
     mFloor = new scene::Floor(XMFLOAT2(0.0f, 0.0f), 2, 10, 10);
@@ -222,6 +239,26 @@ bool Application::initializeScene()
     mShadowDebugPanel = new ui::DebugPanel(0, 0, 200, 200);
     const int16_t shadowTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sShadowTexHash);
     mShadowDebugPanel->SetDebugType(renderer::TextureManager::sShadowTexHash, shadowTexSerial);
+
+    mGBufferColorDebugPanel = new ui::DebugPanel(200, 0, 200, 200);
+    const int16_t gBufferColorTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferColorTexHash);
+    mGBufferColorDebugPanel->SetDebugType(renderer::TextureManager::sGBufferColorTexHash, gBufferColorTexSerial);
+
+    mGBufferNormalDebugPanel = new ui::DebugPanel(400, 0, 200, 200);
+    const int16_t gBufferNormalTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferNormalTexHash);
+    mGBufferNormalDebugPanel->SetDebugType(renderer::TextureManager::sGBufferNormalTexHash, gBufferNormalTexSerial);
+
+    mGBufferPositionDebugPanel = new ui::DebugPanel(600, 0, 200, 200);
+    const int16_t gBufferDepthTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferPositionTexHash);
+    mGBufferPositionDebugPanel->SetDebugType(renderer::TextureManager::sGBufferPositionTexHash, gBufferDepthTexSerial);
+
+    mGBufferSpecularDebugPanel= new ui::DebugPanel(800, 0, 200, 200);
+    const int16_t gBufferSpecularTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferSpecularTexHash);
+    mGBufferSpecularDebugPanel->SetDebugType(renderer::TextureManager::sGBufferSpecularTexHash, gBufferSpecularTexSerial);
+
+    mGBufferAmbientDebugPanel= new ui::DebugPanel(1000, 0, 200, 200);
+    const int16_t gBufferAmbientTexSerial = mTextureManager->GetTextureSerial(renderer::TextureManager::sGBufferAmbientTexHash);
+    mGBufferAmbientDebugPanel->SetDebugType(renderer::TextureManager::sGBufferAmbientTexHash, gBufferAmbientTexSerial);
 
     mLightIcon = new scene::Billboard();
     mLightIcon->Initialize(*mRenderer);
@@ -236,6 +273,25 @@ bool Application::initializeScene()
 
     mLightIcon->SetTexture(lightIconTexID, lightIconSerialID);
 
+    renderer::MeshGenerator::CreateNdcPlane(mNdcMeshDeferred);
+    renderer:renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sShadowTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::Shadow)] = renderer::TextureManager::sShadowTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)] = renderer::TextureManager::sGBufferColorTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)] = renderer::TextureManager::sGBufferNormalTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)] = renderer::TextureManager::sGBufferNormalTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)] = renderer::TextureManager::sGBufferPositionTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)] = renderer::TextureManager::sGBufferPositionTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)] = renderer::TextureManager::sGBufferSpecularTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)] = renderer::TextureManager::sGBufferSpecularTexSerialID;
+
+    subMeshNdcPlane.Material.TextureHashes[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)] = renderer::TextureManager::sGBufferAmbientTexHash;
+    subMeshNdcPlane.Material.TextureSerials[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)] = renderer::TextureManager::sGBufferAmbientTexSerialID;
     return true;
 }
 
@@ -398,10 +454,10 @@ void Application::updateScene()
     cbLightVpMat.Matrix = XMMatrixTranspose(mLight->GetViewProjMatrix());
     mShaderManager->UpdateCB(renderer::eCbType::CbLightViewProjMatrix, &cbLightVpMat);
 
-    const XMFLOAT3 lightPosition(mLight->GetPosition());
+    const XMFLOAT4 lightDirection(mLight->GetDirection());
     renderer::CbLightProperty cbLightProperty;
     cbLightProperty.First = mLight->GetColor();
-    cbLightProperty.Second = XMFLOAT4(lightPosition.x, lightPosition.y, lightPosition.z, 0.0f);
+    cbLightProperty.Second = XMFLOAT4(lightDirection.x, lightDirection.y, lightDirection.z, 0.0f);
     mShaderManager->UpdateCB(renderer::eCbType::CbLightProperty, &cbLightProperty);
 
    const XMMATRIX uiProjMat = XMMatrixOrthographicOffCenterLH(0.0, mWindowWidth, mWindowHeight, 0.0, 0.1f, 100.0f);
@@ -409,6 +465,7 @@ void Application::updateScene()
     cbScreenSpaceMatrix.Matrix = XMMatrixTranspose(uiProjMat);
     mShaderManager->UpdateCB(renderer::eCbType::CbOrthoMatrix, &cbScreenSpaceMatrix);
 
+    const XMFLOAT3 lightPosition(mLight->GetPosition());
     mLightIcon->SetPosition(lightPosition);
     mLightIcon->UpdateScaleMatrix(mCamera->GetViewMatrix());
 
@@ -428,16 +485,48 @@ void Application::updateScene()
     mLightIcon->SubmitCommand(mCommandList);
 
     mShadowDebugPanel->SubmitCommand(mCommandList);
+    mGBufferColorDebugPanel->SubmitCommand(mCommandList);
+    mGBufferNormalDebugPanel->SubmitCommand(mCommandList);
+    mGBufferPositionDebugPanel->SubmitCommand(mCommandList);
+    mGBufferSpecularDebugPanel->SubmitCommand(mCommandList);
+    mGBufferAmbientDebugPanel->SubmitCommand(mCommandList);
+
+    // MEMO: Renderer 전용 pass를 사용하는 command가 존재하는지 검사하여 assertion.
+    for(renderer::RenderPacket& command : mCommandList)
+    {
+        if(command.RenderPass == renderer::eRenderPass::Deferred)
+        {
+            ASSERT(false, "Deferred는 Renderer 내부에서만 사용하므로 외부에서 사용할 수 없습니다.");
+        }
+    }
+
+    renderer::SubMesh& subMeshNdcPlane = mNdcMeshDeferred.SubMeshes.front();
+    renderer::RenderPacket deferredCommand = renderer::RenderPacket::MakeCommand(
+        renderer::eVertexFormat::PT,
+        renderer::GetVertexStrideSize(renderer::eVertexFormat::PT),
+        renderer::eBufferUsage::Static,
+        false,
+        subMeshNdcPlane.VertexRange,
+        subMeshNdcPlane.IndexRange,
+        subMeshNdcPlane.Material,
+        renderer::eRenderPass::Deferred,
+        XMMatrixIdentity(),
+        renderer::eShader::Deferred,
+        renderer::eRasterType::Basic,
+        renderer::eSamplerType::AnisotropicWrap,
+        renderer::eBlendState::Opaque,
+        renderer::ePrimitiveTopology::Triangles,
+        true,
+        renderer::eDepthStencilState::DepthOffStencilOff
+    );
+    mCommandList.push_back(deferredCommand);
 
     std::sort(mCommandList.begin(), mCommandList.end(), renderer::RenderPacketCompareDecr);
 }
 
 void Application::renderScene()
 {
-    for(uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(renderer::eRenderTarget::RenderTargetCount); ++renderTarget)
-    {
-        mRenderer->ClearScreenAndDepth(static_cast<renderer::eRenderTarget>(renderTarget));
-    }
+    mRenderer->ClearAllScreenAndDepth();
 
     for (auto& command : mCommandList)
     {
@@ -446,17 +535,11 @@ void Application::renderScene()
             const renderer::eRenderTarget renderTarget = mRenderer->GetRenderTargetByRenderPass(command.RenderPass);
             if(renderTarget != mCommandCache.RenderTarget)
             {
-                mRenderer->BindRenderTargetTo(renderTarget);
+                mRenderer->BindRenderTargetByRenderPass(command.RenderPass);
                 mCommandCache.RenderTarget = renderTarget;
 
-                // MEMO: 이건 true 때만 지워야 한다. 현재 바인드된 렌더타겟 초기화
-                if (command.RenderState.bClearDepthStencilBuffer)
-                {
-                    mRenderer->ClearScreenAndDepth(renderTarget);
-                }
-
                 // MEMO: 현재 렌더패킷에 정보가 있지 않아서 이렇게 처리.
-                mRenderer->SetViewport(renderTarget == renderer::eRenderTarget::Default);
+                mRenderer->SetViewport(renderTarget != renderer::eRenderTarget::Shadow);
             }
             mCommandCache.RenderPass = command.RenderPass;
 
@@ -509,9 +592,16 @@ void Application::renderScene()
             mRenderer->BindCbToVsByType(5, 1, renderer::eCbType::CbOrthoMatrix);
 
             // MEMO: Material 바인딩
-            if (command.RenderState.CbBindingDesc.BindSlot >= 0)
+            if(command.RenderState.CbBindingDesc.BindSlot >= 0)
             {
-                mRenderer->BindCbToPs(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                if (command.RenderState.CbBindingDesc.bBindPixelShader)
+                {
+                    mRenderer->BindCbToPs(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                }
+                else
+                {
+                    mRenderer->BindCbToVsByType(command.RenderState.CbBindingDesc.BindSlot, 1, command.RenderState.CbBindingDesc.Type);
+                }
             }
         }
 
@@ -582,6 +672,15 @@ void Application::renderScene()
             if(mCommandCache.RenderPass == renderer::eRenderPass::UI)
             {
                 mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Diffuse)]);
+            }
+            else if (mCommandCache.RenderPass == renderer::eRenderPass::Deferred)
+            {
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::Shadow)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferColor)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferNormal)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferPosition)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferSpecular)]);
+                mRenderer->UnbindTexturePs(command.RenderState.TexBindingSlots[static_cast<uint8_t>(renderer::eTextureType::GBufferAmbient)]);
             }
             else
             {

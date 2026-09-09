@@ -51,29 +51,33 @@ namespace renderer
 
         const wchar_t* InputLayoutSourceList[] =
         {
-            L"Renderer/Shaders/LayoutPTN.hlsl",
-            L"Renderer/Shaders/LayoutPT.hlsl",
-            L"Renderer/Shaders/LayoutP.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutPTN.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutPT.hlsl",
+            L"Renderer/Shader/ShaderSources/LayoutP.hlsl",
         };
 
         const wchar_t* VertexShaderSourceList[] =
         {
-            L"Renderer/Shaders/VsOutline.hlsl",
-            L"Renderer/Shaders/VsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/VsSimple.hlsl",
-            L"Renderer/Shaders/VsSkybox.hlsl",
-            L"Renderer/Shaders/VsTexture.hlsl",
-            L"Renderer/Shaders/VsScreen.hlsl",
-            L"Renderer/Shaders/VsShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/VsOutline.hlsl",
+            L"Renderer/Shader/ShaderSources/VsBasicWithShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/VsSimple.hlsl",
+            L"Renderer/Shader/ShaderSources/VsSkybox.hlsl",
+            L"Renderer/Shader/ShaderSources/VsTexture.hlsl",
+            L"Renderer/Shader/ShaderSources/VsScreen.hlsl",
+            L"Renderer/Shader/ShaderSources/VsShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/VsDeferred.hlsl",
+            L"Renderer/Shader/ShaderSources/VsDebugColor.hlsl",
         };
         const wchar_t* PixelShaderSourceList[] =
         {
-            L"Renderer/Shaders/PsOutline.hlsl",
-            L"Renderer/Shaders/PsBasicWithShadow.hlsl",
-            L"Renderer/Shaders/PsShadow.hlsl",
-            L"Renderer/Shaders/PsTexture.hlsl",
-            L"Renderer/Shaders/PsSkybox.hlsl",
-            L"Renderer/Shaders/PsColor.hlsl"
+            L"Renderer/Shader/ShaderSources/PsOutline.hlsl",
+            L"Renderer/Shader/ShaderSources/PsBasicWithShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/PsShadow.hlsl",
+            L"Renderer/Shader/ShaderSources/PsTexture.hlsl",
+            L"Renderer/Shader/ShaderSources/PsSkybox.hlsl",
+            L"Renderer/Shader/ShaderSources/PsColor.hlsl",
+            L"Renderer/Shader/ShaderSources/PsDeferred.hlsl",
+            L"Renderer/Shader/ShaderSources/PsTextureMRT.hlsl",
         };
 
         struct PixelShaderContainer
@@ -111,6 +115,8 @@ namespace renderer
             {eVertexShader::VsSkybox, 3U},
             {eVertexShader::VsScreen, 5U},
             {eVertexShader::VsShadow, 6U},
+            {eVertexShader::VsDeferred, 7U},
+            {eVertexShader::VsDebugColor, 8U},
         };
 
         constexpr PixelShaderContainer PixelShaderListMapTable[static_cast<uint32_t>(ePixelShader::PixelShaderCount)] =
@@ -121,6 +127,8 @@ namespace renderer
             {ePixelShader::PsShadow, 2U},
             {ePixelShader::PsSkybox, 4U},
             {ePixelShader::PsColor, 5U},
+            {ePixelShader::PsDeferred, 6U},
+            {ePixelShader::PsTextureMRT, 7U},
         };
 
 
@@ -131,9 +139,11 @@ namespace renderer
             {eShader::Skybox, eVertexShader::VsSkybox, ePixelShader::PsSkybox},
             { eShader::Shadow, eVertexShader::VsShadow, ePixelShader::PsShadow},
             {eShader::BasicWithShadow,  eVertexShader::VsBasicWithShadow, ePixelShader::PsBasicWithShadow},
-            {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTexture},
+            {eShader::Texture,  eVertexShader::VsTexture, ePixelShader::PsTextureMRT},
             {eShader::Color,  eVertexShader::VsSimple, ePixelShader::PsColor},
             {eShader::DebugHUD,  eVertexShader::VsScreen, ePixelShader::PsTexture},
+            {eShader::Deferred,  eVertexShader::VsDeferred, ePixelShader::PsDeferred},
+            {eShader::DebugHUD,  eVertexShader::VsDebugColor, ePixelShader::PsColor},
         };
 
         static_assert(sizeof(mShaderMapTable) == sizeof(ShaderMapTable), "mShaderMapTable and ShaderMapTable MUST be same size.");
@@ -226,7 +236,7 @@ namespace renderer
         case eCbType::CbOutlineProperty:
         {
             CbOutlineProperty CbOutlineProperty = {};
-            CbOutlineProperty.Float3 = material.OutlineWidth;
+            CbOutlineProperty.Float = material.OutlineWidth;
             UpdateCB(type, reinterpret_cast<void*>(&CbOutlineProperty));
             break;
         }
@@ -265,12 +275,14 @@ namespace renderer
         constexpr MaterialCbBinding MaterialCbTableEachShader[] =
         {
             { eCbType::CbOutlineProperty,   false,  6 }, // Outline
-            { eCbType::ConstantBufferCount, false, -1 }, // Skybox
+            { eCbType::CbMaterialFactors,   true,   0 }, // Skybox
             { eCbType::ConstantBufferCount, false, -1 }, // Shadow
-            { eCbType::CbMaterialFactors,          true,   0 }, // BasicWithShadow
-            { eCbType::ConstantBufferCount, false, -1 }, // Texture
-            { eCbType::CbColor,             true,   0 }, // Color
+            { eCbType::CbMaterialFactors,   true,   0 }, // BasicWithShadow
+            { eCbType::CbMaterialFactors,   true,   0 }, // Texture
+            { eCbType::CbMaterialFactors,   true,   0 }, // Color
             { eCbType::ConstantBufferCount, false, -1 }, // DebugHUD
+            { eCbType::ConstantBufferCount, false, -1 }, // Deferred
+            { eCbType::CbMaterialFactors, true, 0 },     // DebugColor
         };
         static_assert(sizeof(MaterialCbTableEachShader) / sizeof(MaterialCbBinding) == static_cast<uint8_t>(eShader::ShaderCount), "셰이더 수와 Table 수가 맞지 않음.");
         outBindingDesc = MaterialCbTableEachShader[static_cast<uint8_t>(type)];
@@ -280,14 +292,17 @@ namespace renderer
     {
         constexpr int8_t TexBindingSlotsEachShader[static_cast<uint8_t>(eShader::ShaderCount)][static_cast<uint8_t>(eTextureType::TextureTypeCount)] =
         {
-            // Diffuse, Normal, Shadow
-            { -1, -1, -1 }, // Outline
-            {  0, -1, -1 }, // Skybox
-            { -1, -1, -1 }, // Shadow
-            {  0,  1,  2 }, // BasicWithShadow
-            {  0, -1, -1 }, // Texture
-            { -1, -1, -1 }, // Color
-            {  0, -1, -1 }, // DebugHUD
+            // Diffuse, Normal, Shadow, GColor, GNormal, GPosition, GSpecular, GAmbient
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Outline
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // Skybox
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Shadow
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // BasicWithShadow
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // Texture
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // Color
+            {  0, -1, -1, -1, -1, -1, -1, -1 }, // DebugHUD
+            { -1, -1, 5,  0,  1,  2,  3,  4},   // Deferred
+            { -1, -1, -1, -1, -1, -1, -1, -1 }, // DebugColor
+
         };
         static_assert(sizeof(TexBindingSlotsEachShader) / sizeof(TexBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");
@@ -307,6 +322,8 @@ namespace renderer
             {  0 }, // Texture
             { -1 }, // Color
             {  0 }, // DebugHUD
+            {  0 }, // Deferred
+            { -1 }, // DebugColor
         };
         static_assert(sizeof(SamplerBindingSlotsEachShader) / sizeof(SamplerBindingSlotsEachShader[0]) == static_cast<uint8_t>(eShader::ShaderCount),
             "셰이더 수와 Table 수가 맞지 않음.");

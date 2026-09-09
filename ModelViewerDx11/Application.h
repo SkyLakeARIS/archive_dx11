@@ -1,4 +1,5 @@
 #pragma once
+#include "Renderer/Resources/Mesh.h"
 #include "Renderer/Resources/RenderPacket.h"
 
 
@@ -61,6 +62,7 @@ private:
     int16_t mAppFrameRate;
 
     Window* mWindow;
+    renderer::Mesh mNdcMeshDeferred;
 
     int32_t mCurSubMeshIndexFocusModel;
     std::vector<renderer::RenderPacket> mCommandList;
@@ -79,4 +81,9 @@ private:
     renderer::ShaderManager* mShaderManager;
     core::DirectInput* mDirectInput;
     ui::DebugPanel* mShadowDebugPanel;
+    ui::DebugPanel* mGBufferColorDebugPanel;
+    ui::DebugPanel* mGBufferNormalDebugPanel;
+    ui::DebugPanel* mGBufferPositionDebugPanel;
+    ui::DebugPanel* mGBufferSpecularDebugPanel;
+    ui::DebugPanel* mGBufferAmbientDebugPanel;
 };

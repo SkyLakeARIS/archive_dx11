@@ -25,6 +25,7 @@ namespace scene
     {
 
         renderer::MeshGenerator::CreatePlane(mMesh);
+        mMesh.SubMeshes.front().Material.Factors.IsLitOn = static_cast<float>(false);
     }
 
     void Billboard::SubmitCommand(std::vector<renderer::RenderPacket>& commandList)
@@ -50,8 +51,7 @@ namespace scene
                 renderer::eBlendState::AlphaBlend,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
             commandList.push_back(command);
         }

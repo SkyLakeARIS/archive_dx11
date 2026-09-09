@@ -7,6 +7,7 @@ namespace ui
     DebugPanel::DebugPanel(int16_t originX, int16_t originY, int16_t width, int16_t height)
     {
         renderer::MeshGenerator::CreateScreenPlane(originX, originY, width, height, mMesh);
+        mMesh.SubMeshes.front().Material.Factors.IsLitOn = static_cast<float>(false);
     }
 
     DebugPanel::~DebugPanel()
@@ -34,8 +35,7 @@ namespace ui
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::TriangleStrip,
                 true,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
 
 

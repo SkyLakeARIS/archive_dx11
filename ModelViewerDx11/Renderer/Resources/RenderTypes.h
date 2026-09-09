@@ -12,11 +12,17 @@ namespace renderer
         XMMATRIX Matrix;
     }CbWorld, CbViewProj, CbLightViewProjMatrix, CbScreenSpaceMatrix;
 
+    typedef struct CbFloat
+    {
+        float    Float;
+        XMFLOAT3 Reserve;
+    } CbOutlineProperty;
+
     typedef struct CbFloat3
     {
         XMFLOAT3    Float3;
         float       Reserve;
-    } CbCameraPosition, CbOutlineProperty, CbColor;
+    } CbCameraPosition, CbColor;
 
     typedef struct CbTwoVec4
     {
@@ -44,6 +50,11 @@ namespace renderer
     {
         Default,
         Shadow,
+        GBufferColor,
+        GBufferNormal,
+        GBufferPosition,
+        GBufferSpecular,
+        GBufferAmbient,
         RenderTargetCount
     };
 
@@ -52,6 +63,7 @@ namespace renderer
         Main,
         Shadow,
         UI,
+        Deferred, // MEMO: renderer only
         PassCount
     };
 
@@ -96,6 +108,5 @@ namespace renderer
         eBlendState BlendState;
         eDepthStencilState DepthStencilState;
         eShadowMapUsage UseShadowMapUsage;
-        bool bClearDepthStencilBuffer;
     };
 }

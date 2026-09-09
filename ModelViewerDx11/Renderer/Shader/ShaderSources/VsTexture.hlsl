@@ -19,20 +19,31 @@ cbuffer CbMatViewProj : register(b1)
     matrix MatViewProj;
 }
 
+
 struct VsInput
 {
-    float4 Pos : POSITION;
+    float4 Position : POSITION;
+    float2 TexCoord : TEXCOORD0;
 };
+
 
 struct PsInput
 {
-    float4 Pos : SV_POSITION;
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 WorldPosition : TEXCOORD2;
 };
 
-PsInput main(VsInput input)
+
+
+PsInput main(VsInput vsInput)
 {
-    PsInput output;
-    output.Pos = mul(input.Pos, MatWorld);
-    output.Pos = mul(output.Pos, MatViewProj);
-    return output;
+    PsInput psInput;
+
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldPosition = psInput.Position;
+    psInput.Position = mul(psInput.Position, MatViewProj);
+
+    psInput.TexCoord = vsInput.TexCoord;
+	return psInput;
 }

@@ -28,18 +28,20 @@ struct PsInput
 {
     float4 Position : SV_POSITION;
     float3 TexCoord : TEXCOORD0;
+    float3 WorldPosition : TEXCOORD2;
 };
 
-PsInput main(VsInput input)
+PsInput main(VsInput vsInput)
 {
-    PsInput output;
+    PsInput psInput;
 
     // 깊이 값이 가장 뒤어야 하기 때문에 따로 다시 지정하기 보다 1인 w값을 대신 쓰는 것. w = 1, using w instead of z
     //output.Position = mul(float4(input.Position.xyz, 1), MatWorld).xyww;
-    output.Position = mul(input.Position, MatWorld);
-    output.Position = mul(float4(output.Position.xyz, 1), MatViewProj).xyww;
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldPosition = psInput.Position;
+    psInput.Position = mul(float4(psInput.Position.xyz, 1.0f), MatViewProj).xyww;
 
     // tex값은 위치 값
-    output.TexCoord = input.Position;
-    return output;
+    psInput.TexCoord = vsInput.Position;
+    return psInput;
 }

@@ -37,14 +37,13 @@ namespace scene
                 subMesh.Material,
                 renderer::eRenderPass::Main,
                 XMMatrixIdentity(),
-                renderer::eShader::Color,
+                renderer::eShader::DebugColor,
                 renderer::eRasterType::Basic,
                 renderer::eSamplerType::SamplerCount,
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Lines,
                 false,
-                renderer::eDepthStencilState::DepthOffStencilOff,
-                false
+                renderer::eDepthStencilState::DepthOffStencilOff
             );
 
             commandList.push_back(command);
@@ -53,7 +52,11 @@ namespace scene
 
     void Light::Update(renderer::Renderer& renderer)
     {
-        mMatView = XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&mDirection), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
+        XMVECTOR vPosition = XMLoadFloat3(&mPosition);
+        XMVECTOR vDirection = XMLoadFloat3(&mDirection);
+        XMFLOAT3 lookAt;
+        XMStoreFloat3(&lookAt, (vPosition + vDirection));
+        mMatView = XMMatrixLookAtLH(XMLoadFloat3(&mPosition), XMLoadFloat3(&lookAt), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
         mMatProj = XMMatrixOrthographicLH(-10.0f, 10.0f, mNearPlane, mFarPlane);
         mMatViewProj = mMatView * mMatProj;
 
@@ -136,6 +139,7 @@ namespace scene
             (void)memcpy(newSubMesh.SubMeshName, mMeshDebug.MeshName, util::MAX_NAME_LENGTH);
             newSubMesh.SubMeshHash = mMeshDebug.MeshHash;
             newSubMesh.Material.Factors.Diffuse = XMFLOAT3(1.0f, 1.0f, 0.0f);
+            newSubMesh.Material.Factors.IsLitOn = static_cast<float>(false);
 
             mMeshDebug.SubMeshes.push_back(std::move(newSubMesh));
         }

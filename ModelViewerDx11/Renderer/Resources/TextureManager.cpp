@@ -7,6 +7,16 @@ namespace renderer
 {
     HashID TextureManager::sShadowTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/ShadowMap.tex"));
     int16_t TextureManager::sShadowTexSerialID = -1;
+    HashID TextureManager::sGBufferColorTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferColorMap.tex"));
+    int16_t TextureManager::sGBufferColorTexSerialID = -1;
+    HashID TextureManager::sGBufferNormalTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferNormalMap.tex"));
+    int16_t TextureManager::sGBufferNormalTexSerialID = -1;
+    HashID TextureManager::sGBufferPositionTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferPositionMap.tex"));
+    int16_t TextureManager::sGBufferPositionTexSerialID = -1;
+    HashID TextureManager::sGBufferSpecularTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferSpecularMap.tex"));
+    int16_t TextureManager::sGBufferSpecularTexSerialID = -1;
+    HashID TextureManager::sGBufferAmbientTexHash = util::GetDjb2Hash(reinterpret_cast<const int8_t* const>("/AssetData/Generated/GBufferAmbientMap.tex"));
+    int16_t TextureManager::sGBufferAmbientTexSerialID = -1;
     HashID TextureManager::sDefaultTexHash = 0;
     
     TextureManager::TextureManager(ID3D11Device* device)
@@ -20,7 +30,25 @@ namespace renderer
     TextureManager::~TextureManager()
     {
         // MEMO: shadow는 Renderer가 생성했으므로 Renderer가 지움
-        const auto& shadowTexIt = mTextures.find(sShadowTexHash);
+        HashID removeByRendererList[] =
+        {
+            sShadowTexHash,
+            sGBufferColorTexHash,
+            sGBufferNormalTexHash,
+            sGBufferPositionTexHash,
+            sGBufferSpecularTexHash,
+            sGBufferAmbientTexHash,
+        };
+        for (HashID texHash : removeByRendererList)
+        {
+            const auto& texIt = mTextures.find(texHash);
+            if (texIt != mTextures.end())
+            {
+                mTextures.erase(texIt);
+            }
+        }
+
+        const auto& shadowTexIt = mTextures.find(sGBufferColorTexHash);
         if(shadowTexIt != mTextures.end())
         {
             mTextures.erase(shadowTexIt);

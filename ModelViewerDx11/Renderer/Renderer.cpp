@@ -52,38 +52,54 @@ namespace renderer
     {
         constexpr eRenderTarget RenderPassRenderTargetMap[] =
         {
-            eRenderTarget::Default,
+            eRenderTarget::GBufferColor,
             eRenderTarget::Shadow,
+            eRenderTarget::Default,
+            // MEMO: 대표적인 렌더타겟 반환
             eRenderTarget::Default
         };
         static_assert(sizeof(RenderPassRenderTargetMap) / sizeof(RenderPassRenderTargetMap[0]) == static_cast<uint64_t>(eRenderPass::PassCount), "RenderPassRenderTargetMap와 eRenderPass의 갯수가 서로 맞아야 합니다.");
         return RenderPassRenderTargetMap[static_cast<uint8_t>(renderPass)];
     }
 
-    void Renderer::registerShadowTexture()
+    void Renderer::registerSrvTexture()
     {
-        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mShadowSrv);
+        mTextureManager->AddTextureByHash(TextureManager::sShadowTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
         TextureManager::sShadowTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sShadowTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferColorTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferColor)]);
+        TextureManager::sGBufferColorTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferColorTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferNormalTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferNormal)]);
+        TextureManager::sGBufferNormalTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferNormalTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferPositionTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferPosition)]);
+        TextureManager::sGBufferPositionTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferPositionTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferSpecularTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferSpecular)]);
+        TextureManager::sGBufferSpecularTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferSpecularTexHash);
+
+        mTextureManager->AddTextureByHash(TextureManager::sGBufferAmbientTexHash, mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::GBufferAmbient)]);
+        TextureManager::sGBufferAmbientTexSerialID = mTextureManager->GetTextureSerial(TextureManager::sGBufferAmbientTexHash);
     }
 
     Renderer::Renderer()
         : mRefCount(1)
+        , mWindowHeight(0)
+        , mWindowWidth(0)
         , mDevice(nullptr)
         , mDeviceContext(nullptr)
         , mSwapChain(nullptr)
-        , mDepthStencilTexture(nullptr)
         , mDepthStencilStates{}
         , mRenderTargetViewList{nullptr}
         , mDepthStencilViewList{nullptr}
         , mRtvDsMapTable{}
-        , mTexShadow(nullptr)
-        , mTexColor(nullptr)
-        , mShadowSrv(nullptr)
-        , mCascadeShadowSrvList(nullptr)
+        , mRenderTargetSRVs{}
         , mViewportFull()
         , mViewportTex()
         , mRasterStates{nullptr}
         , mSamplerState{}
+        , mBlendStates{}
         , mPrimitiveTopologies{}
         , mBufferManager(nullptr)
         , mTextureManager(nullptr)
@@ -174,7 +190,7 @@ namespace renderer
         mTextureManager = textureManager;
         mShaderManager = shaderManager;
 
-        registerShadowTexture();
+        registerSrvTexture();
     }
 
     HRESULT Renderer::CreateDeviceAndSetup(
@@ -286,22 +302,22 @@ namespace renderer
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
         depthDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
         depthDesc.MiscFlags = 0;
-
-        CreateTexture2D(depthDesc, &mDepthStencilTexture, "Renderer::DepthStencilTexture");
+        ID3D11Texture2D* depthStencilTexture = nullptr;
+        CreateTexture2D(depthDesc, &depthStencilTexture, "Renderer::depthStencilTexture");
 
         D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
         depthStencilViewDesc.Format = depthDesc.Format;
         depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
         depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-        result = CreateDepthStencilView(mDepthStencilTexture, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]);
+        result = CreateDepthStencilView(depthStencilTexture, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]);
         if (FAILED(result))
         {
             ASSERT(false, "mDepthStencilView 생성 실패");
             return E_FAIL;
         }
         SET_PRIVATE_DATA(mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)], "eRenderTarget::Default");
-
+        SAFETY_RELEASE(depthStencilTexture);
         uint32_t index = static_cast<uint8_t>(eRenderTarget::Default);
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].RenderTargetIndex = index;
         mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::Default)].DepthStencilIndex = index;
@@ -346,6 +362,9 @@ namespace renderer
     {
         HRESULT result = S_OK;
 
+        mWindowWidth = width;
+        mWindowHeight = height;
+
         DXGI_SWAP_CHAIN_DESC swapDesc;
         ZeroMemory(&swapDesc, sizeof(swapDesc));
         swapDesc.BufferCount = 1;
@@ -368,6 +387,12 @@ namespace renderer
         }
 
         // set default resources
+
+        if (!createGBufferRenderTargets())
+        {
+            ASSERT(false, "FAIL : createGBufferRenderTargets");
+            return false;
+        }
 
         result = CreateShadowRenderTarget();
         if (FAILED(result))
@@ -405,6 +430,48 @@ namespace renderer
 #endif
         (void)memcpy(mPrimitiveTopologies, TopologyMap, sizeof(TopologyMap));
 
+
+        const RenderTargetBindDesc BindDescMap[] =
+        {
+            {eRenderPass::Main,
+             5,
+                {
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferColor)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferNormal)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferPosition)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferSpecular)],
+                    mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::GBufferAmbient)],
+                    nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
+            },
+            {eRenderPass::Shadow,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]
+            },
+            {eRenderPass::UI,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Default)]
+            },
+            {eRenderPass::Deferred,
+                1,
+                {mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Default)], nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr} ,
+                nullptr
+            },
+        };
+        static_assert(std::size(BindDescMap) == static_cast<uint8_t>(eRenderPass::PassCount), "RenderPass와 BindDescMap의 짝이 맞아야 합니다.");
+#ifdef _DEBUG
+        for(uint8_t renderPass = 0; renderPass < static_cast<uint8_t>(eRenderPass::PassCount); ++renderPass)
+        {
+            if(static_cast<eRenderPass>(renderPass) != BindDescMap[renderPass].RenderPass)
+            {
+                ASSERT(false, "eRenderPass 멤버 순서와 BindDescMap 요소 순서는 일치해야 합니다.");
+            }
+        }
+#endif
+
+        (void)memcpy(mRenderTargetBindDescMap, BindDescMap, sizeof(BindDescMap));
         return true;
     }
 
@@ -435,6 +502,73 @@ namespace renderer
             }
         }
         return true;
+    }
+
+    bool Renderer::createGBufferRenderTargets()
+    {
+        bool bSuccess = false;
+
+        constexpr DXGI_FORMAT TexFormatByBufferType[] =
+        {
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_UNKNOWN,
+            DXGI_FORMAT_R32G32B32A32_FLOAT, // GBufferColor
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferNormal
+            DXGI_FORMAT_R32G32B32A32_FLOAT, // GBufferPosition
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferSpecular
+            DXGI_FORMAT_R16G16B16A16_FLOAT, // GBufferAmbient
+        };
+        static_assert(std::size(TexFormatByBufferType) == static_cast<size_t>(eRenderTarget::RenderTargetCount), "Format 테이블은 RenderTarget 수와 일치해야 합니다.");
+
+        D3D11_TEXTURE2D_DESC texDesc = {};
+        texDesc.Width = mWindowWidth;
+        texDesc.Height = mWindowHeight;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = 1;
+        texDesc.SampleDesc.Count = 1;                      // 멀티샘플링 수
+        texDesc.SampleDesc.Quality = 0;                    // 멀티샘플링 퀼리티
+        texDesc.Usage = D3D11_USAGE_DEFAULT;               // 디폴트로 사용
+        texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        texDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
+        texDesc.MiscFlags = 0;
+        for (uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(eRenderTarget::RenderTargetCount); ++renderTarget)
+        {
+            if (TexFormatByBufferType[renderTarget] == DXGI_FORMAT_UNKNOWN)
+            {
+                continue;
+            }
+
+            texDesc.Format = TexFormatByBufferType[renderTarget];
+            ID3D11Texture2D* tex = nullptr;
+            const bool bTexCreated = SUCCEEDED(CreateTexture2D(texDesc, &tex, "Renderer::GBufferTex"));
+
+            D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+            rtvDesc.Format = TexFormatByBufferType[renderTarget];
+            rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+            rtvDesc.Texture2D.MipSlice = 0;
+            const bool bRenderTargetCreated= SUCCEEDED(CreateRenderTargetView(tex, &rtvDesc, &mRenderTargetViewList[renderTarget]));
+            SET_PRIVATE_DATA(mRenderTargetViewList[renderTarget], "eRenderTarget::GBufferRT");
+
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+            srvDesc.Format = TexFormatByBufferType[renderTarget];
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            const bool bShaderResourceCreated = SUCCEEDED(mDevice->CreateShaderResourceView(tex, &srvDesc, &mRenderTargetSRVs[renderTarget]));
+            SET_PRIVATE_DATA(mRenderTargetSRVs[renderTarget], "eRenderTarget::GBufferSRV");
+
+            bSuccess = bTexCreated && bRenderTargetCreated && bShaderResourceCreated;
+            SAFETY_RELEASE(tex);
+            if (bSuccess == false)
+            {
+                ASSERT(false, "GBuffer 생성 실패. RenderTarget(%u) state TexCreated(%d), RtCreated(%d), SrvCreated(%d)", renderTarget, static_cast<int32_t>(bTexCreated), static_cast<int32_t>(bRenderTargetCreated), static_cast<int32_t>(bShaderResourceCreated));
+                SAFETY_RELEASE(mRenderTargetViewList[renderTarget]);
+                SAFETY_RELEASE(mRenderTargetSRVs[renderTarget]);
+                break;
+            }
+        }
+        return bSuccess;
     }
 
     HRESULT Renderer::CreateRenderTargetView(ID3D11Texture2D* const texture, D3D11_RENDER_TARGET_VIEW_DESC* const desc,
@@ -471,11 +605,12 @@ namespace renderer
         return result;
     }
 
-    void Renderer::BindRenderTargetTo(eRenderTarget type)
+    void Renderer::BindRenderTargetByRenderPass(eRenderPass pass)
     {
-        RtvDsMap& rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
+        ASSERT(pass != eRenderPass::PassCount, "올바르지 않은 RenderPass Type. pass(%d)", static_cast<uint8_t>(pass));
 
-        mDeviceContext->OMSetRenderTargets(rtvDs.NumViews, &mRenderTargetViewList[rtvDs.RenderTargetIndex], mDepthStencilViewList[rtvDs.DepthStencilIndex]);
+        const uint8_t passIndex = static_cast<uint8_t>(pass);
+        mDeviceContext->OMSetRenderTargets(mRenderTargetBindDescMap[passIndex].ViewCount, mRenderTargetBindDescMap[passIndex].RenderTargetViews, mRenderTargetBindDescMap[passIndex].DepthStencilViews);
     }
 
     void Renderer::BindInputLayoutTo(eVertexFormat type) const
@@ -539,21 +674,21 @@ namespace renderer
         depthDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
         depthDesc.CPUAccessFlags = 0;                        // cpu 액세스 여부
         depthDesc.MiscFlags = 0;
-
-        CreateTexture2D(depthDesc, &mTexColor, "Renderer::mTexColor"); // mTexShadow
+        ID3D11Texture2D* texColor = nullptr;
+        CreateTexture2D(depthDesc, &texColor, "Renderer::texColor"); // mTexShadow
 
 
         D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
         rtvDesc.Format = depthDesc.Format;
         rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
         rtvDesc.Texture2D.MipSlice = 0;
-        HRESULT result = CreateRenderTargetView(mTexColor, &rtvDesc, &mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowRtv
+        HRESULT result = CreateRenderTargetView(texColor, &rtvDesc, &mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowRtv
         if (FAILED(result))
         {
             return E_FAIL;
         }
         SET_PRIVATE_DATA(mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::Shadow)], "eRenderTarget::Shadow");
-        SAFETY_RELEASE(mTexColor);
+        SAFETY_RELEASE(texColor);
 
         mViewportTex.Width    = static_cast<float>(texWidth);
         mViewportTex.Height   = static_cast<float>(texHeight);
@@ -567,14 +702,15 @@ namespace renderer
      
         depthDesc.Format = DXGI_FORMAT_R32_TYPELESS;
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-        CreateTexture2D(depthDesc, &mTexShadow, "Renderer::mTexShadow"); // mTexShadow
+        ID3D11Texture2D* texShadow = nullptr;
+        CreateTexture2D(depthDesc, &texShadow, "Renderer::texShadow"); // mTexShadow
 
         D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
         depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
         depthStencilViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
         depthStencilViewDesc.Texture2D.MipSlice = 0;
 
-        result = CreateDepthStencilView(mTexShadow, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowDsv
+        result = CreateDepthStencilView(texShadow, &depthStencilViewDesc, &mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::Shadow)]); // mShadowDsv
         if (FAILED(result))
         {
             ASSERT(false, "mShadowDsv 생성 실패");
@@ -593,13 +729,13 @@ namespace renderer
         desc.Texture2D.MipLevels = 1;
         desc.Texture2D.MostDetailedMip = 0;
         desc.Format = DXGI_FORMAT_R32_FLOAT;
-        result = mDevice->CreateShaderResourceView(mTexShadow, &desc, &mShadowSrv);
+        result = mDevice->CreateShaderResourceView(texShadow, &desc, &mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::Shadow)]);
         if (FAILED(result))
         {
-            ASSERT(false, "Failed to create mTexShadow");
+            ASSERT(false, "Failed to create texShadow");
         }
 
-        SAFETY_RELEASE(mTexShadow);
+        SAFETY_RELEASE(texShadow);
 
         return S_OK;
     }
@@ -675,24 +811,10 @@ namespace renderer
         }
     }
 
-    void Renderer::BindDefaultTextureToPs(uint32_t slot) const
-    {
-        HashID hash = 0;
-        int16_t serial = 0;
-        mTextureManager->GetDefaultTexture(hash, serial);
-        ID3D11ShaderResourceView* const srv = mTextureManager->GetTextureByHash(hash);
-        mDeviceContext->PSSetShaderResources(slot, 1, &srv);
-    }
-
     void Renderer::UnbindTexturePs(uint32_t slot) const
     {
         ID3D11ShaderResourceView* unbindSRV = nullptr;
         mDeviceContext->PSSetShaderResources(slot, 1, &unbindSRV);
-    }
-
-    void Renderer::BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const
-    {
-        mDeviceContext->IASetPrimitiveTopology(topology);
     }
 
     void Renderer::BindPrimitiveTopologyByType(ePrimitiveTopology topology) const
@@ -712,13 +834,17 @@ namespace renderer
         mDeviceContext->OMSetDepthStencilState(mDepthStencilStates[static_cast<uint8_t>(type)], 0);
     }
 
-    void Renderer::ClearScreenAndDepth(eRenderTarget type) const
+    void Renderer::ClearAllScreenAndDepth() const
     {
         constexpr float CLEAR_COLOR[] = { 0.4f, 0.6f, 1.0f, 1.0f };
-        RtvDsMap rtvDs = mRtvDsMapTable[static_cast<uint8_t>(type)];
-
-        mDeviceContext->ClearRenderTargetView(mRenderTargetViewList[rtvDs.RenderTargetIndex], CLEAR_COLOR);
-        mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[rtvDs.DepthStencilIndex], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+        for (uint8_t renderTarget = 0; renderTarget < static_cast<uint8_t>(renderer::eRenderTarget::RenderTargetCount); ++renderTarget)
+        {
+            mDeviceContext->ClearRenderTargetView(mRenderTargetViewList[renderTarget], CLEAR_COLOR);
+            if(mDepthStencilViewList[renderTarget])
+            {
+                mDeviceContext->ClearDepthStencilView(mDepthStencilViewList[renderTarget], D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+            }
+        }
     }
 
     void Renderer::ClearDepthBuffer() const
@@ -787,12 +913,9 @@ namespace renderer
         {
             SAFETY_RELEASE(mRenderTargetViewList[i]);
             SAFETY_RELEASE(mDepthStencilViewList[i]);
+            SAFETY_RELEASE(mRenderTargetSRVs[i]);
         }
 
-        SAFETY_RELEASE(mTexShadow);
-        SAFETY_RELEASE(mTexColor);
-        SAFETY_RELEASE(mShadowSrv);
-        SAFETY_RELEASE(mDepthStencilTexture);
         for (uint32_t state = 0; state < static_cast<uint8_t>(eDepthStencilState::StateCount); ++state)
         {
             SAFETY_RELEASE(mDepthStencilStates[state]);

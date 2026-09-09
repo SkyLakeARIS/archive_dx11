@@ -1,0 +1,45 @@
+/*
+    b0 ~ b5 는 렌더러에서 예약 (reserved slots by renderer)
+
+    b0 : World Matrix
+    b1 : View + Projection Matrix (mainly Perspective)
+    b2 : View + Projection Matrix of Light
+    b3 : Light Attributes (for lighting)
+    b4 : Camera Attribute (for lighting)
+    b5 : Orthographic Matrix (for screen)
+ */
+
+cbuffer CbMatWorld : register(b0)
+{
+    matrix MatWorld;
+}
+
+cbuffer CbMatViewProj : register(b1)
+{
+    matrix MatViewProj;
+}
+
+struct VsInput
+{
+    float4 Position : POSITION;
+};
+
+struct PsInput
+{
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 WorldNormal : TEXCOORD1;
+    float3 WorldPosition : TEXCOORD2;
+};
+
+PsInput main(VsInput vsInput)
+{
+    PsInput psInput;
+    psInput.Position = mul(vsInput.Position, MatWorld);
+    psInput.WorldNormal = float3(0.0f, 1.0f, 0.0f);
+    psInput.WorldPosition = psInput.Position;
+    psInput.Position = mul(psInput.Position, MatViewProj);
+
+    psInput.TexCoord = float2(0.0f, 0.0f);
+    return psInput;
+}

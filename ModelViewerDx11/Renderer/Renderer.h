@@ -15,6 +15,15 @@ namespace renderer
     class Renderer final : IUnknown
     {
     private:
+        static constexpr uint8_t MAX_RENDER_TARGET_VIEW = 8;
+        struct RenderTargetBindDesc
+        {
+            eRenderPass RenderPass;
+            uint32_t ViewCount;
+            ID3D11RenderTargetView* RenderTargetViews[MAX_RENDER_TARGET_VIEW];
+            ID3D11DepthStencilView* DepthStencilViews;
+        };
+
         struct RenderTargetDepthStencilMap
         {
             uint32_t RenderTargetIndex;
@@ -64,7 +73,7 @@ namespace renderer
         HRESULT CreateTexture2D(D3D11_TEXTURE2D_DESC& desc, ID3D11Texture2D** outTex, const char* tag) const;
 
         // Renderer 
-        void ClearScreenAndDepth(eRenderTarget type) const;
+        void ClearAllScreenAndDepth() const;
         void ClearDepthBuffer() const;
         void Present() const;
 
@@ -90,15 +99,13 @@ namespace renderer
         void BindSamplerToPsByType(uint32_t slot, eSamplerType type) const;
         void BindBlendStateByType(eBlendState type) const;
         void BindTextureToPs(uint32_t slot, HashID textureHash) const;
-        void BindDefaultTextureToPs(uint32_t slot) const;
         void BindRasterStateByType(eRasterType type) const;
         void BindDepthStencilState(eDepthStencilState type) const;
 
         void UnbindTexturePs(uint32_t slot) const;
 
-        void BindPrimitiveTopologyTo(D3D_PRIMITIVE_TOPOLOGY topology) const;
         void BindPrimitiveTopologyByType(ePrimitiveTopology topology) const;
-        void BindRenderTargetTo(eRenderTarget type);
+        void BindRenderTargetByRenderPass(eRenderPass pass);
         void BindInputLayoutTo(eVertexFormat type) const;
         void BindShaderTo(eShader type) const;
 
@@ -118,17 +125,20 @@ namespace renderer
         static void CheckLiveObjects();
     private:
         // MEMO: textureManager가 초기화된 후, 렌더러가 사용하는 텍스처를 추가. 등록되면 Manager가 수명 관리
-        void registerShadowTexture();
+        void registerSrvTexture();
 
 
         bool    createRasterState();
         HRESULT createSamplerState();
         bool    createPresetBlendStates();
-
+        bool    createGBufferRenderTargets();
     private:
 
 
         ULONG                       mRefCount;
+
+        int16_t mWindowHeight;
+        int16_t mWindowWidth;
 
         // D3D Device
         ID3D11Device*               mDevice;
@@ -137,22 +147,17 @@ namespace renderer
         // 
         IDXGISwapChain*             mSwapChain;
 
-        ID3D11Texture2D*            mDepthStencilTexture;
         ID3D11DepthStencilState*    mDepthStencilStates[static_cast<uint8_t>(eDepthStencilState::StateCount)];
 
         // render target, depthStencil
         // 일단은 쉽게 무조건 1:1매핑으로 (nullptr 처리는 나중에 최적화)
-        ID3D11RenderTargetView* mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
-        ID3D11DepthStencilView* mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
-        RtvDsMap mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
-
-        // shadow
-        ID3D11Texture2D*           mTexShadow;
-        ID3D11Texture2D*           mTexColor;
-        ID3D11ShaderResourceView*  mShadowSrv;
-        ID3D11ShaderResourceView** mCascadeShadowSrvList;
-        D3D11_VIEWPORT             mViewportFull;
-        D3D11_VIEWPORT             mViewportTex;
+        ID3D11RenderTargetView*   mRenderTargetViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
+        ID3D11DepthStencilView*   mDepthStencilViewList[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
+        RtvDsMap                  mRtvDsMapTable[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)]; // combine rtv - depth-stencil pairs
+        ID3D11ShaderResourceView* mRenderTargetSRVs[static_cast<uint8_t>(eRenderTarget::RenderTargetCount)];
+        RenderTargetBindDesc      mRenderTargetBindDescMap[static_cast<uint8_t>(eRenderPass::PassCount)];
+        D3D11_VIEWPORT            mViewportFull;
+        D3D11_VIEWPORT            mViewportTex;
 
         // raster state
         ID3D11RasterizerState*      mRasterStates[static_cast<uint32_t>(eRasterType::RasterCount)]; // 0: back cull, 1: front cull

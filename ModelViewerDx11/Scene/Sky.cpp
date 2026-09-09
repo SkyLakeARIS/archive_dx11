@@ -17,6 +17,7 @@ namespace scene
     HRESULT Sky::Initialize(uint32_t latLines, uint32_t lonLines, renderer::TextureManager* const texManager)
     {
         renderer::MeshGenerator::CreateSphere(latLines, lonLines, mMesh);
+        mMesh.SubMeshes.front().Material.Factors.IsLitOn = static_cast<float>(false);
 
 
 
@@ -48,8 +49,7 @@ namespace scene
                 renderer::eBlendState::Opaque,
                 renderer::ePrimitiveTopology::Triangles,
                 false,
-                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual,
-                false
+                renderer::eDepthStencilState::DepthOnMaskAllCompLessEqual
             );
 
             commandList.push_back(command);
